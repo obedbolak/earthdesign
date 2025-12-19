@@ -1,0 +1,307 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Region {
+  Id_Reg        Int           @id @default(autoincrement())
+  Nom_Reg       String?
+  Sup_Reg       Float?
+  Chef_lieu_Reg String?
+  WKT_Geometry  String?
+  departements  Departement[] // Added: inverse of Departement -> Region
+}
+
+model Departement {
+  Id_Dept         Int              @id @default(autoincrement())
+  Nom_Dept        String?
+  Sup_Dept        Float?
+  Chef_lieu_Dept  String?
+  Id_Reg          Int?
+  WKT_Geometry    String?
+  region          Region?          @relation(fields: [Id_Reg], references: [Id_Reg])
+  arrondissements Arrondissement[] // Added: inverse of Arrondissement -> Departement
+}
+
+model Arrondissement {
+  Id_Arrond        Int           @id @default(autoincrement())
+  Nom_Arrond       String?
+  Sup_Arrond       Float?
+  Chef_lieu_Arrond String?
+  Commune          String?
+  Id_Dept          Int?
+  WKT_Geometry     String?
+  departement      Departement?  @relation(fields: [Id_Dept], references: [Id_Dept])
+  lotissements     Lotissement[] // Added: inverse of Lotissement -> Arrondissement
+}
+
+model Lotissement {
+  Id_Lotis       Int             @id @default(autoincrement())
+  Nom_proprio    String?
+  Num_TF         String?
+  Statut         String?
+  Nom_cons       String?
+  Surface        Float?
+  Nom_visa_lotis String?
+  Date_approb    DateTime?       @db.Date
+  Geo_exe        String?
+  Nbre_lots      Int?
+  Lieudit        String?
+  Echelle        Int?
+  Ccp            String?
+  Video_URL      String?
+  Image_URL_1    String?
+  Image_URL_2    String?
+  Image_URL_3    String?
+  Image_URL_4    String?
+  Image_URL_5    String?
+  Image_URL_6    String?
+  Id_Arrond      Int?
+  WKT_Geometry   String?
+  arrondissement Arrondissement? @relation(fields: [Id_Arrond], references: [Id_Arrond])
+  parcelles      Parcelle[] // Added: inverse of Parcelle -> Lotissement
+  limitrophes    Limitrophe[] // Added: inverse for Limitrophe
+}
+
+model Parcelle {
+  Id_Parcel    Int          @id @default(autoincrement())
+  Nom_Prop     String?
+  TF_Mere      String?
+  Mode_Obtent  String?
+  TF_Cree      String?
+  Nom_Cons     String?
+  Sup          Float?
+  Nom_Visa_Cad String?
+  Date_visa    DateTime?    @db.Date
+  Geometre     String?
+  Date_impl    DateTime?    @db.Date
+  Num_lot      String?
+  Num_bloc     String?
+  Lieu_dit     String?
+  Largeur_Rte  String?
+  Echelle      Int?
+  Ccp_N        String?
+  Mise_Val     Boolean?
+  Cloture      Boolean?
+  Video_URL    String?
+  Image_URL_1  String?
+  Image_URL_2  String?
+  Image_URL_3  String?
+  Image_URL_4  String?
+  Image_URL_5  String?
+  Image_URL_6  String?
+  Id_Lotis     Int?
+  WKT_Geometry String?
+  lotissement  Lotissement? @relation(fields: [Id_Lotis], references: [Id_Lotis])
+  batiments    Batiment[] // Added: inverse of Batiment -> Parcelle
+  payers       Payer[] // Added: inverse for Payer
+  contenirs    Contenir[] // Added: inverse for Contenir
+  trouvrs      Trouver[] // Added: inverse for Trouver
+  eclairers    Eclairer[] // Added: inverse for Eclairer
+  desservirs   Desservir[] // Added: inverse for Desservir
+}
+
+model Batiment {
+  Id_Bat          Int              @id @default(autoincrement())
+  Type_Usage      String?
+  Cat_Bat         String?
+  Status          String?
+  Standing        String?
+  Cloture         Boolean?
+  No_Permis       String?
+  Type_Lodg       String?
+  Etat_Bat        String?
+  Nom             String?
+  Mat_Bati        String?
+  Video_URL       String?
+  Image_URL_1     String?
+  Image_URL_2     String?
+  Image_URL_3     String?
+  Image_URL_4     String?
+  Image_URL_5     String?
+  Image_URL_6     String?
+  Id_Parcel       Int?
+  WKT_Geometry    String?
+  parcelle        Parcelle?        @relation(fields: [Id_Parcel], references: [Id_Parcel])
+  payers          Payer[] // Added: inverse for Payer
+  alimenters      Alimenter[] // Added: inverse for Alimenter
+  approvisionners Approvisionner[] // Added: inverse for Approvisionner
+}
+
+model Route {
+  Id_Rte       Int         @id @default(autoincrement())
+  Cat_Rte      String?
+  Type_Rte     String?
+  Largeur_Rte  String?
+  Etat_Rte     String?
+  Mat_Rte      String?
+  WKT_Geometry String?
+  desservirs   Desservir[] // Added: inverse for Desservir
+}
+
+model Riviere {
+  Id_Riv       Int          @id @default(autoincrement())
+  Nom_Riv      String?
+  Type_Riv     String?
+  Etat_amenag  String?
+  Debit_Riv    String?
+  WKT_Geometry String?
+  limitrophes  Limitrophe[] // Added: inverse for Limitrophe
+}
+
+model Taxe_immobiliere {
+  Id_Taxe       Int       @id @default(autoincrement())
+  Num_TF        String?
+  Nom_Proprio   String?
+  NIU           String?
+  Val_imm       Float?
+  Taxe_Payee    Boolean?
+  Date_declaree DateTime? @db.Date
+  Type_taxe     String?
+  payers        Payer[] // Added: inverse for Payer
+}
+
+model Equipement {
+  Id_Equip     Int        @id @default(autoincrement())
+  Type_Equip   String?
+  Design_Equip String?
+  Etat_Equip   String?
+  Mat_Equip    String?
+  WKT_Geometry String?
+  eclairers    Eclairer[] // Added: inverse for Eclairer
+}
+
+model Reseau_energetique {
+  Id_Reseaux   Int         @id @default(autoincrement())
+  Source_Res   Float?
+  Type_Reseau  String?
+  Etat_Res     String?
+  Materiau     String?
+  WKT_Geometry String?
+  alimenters   Alimenter[] // Added: inverse for Alimenter
+}
+
+model Reseau_en_eau {
+  Id_Reseaux      Int              @id @default(autoincrement())
+  Source_Res      Float?
+  Type_Res        String?
+  Etat_Res        String?
+  Mat_Res         String?
+  WKT_Geometry    String?
+  approvisionners Approvisionner[] // Added: inverse for Approvisionner
+}
+
+model Infrastructure {
+  Id_Infras        Int       @id @default(autoincrement())
+  Nom_infras       String?
+  Type_Infraas     String?
+  Categorie_infras String?
+  Cycle            String?
+  Statut_infras    String?
+  Standing         String?
+  Video_URL        String?
+  Image_URL_1      String?
+  Image_URL_2      String?
+  Image_URL_3      String?
+  Image_URL_4      String?
+  Image_URL_5      String?
+  Image_URL_6      String?
+  WKT_Geometry     String?
+  trouvrs          Trouver[] // Added: inverse for Trouver
+}
+
+model Borne {
+  Id_Borne     Int        @id @default(autoincrement())
+  coord_x      Float?
+  coord_y      Float?
+  coord_z      Float?
+  WKT_Geometry String?
+  contenirs    Contenir[] // Added: inverse for Contenir
+}
+
+// Relationship Models (with inverses added where missing)
+model Payer {
+  Id_Parcel Int
+  Id_Bat    Int
+  Id_Taxe   Int
+  date_paye Int?
+
+  parcelle Parcelle         @relation(fields: [Id_Parcel], references: [Id_Parcel])
+  batiment Batiment         @relation(fields: [Id_Bat], references: [Id_Bat])
+  taxe     Taxe_immobiliere @relation(fields: [Id_Taxe], references: [Id_Taxe])
+
+  @@id([Id_Parcel, Id_Bat, Id_Taxe])
+}
+
+model Limitrophe {
+  Id_Lotis Int
+  Id_Riv   Int
+
+  lotissement Lotissement @relation(fields: [Id_Lotis], references: [Id_Lotis])
+  riviere     Riviere     @relation(fields: [Id_Riv], references: [Id_Riv])
+
+  @@id([Id_Lotis, Id_Riv])
+}
+
+model Alimenter {
+  Id_Bat     Int
+  Id_Reseaux Int
+
+  batiment          Batiment           @relation(fields: [Id_Bat], references: [Id_Bat])
+  reseauEnergetique Reseau_energetique @relation(fields: [Id_Reseaux], references: [Id_Reseaux])
+
+  @@id([Id_Bat, Id_Reseaux])
+}
+
+model Contenir {
+  Id_Parcel Int
+  Id_Borne  Int
+
+  parcelle Parcelle @relation(fields: [Id_Parcel], references: [Id_Parcel])
+  borne    Borne    @relation(fields: [Id_Borne], references: [Id_Borne])
+
+  @@id([Id_Parcel, Id_Borne])
+}
+
+model Trouver {
+  Id_Parcel Int
+  Id_Infras Int
+
+  parcelle       Parcelle       @relation(fields: [Id_Parcel], references: [Id_Parcel])
+  infrastructure Infrastructure @relation(fields: [Id_Infras], references: [Id_Infras])
+
+  @@id([Id_Parcel, Id_Infras])
+}
+
+model Eclairer {
+  Id_Parcel Int
+  Id_Equip  Int
+
+  parcelle   Parcelle   @relation(fields: [Id_Parcel], references: [Id_Parcel])
+  equipement Equipement @relation(fields: [Id_Equip], references: [Id_Equip])
+
+  @@id([Id_Parcel, Id_Equip])
+}
+
+model Desservir {
+  Id_Parcel Int
+  Id_Rte    Int
+
+  parcelle Parcelle @relation(fields: [Id_Parcel], references: [Id_Parcel])
+  route    Route    @relation(fields: [Id_Rte], references: [Id_Rte])
+
+  @@id([Id_Parcel, Id_Rte])
+}
+
+model Approvisionner {
+  Id_Bat     Int
+  Id_Reseaux Int
+
+  batiment    Batiment      @relation(fields: [Id_Bat], references: [Id_Bat])
+  reseauEnEau Reseau_en_eau @relation(fields: [Id_Reseaux], references: [Id_Reseaux])
+
+  @@id([Id_Bat, Id_Reseaux])
+}
