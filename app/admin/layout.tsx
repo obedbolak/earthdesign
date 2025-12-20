@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 export const metadata = {
-	title: 'Admin - MAETUR',
+	title: 'EarthDesign Admin CMS',
 };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
