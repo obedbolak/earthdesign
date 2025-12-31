@@ -7,7 +7,8 @@ import {
   Trash2,
   Plus,
   ChevronLeft,
-  ChevronRight,
+  Eye,
+  EyeOff,
   ExternalLink,
   Map,
   MapPin,
@@ -130,14 +131,44 @@ const tableConfigs = {
 
 type TableName = keyof typeof tableConfigs;
 
-const getIdFieldName = (table: TableName): string => `Id_${table}`;
+const idFieldMap: Record<TableName, string> = {
+  Region: "Id_Reg",
+  Departement: "Id_Dept",
+  Arrondissement: "Id_Arrond",
+  Lotissement: "Id_Lotis",
+  Parcelle: "Id_Parcel",
+  Batiment: "Id_Bat",
+  Route: "Id_Rte",
+  Riviere: "Id_Riv",
+  Taxe_immobiliere: "Id_Taxe",
+  Equipement: "Id_Equip",
+  Reseau_energetique: "Id_Reseaux",
+  Reseau_en_eau: "Id_Reseaux",
+  Infrastructure: "Id_Infras",
+  Borne: "Id_Borne",
+};
+
+const numericFields = new Set([
+  "Sup_Reg", "Sup_Dept", "Sup_Arrond", "Surface", "Sup", "Echelle", "Nbre_lots",
+  "Val_imm", "Source_Res", "coord_x", "coord_y", "coord_z"
+]);
+
+const booleanFields = new Set(["Taxe_Payee", "Mise_Val", "Cloture"]);
 
 export default function DataManagementPage() {
   const [selectedTable, setSelectedTable] = useState<TableName | null>(null);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null); // Now string to support fallback keys
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Record<string, any>>({});
+
+  // Reset state when switching tables
+  useEffect(() => {
+    setExpandedRow(null);
+    setEditingRowIndex(null);
+    setEditForm({});
+  }, [selectedTable]);
 
   useEffect(() => {
     if (selectedTable) fetchData(selectedTable);
@@ -158,32 +189,99 @@ export default function DataManagementPage() {
     }
   };
 
-  const getRowKey = (item: any, index: number): string => {
-    const idField = getIdFieldName(selectedTable!);
+  const getRowId = (item: any): number | null => {
+    if (!selectedTable) return null;
+    const idField = idFieldMap[selectedTable];
     const id = item[idField];
-    if (id != null) return String(id);
-
-    // Fallback: combine index with some field values to make unique key
-    const values = config.fields.map(f => item[f] ?? "").join("|");
-    return `row-${index}-${values.substring(0, 50)}`;
+    return id != null ? Number(id) : null;
   };
 
-  const handleDelete = async (key: string) => {
-    if (!confirm("Delete this record?")) return;
-    if (!selectedTable) return;
+  const handleViewToggle = (index: number) => {
+    setExpandedRow(expandedRow === index ? null : index);
+  };
 
-    const idField = getIdFieldName(selectedTable);
-    const item = data.find(d => getRowKey(d, data.indexOf(d)) === key);
-    const id = item?.[idField];
+  const handleEdit = (item: any, index: number) => {
+    const id = getRowId(item);
     if (id == null) {
-      alert("Cannot delete: missing ID");
+      alert("Cannot edit: missing database ID");
+      return;
+    }
+    setEditingRowIndex(index);
+    setEditForm({ ...item });
+    setExpandedRow(index);
+  };
+
+  const handleSave = async () => {
+    if (!selectedTable || editingRowIndex == null) return;
+
+    const item = data[editingRowIndex];
+    const id = getRowId(item);
+    if (id == null) {
+      alert("Cannot save: missing database ID");
+      return;
+    }
+
+    const processedForm: Record<string, any> = {};
+    const currentFields = tableConfigs[selectedTable].fields;
+
+    for (const field of currentFields) {
+      const value = editForm[field];
+
+      if (value === "" || value == null) {
+        processedForm[field] = null;
+      } else if (numericFields.has(field)) {
+        const num = parseFloat(value);
+        processedForm[field] = isNaN(num) ? null : num;
+      } else if (booleanFields.has(field)) {
+        processedForm[field] = value === "true" || value === true || value === "1";
+      } else {
+        processedForm[field] = value;
+      }
+    }
+
+    const idField = idFieldMap[selectedTable];
+    const { [idField]: _, ...updateData } = processedForm;
+
+    try {
+      const res = await fetch(`/api/data/${selectedTable}/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+
+      if (res.ok) {
+        await fetchData(selectedTable);
+        setEditingRowIndex(null);
+        setEditForm({});
+        setExpandedRow(null);
+      } else {
+        alert("Update failed");
+      }
+    } catch {
+      alert("Update failed");
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingRowIndex(null);
+    setEditForm({});
+    setExpandedRow(null);
+  };
+
+  const handleDelete = async (index: number) => {
+    if (!confirm("Delete this record?")) return;
+
+    const item = data[index];
+    const id = getRowId(item);
+    if (id == null) {
+      alert("Cannot delete: missing database ID");
       return;
     }
 
     try {
-      const res = await fetch(`/api/data/${selectedTable}/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/data/${selectedTable!}/${id}`, { method: "DELETE" });
       if (res.ok) {
-        setData(prev => prev.filter(d => getRowKey(d, prev.indexOf(d)) !== key));
+        setData(prev => prev.filter((_, i) => i !== index));
       } else {
         alert("Delete failed");
       }
@@ -192,39 +290,26 @@ export default function DataManagementPage() {
     }
   };
 
-  const handleEdit = (item: any, key: string) => {
-    if (!selectedTable) return;
-    setEditingId(key);
-    setEditForm({ ...item });
-  };
+  const renderCellValue = (value: any, field: string) => {
+    if (value == null || value === "") return "-";
 
-  const handleSave = async () => {
-    if (!selectedTable || editingId == null) return;
-
-    const item = data.find(d => getRowKey(d, data.indexOf(d)) === editingId);
-    const idField = getIdFieldName(selectedTable);
-    const id = item?.[idField];
-    if (id == null) {
-      alert("Cannot save: missing ID");
-      return;
+    if (field.startsWith("Image_URL") && typeof value === "string" && value.startsWith("http")) {
+      return (
+        <a href={value} target="_blank" rel="noopener noreferrer" className="block">
+          <img src={value} alt={field} className="w-32 h-32 object-cover rounded border" />
+        </a>
+      );
     }
 
-    try {
-      const res = await fetch(`/api/data/${selectedTable}/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
-      });
-      if (res.ok) {
-        await fetchData(selectedTable);
-        setEditingId(null);
-        setEditForm({});
-      } else {
-        alert("Update failed");
-      }
-    } catch {
-      alert("Update failed");
+    if (field === "Video_URL" && typeof value === "string" && value.startsWith("http")) {
+      return (
+        <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+          View Video <ExternalLink className="w-4 h-4" />
+        </a>
+      );
     }
+
+    return String(value);
   };
 
   if (!selectedTable) {
@@ -255,29 +340,8 @@ export default function DataManagementPage() {
 
   const config = tableConfigs[selectedTable];
   const Icon = config.icon;
-  const idField = getIdFieldName(selectedTable);
 
-  const renderCellValue = (value: any, field: string) => {
-    if (value == null || value === "") return "-";
-
-    if (field.startsWith("Image_URL") && typeof value === "string" && value.startsWith("http")) {
-      return (
-        <a href={value} target="_blank" rel="noopener noreferrer">
-          <img src={value} alt={field} className="w-24 h-24 object-cover rounded border" />
-        </a>
-      );
-    }
-
-    if (field === "Video_URL" && typeof value === "string" && value.startsWith("http")) {
-      return (
-        <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-          View Video <ExternalLink className="w-4 h-4" />
-        </a>
-      );
-    }
-
-    return String(value);
-  };
+  const summaryFieldsCount = 5;
 
   return (
     <div className="p-8">
@@ -313,81 +377,147 @@ export default function DataManagementPage() {
           <p className="text-gray-400 mt-2">This table is empty.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="relative">
-            <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-white to-transparent pointer-events-none z-10" />
-            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none z-20">
-              <ChevronRight className="w-6 h-6 text-gray-400" />
-            </div>
+        <div className="space-y-6">
+          {data.map((item, index) => {
+            const id = getRowId(item);
+            const isExpanded = expandedRow === index;
+            const isEditing = editingRowIndex === index;
+            const idField = idFieldMap[selectedTable];
 
-            <div className="overflow-x-auto">
-              <div className="max-h-96 overflow-y-auto">
-                <table className="w-full min-w-max">
-                  <thead className="bg-gray-50 sticky top-0 z-10">
-                    <tr>
-                      {config.fields.map((field) => (
-                        <th
-                          key={field}
-                          className="px-6 py-4 text-left text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap"
-                        >
-                          {field.replace(/_/g, " ")}
-                        </th>
+            return (
+              <div key={index} className="bg-white rounded-xl shadow-md overflow-hidden">
+                {/* Summary Row (only when NOT expanded) */}
+                {!isExpanded && (
+                  <div className="p-6 flex items-center justify-between hover:bg-gray-50 transition">
+                    <div className="flex flex-wrap gap-6 flex-1">
+                      {config.fields.slice(0, summaryFieldsCount).map((field) => (
+                        <div key={field} className="min-w-0">
+                          <p className="text-xs text-gray-500 uppercase">{field.replace(/_/g, " ")}</p>
+                          <p className="text-sm font-medium text-gray-900 truncate max-w-xs">
+                            {String(item[field] ?? "-")}
+                          </p>
+                        </div>
                       ))}
-                      <th className="px-6 py-4 text-right text-xs font-medium text-gray-700 uppercase tracking-wider whitespace-nowrap">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {data.map((item, index) => {
-                      const rowKey = getRowKey(item, index);
-                      const isEditing = editingId === rowKey;
+                    </div>
 
-                      return (
-                        <tr key={rowKey} className="hover:bg-gray-50">
-                          {config.fields.map((field) => (
-                            <td key={field} className="px-6 py-4 text-sm text-black whitespace-nowrap">
-                              {isEditing ? (
+                    {/* Actions */}
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                      <button
+                        onClick={() => handleViewToggle(index)}
+                        className="text-gray-600 hover:text-teal-600 flex items-center gap-1"
+                      >
+                        <Eye className="w-5 h-5" />
+                        <span className="text-sm">Show more</span>
+                      </button>
+
+                      {isEditing ? (
+                        <>
+                          <button onClick={handleSave} className="text-green-600 hover:text-green-700 font-medium">
+                            Save
+                          </button>
+                          <button onClick={handleCancel} className="text-gray-600 hover:text-gray-700 font-medium">
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleEdit(item, index)}
+                            disabled={id == null}
+                            className={id != null ? "text-blue-600 hover:text-blue-700" : "text-gray-400 cursor-not-allowed"}
+                          >
+                            <Edit className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(index)}
+                            disabled={id == null}
+                            className={id != null ? "text-red-600 hover:text-red-700" : "text-gray-400 cursor-not-allowed"}
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expanded Full View (replaces summary) */}
+                {isExpanded && (
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <button
+                        onClick={() => handleViewToggle(index)}
+                        className="text-gray-600 hover:text-teal-600 flex items-center gap-1"
+                      >
+                        <EyeOff className="w-5 h-5" />
+                        <span className="text-sm">Hide Details</span>
+                      </button>
+
+                      <div className="flex items-center gap-4">
+                        {isEditing ? (
+                          <>
+                            <button onClick={handleSave} className="text-green-600 hover:text-green-700 font-medium">
+                              Save
+                            </button>
+                            <button onClick={handleCancel} className="text-gray-600 hover:text-gray-700 font-medium">
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleEdit(item, index)}
+                              disabled={id == null}
+                              className={id != null ? "text-blue-600 hover:text-blue-700" : "text-gray-400 cursor-not-allowed"}
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(index)}
+                              disabled={id == null}
+                              className={id != null ? "text-red-600 hover:text-red-700" : "text-gray-400 cursor-not-allowed"}
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {config.fields.map((field) => {
+                        const isGeometryField = field === "WKT_Geometry";
+
+                        return (
+                          <div
+                            key={field}
+                            className={isGeometryField ? "md:col-span-2 lg:col-span-3" : ""}
+                          >
+                            <p className="text-xs font-medium text-gray-500 uppercase">{field.replace(/_/g, " ")}</p>
+                            <div className="mt-2">
+                              {isEditing && field !== idField ? (
                                 <input
-                                  type="text"
+                                  type={numericFields.has(field) ? "number" : "text"}
+                                  step={numericFields.has(field) ? "any" : undefined}
                                   value={editForm[field] ?? ""}
                                   onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })}
-                                  className="border border-gray-300 rounded px-3 py-1.5 w-full focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 ${isGeometryField ? "font-mono text-xs" : ""}`}
                                 />
                               ) : (
-                                renderCellValue(item[field], field)
+                                <div className={`text-sm text-gray-900 break-words ${isGeometryField ? "font-mono text-xs" : ""}`}>
+                                  {renderCellValue(item[field], field)}
+                                </div>
                               )}
-                            </td>
-                          ))}
-                          <td className="px-6 py-4 text-right text-sm whitespace-nowrap">
-                            {isEditing ? (
-                              <>
-                                <button onClick={handleSave} className="text-green-600 font-medium mr-4 hover:underline">
-                                  Save
-                                </button>
-                                <button onClick={() => setEditingId(null)} className="text-gray-600 hover:underline">
-                                  Cancel
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <button onClick={() => handleEdit(item, rowKey)} className="text-blue-600 mr-4 hover:underline">
-                                  <Edit className="w-4 h-4 inline" />
-                                </button>
-                                <button onClick={() => handleDelete(rowKey)} className="text-red-600 hover:underline">
-                                  <Trash2 className="w-4 h-4 inline" />
-                                </button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
     </div>
