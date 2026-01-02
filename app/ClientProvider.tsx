@@ -4,11 +4,13 @@
 import { ThemeProvider } from '@/lib/context/ThemeContext';
 import { COLORS, GRADIENTS } from '@/lib/constants/colors';
 import { SessionProvider } from 'next-auth/react';
+import DialogflowChatbot from '@/components/DialogflowChatbot';
 
 export default function ClientProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <SessionProvider>
+      <DialogflowChatbot />
         <div 
         className="min-h-screen w-full relative"
         style={{

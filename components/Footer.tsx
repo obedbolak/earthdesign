@@ -148,17 +148,21 @@ export default function Footer() {
                   whileHover={{ scale: 1.05 }}
                   className="flex items-center gap-4"
                 >
-                  <div 
-                    className="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
-                    style={{ background: GRADIENTS.button.primary }}
+                 
+                  {/* Logo Image */}
+                  <div
+                    className="relative w-42 h-22 flex items-center justify-center"
+                    style={{ borderColor: `${COLORS.primary[400]}60` }}
                   >
-                    <Home className="w-8 h-8 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-extrabold text-white">Earth Design</h2>
-                    <p style={{ color: COLORS.primary[300] }} className="text-sm">
-                      Premium Real Estate
-                    </p>
+                    <img
+                      src="/logo.png"
+                      alt="earth design Logo"
+                      className="w-full h-60 object-contain p-1"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
                   </div>
                 </motion.div>
               </Link>
@@ -199,7 +203,7 @@ export default function Footer() {
                   <div>
                     <p className="font-semibold text-white text-sm">Phone Number</p>
                     <p style={{ color: COLORS.gray[400] }} className="text-sm">
-                      +237 6XX XXX XXX
+                      +237 677212279
                     </p>
                   </div>
                 </div>
@@ -214,7 +218,7 @@ export default function Footer() {
                   <div>
                     <p className="font-semibold text-white text-sm">Email Address</p>
                     <p style={{ color: COLORS.gray[400] }} className="text-sm">
-                      info@earthdesign.cm
+                      commercial@earthdesignengineeringltd.com
                     </p>
                   </div>
                 </div>

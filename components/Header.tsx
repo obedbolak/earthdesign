@@ -3,38 +3,89 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, User, Home, Tag, MapPin, Square, X } from 'lucide-react';
+import { 
+  Search, User, Home, Tag, MapPin, Square, X, 
+  Bed, Bath, Car, Zap, Building2, TreePine,
+  ChevronRight, Sparkles
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { COLORS, GRADIENTS } from '@/lib/constants/colors';
-import { useProperties, searchProperties as searchPropertiesHelper, Property } from '@/lib/hooks/useProperties';
+import { 
+  useProperties, 
+  searchProperties as searchPropertiesHelper, 
+  Property,
+  PropertyType,
+  PropertyStats,
+  formatPrice,
+  formatPriceCompact,
+  getPropertyImages,
+  getPropertyLocation,
+  formatArea,
+} from '@/lib/hooks/useProperties';
 
 interface HeaderProps {
-  stats: {
-    total: number;
-    forSale: number;
-    forRent: number;
-    sold: number;
-  };
+  stats: PropertyStats;
+  onSearchClick?: () => void;
 }
 
-const PLACEHOLDER_IMAGES: Record<string, string> = {
+// Placeholder images by property type
+const PLACEHOLDER_IMAGES: Record<PropertyType | 'default', string> = {
   Villa: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400&h=300&fit=crop&q=80',
   Apartment: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop&q=80',
   Land: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=300&fit=crop&q=80',
   Commercial: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop&q=80',
-  Lotissement: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=300&fit=crop&q=80',
   Building: 'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=400&h=300&fit=crop&q=80',
+  House: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=300&fit=crop&q=80',
+  Office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop&q=80',
+  Studio: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=300&fit=crop&q=80',
+  Duplex: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop&q=80',
   default: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop&q=80',
 };
 
-export default function Header({ stats }: HeaderProps) {
+// Property type icons
+const TYPE_ICONS: Record<PropertyType, React.ComponentType<any>> = {
+  Apartment: Building2,
+  House: Home,
+  Villa: Home,
+  Office: Building2,
+  Commercial: Building2,
+  Land: TreePine,
+  Building: Building2,
+  Studio: Home,
+  Duplex: Home,
+};
+
+// Get property status
+const getPropertyStatus = (property: Property): string => {
+  if (property.forSale && property.forRent) return 'Sale / Rent';
+  if (property.forSale) return 'For Sale';
+  if (property.forRent) return 'For Rent';
+  return 'Available';
+};
+
+// Get status color
+const getStatusColor = (property: Property): string => {
+  if (property.forSale && property.forRent) return COLORS.primary[500];
+  if (property.forSale) return '#22c55e';
+  if (property.forRent) return '#3b82f6';
+  return COLORS.gray[500];
+};
+
+// Get first available image
+const getPropertyImage = (property: Property): string => {
+  const images = getPropertyImages(property);
+  return images.length > 0 ? images[0] : PLACEHOLDER_IMAGES[property.type] || PLACEHOLDER_IMAGES.default;
+};
+
+export default function Header({ stats, onSearchClick }: HeaderProps) {
   const { properties } = useProperties();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<Property[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const searchRef = useRef<HTMLDivElement>(null);
   const mobileSearchRef = useRef<HTMLDivElement>(null);
@@ -42,10 +93,19 @@ export default function Header({ stats }: HeaderProps) {
   const mobileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Simplified search using the helper function
+  // Search with debounce
   useEffect(() => {
-    const results = searchPropertiesHelper(properties, searchQuery);
-    setSearchResults(results.slice(0, 6));
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        const results = searchPropertiesHelper(properties, searchQuery);
+        setSearchResults(results.slice(0, 6));
+        setSelectedIndex(-1);
+      } else {
+        setSearchResults([]);
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
   }, [searchQuery, properties]);
 
   // Handle click outside to close search
@@ -66,31 +126,56 @@ export default function Header({ stats }: HeaderProps) {
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Open search with Cmd/Ctrl + K
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         inputRef.current?.focus();
         setIsSearchFocused(true);
       }
+      
+      // Close with Escape
       if (e.key === 'Escape') {
         setIsSearchFocused(false);
         setIsMobileSearchOpen(false);
         inputRef.current?.blur();
         mobileInputRef.current?.blur();
+        setSelectedIndex(-1);
+      }
+
+      // Navigate results with arrow keys
+      if (isSearchFocused && searchResults.length > 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedIndex(prev => 
+            prev < searchResults.length - 1 ? prev + 1 : 0
+          );
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedIndex(prev => 
+            prev > 0 ? prev - 1 : searchResults.length - 1
+          );
+        }
+        if (e.key === 'Enter' && selectedIndex >= 0) {
+          e.preventDefault();
+          handleViewProperty(searchResults[selectedIndex]);
+        }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isSearchFocused, searchResults, selectedIndex]);
 
   const handleViewProperty = useCallback((property: Property) => {
-    router.push(`/property/${property.table}-${property.id}`);
+    router.push(`/property/${property.id}`);
     setSearchQuery('');
     setIsSearchFocused(false);
     setIsMobileSearchOpen(false);
+    setSelectedIndex(-1);
   }, [router]);
 
-  const getPlaceholderImage = useCallback((type: string) => {
+  const getPlaceholderImage = useCallback((type: PropertyType) => {
     return PLACEHOLDER_IMAGES[type] || PLACEHOLDER_IMAGES.default;
   }, []);
 
@@ -100,6 +185,8 @@ export default function Header({ stats }: HeaderProps) {
 
   const handleClearSearch = useCallback(() => {
     setSearchQuery('');
+    setSearchResults([]);
+    setSelectedIndex(-1);
   }, []);
 
   const handleSearchFocus = useCallback(() => {
@@ -108,11 +195,13 @@ export default function Header({ stats }: HeaderProps) {
 
   const handleMobileSearchOpen = useCallback(() => {
     setIsMobileSearchOpen(true);
+    setTimeout(() => mobileInputRef.current?.focus(), 100);
   }, []);
 
   const handleMobileSearchClose = useCallback(() => {
     setIsMobileSearchOpen(false);
     setSearchQuery('');
+    setSearchResults([]);
   }, []);
 
   const handleViewAllResults = useCallback(() => {
@@ -124,6 +213,202 @@ export default function Header({ stats }: HeaderProps) {
   const showDropdown = isSearchFocused && searchQuery.trim() !== '';
   const hasResults = searchResults.length > 0;
   const showNoResults = searchQuery.trim() !== '' && !hasResults;
+
+  // Render property card for search results
+  const renderPropertyCard = (property: Property, idx: number, isMobile: boolean = false) => {
+    const TypeIcon = TYPE_ICONS[property.type] || Home;
+    const isSelected = idx === selectedIndex && !isMobile;
+    
+    return (
+      <motion.div
+        key={property.id}
+        initial={{ opacity: 0, y: isMobile ? 10 : 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: idx * 0.05 }}
+        onClick={() => handleViewProperty(property)}
+        className={`group cursor-pointer rounded-xl overflow-hidden transition-all ${
+          isSelected ? 'ring-2 ring-primary-400' : ''
+        }`}
+        style={{
+          background: isSelected 
+            ? `${COLORS.primary[700]}99` 
+            : `${COLORS.primary[800]}99`,
+          border: `1px solid ${isSelected ? COLORS.primary[400] : COLORS.primary[600]}60`,
+        }}
+      >
+        {isMobile ? (
+          // Mobile compact layout
+          <div 
+            className="flex items-center gap-3 p-3 transition-colors active:bg-primary-800/40"
+          >
+            <img
+              src={getPropertyImage(property)}
+              alt={property.title}
+              className="w-16 h-16 rounded-lg object-cover shadow flex-shrink-0"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = getPlaceholderImage(property.type);
+              }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1"
+                  style={{
+                    background: `${COLORS.primary[400]}CC`,
+                    color: COLORS.white,
+                  }}
+                >
+                  <TypeIcon className="w-3 h-3" />
+                  {property.type}
+                </span>
+                <span
+                  className="px-2 py-0.5 rounded-full text-xs font-medium"
+                  style={{
+                    background: getStatusColor(property),
+                    color: COLORS.white,
+                  }}
+                >
+                  {getPropertyStatus(property)}
+                </span>
+              </div>
+              <h4
+                className="font-bold text-sm truncate"
+                style={{ color: COLORS.white }}
+              >
+                {property.title}
+              </h4>
+              <p
+                className="text-xs truncate flex items-center gap-1"
+                style={{ color: COLORS.primary[200] }}
+              >
+                <MapPin className="w-3 h-3 flex-shrink-0" />
+                {getPropertyLocation(property)}
+              </p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p
+                className="font-bold text-sm"
+                style={{ color: COLORS.primary[300] }}
+              >
+                {formatPriceCompact(property.price, property.currency)}
+              </p>
+              {property.surface&& (
+                <p
+                  className="text-xs"
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  {formatArea(property.surface)}
+                </p>
+              )}
+            </div>
+            <ChevronRight 
+              className="w-4 h-4 flex-shrink-0 opacity-50 group-hover:opacity-100 transition"
+              style={{ color: COLORS.primary[300] }}
+            />
+          </div>
+        ) : (
+          // Desktop card layout
+          <>
+            <div className="relative h-40 overflow-hidden">
+              <img
+                src={getPropertyImage(property)}
+                alt={property.title}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = getPlaceholderImage(property.type);
+                }}
+              />
+              <div
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)' }}
+              />
+              <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
+                <span
+                  className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1"
+                  style={{
+                    background: `${COLORS.primary[400]}E6`,
+                    color: COLORS.white,
+                  }}
+                >
+                  <TypeIcon className="w-3 h-3" />
+                  {property.type}
+                </span>
+                <span
+                  className="px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
+                  style={{
+                    background: getStatusColor(property),
+                    color: COLORS.white,
+                  }}
+                >
+                  {getPropertyStatus(property)}
+                </span>
+              </div>
+              {/* Amenity badges */}
+              <div className="absolute bottom-3 left-3 flex gap-2">
+                {property.bedrooms && property.bedrooms > 0 && (
+                  <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                    <Bed className="w-3 h-3" /> {property.bedrooms}
+                  </span>
+                )}
+                {property.bathrooms && property.bathrooms > 0 && (
+                  <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                    <Bath className="w-3 h-3" /> {property.bathrooms}
+                  </span>
+                )}
+                {property.hasParking && (
+                  <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                    <Car className="w-3 h-3" />
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="p-4">
+              <h4
+                className="font-bold text-base mb-2 line-clamp-1 group-hover:text-primary-200 transition-colors"
+                style={{ color: COLORS.white }}
+              >
+                {property.title}
+              </h4>
+              <p
+                className="flex items-center gap-1.5 text-sm mb-3 line-clamp-1"
+                style={{ color: COLORS.primary[200] }}
+              >
+                <MapPin className="w-4 h-4 flex-shrink-0" />
+                {getPropertyLocation(property)}
+              </p>
+              <div className="flex items-center justify-between">
+                <p
+                  className="font-bold text-lg"
+                  style={{ color: COLORS.primary[300] }}
+                >
+                  {formatPriceCompact(property.price, property.currency)}
+                </p>
+                {property.surface && (
+                  <p
+                    className="text-xs flex items-center gap-1"
+                    style={{ color: COLORS.primary[300] }}
+                  >
+                    <Square className="w-3 h-3" />
+                    {formatArea(property.surface)}
+                  </p>
+                )}
+              </div>
+              {property.forRent && property.rentPrice && (
+                <p
+                  className="text-xs mt-2"
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  Rent: {formatPrice(property.rentPrice, property.currency)}/mo
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </motion.div>
+    );
+  };
 
   return (
     <>
@@ -151,34 +436,46 @@ export default function Header({ stats }: HeaderProps) {
                 <div className="flex items-center gap-2">
                   <Home className="w-4 h-4" style={{ color: COLORS.yellow[400] }} />
                   <span>
-                    <strong style={{ color: COLORS.yellow[400] }}>{stats.total}</strong> Properties
+                    <strong style={{ color: COLORS.yellow[400] }}>{stats.published}</strong> Properties
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" style={{ color: COLORS.primary[400] }} />
+                  <Tag className="w-4 h-4" style={{ color: '#22c55e' }} />
                   <span>
-                    <strong style={{ color: COLORS.primary[400] }}>{stats.forSale}</strong> For Sale
+                    <strong style={{ color: '#22c55e' }}>{stats.forSale}</strong> For Sale
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" style={{ color: COLORS.primary[400] }} />
+                  <Tag className="w-4 h-4" style={{ color: '#3b82f6' }} />
                   <span>
-                    <strong style={{ color: COLORS.primary[400] }}>{stats.forRent}</strong> For Rent
+                    <strong style={{ color: '#3b82f6' }}>{stats.forRent}</strong> For Rent
                   </span>
                 </div>
+                {stats.featured > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" style={{ color: COLORS.yellow[400] }} />
+                    <span>
+                      <strong style={{ color: COLORS.yellow[400] }}>{stats.featured}</strong> Featured
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex sm:hidden items-center gap-3 text-xs">
                 <span>
-                  <strong style={{ color: COLORS.yellow[400] }}>{stats.total}</strong> Properties
+                  <strong style={{ color: COLORS.yellow[400] }}>{stats.published}</strong> Properties
                 </span>
                 <span>•</span>
                 <span>
-                  <strong style={{ color: COLORS.primary[400] }}>{stats.forSale}</strong> For Sale
+                  <strong style={{ color: '#22c55e' }}>{stats.forSale}</strong> For Sale
+                </span>
+                <span>•</span>
+                <span>
+                  <strong style={{ color: '#3b82f6' }}>{stats.forRent}</strong> For Rent
                 </span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="hidden lg:inline opacity-80">📍 Yaoundé, Cameroon</span>
-                <span className="opacity-80">📞 +237 XXX XXX XXX</span>
+                <span className="opacity-80">📞 +237 677 212 279</span>
               </div>
             </div>
           </div>
@@ -197,20 +494,23 @@ export default function Header({ stats }: HeaderProps) {
                 {/* Logo Container */}
                 <div className="relative flex items-center justify-center">
                   {/* Glow Effect */}
-                  <div 
+                  <div
                     className="absolute inset-0 rounded-full blur-md opacity-50"
-                    style={{ 
-                      background: `radial-gradient(circle, ${COLORS.primary[400]}40 0%, transparent 70%)` 
+                    style={{
+                      background: `radial-gradient(circle, ${COLORS.primary[400]}40 0%, transparent 70%)`,
                     }}
                   />
-                  
+
+                
+                </div>
                   {/* Logo Image */}
-                  <div className="relative w-22 h-12 flex items-center justify-center"
+                  <div
+                    className="relative w-22 h-12 flex items-center justify-center"
                     style={{ borderColor: `${COLORS.primary[400]}60` }}
                   >
-                    <img 
-                      src="/logo.png" 
-                      alt="MAETUR Logo" 
+                    <img
+                      src="/logo.png"
+                      alt="earthdesign Logo"
                       className="w-full h-60 object-contain p-1"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
@@ -218,16 +518,11 @@ export default function Header({ stats }: HeaderProps) {
                       }}
                     />
                   </div>
-                </div>
 
                 {/* Brand Text */}
                 <div className="hidden sm:flex flex-col">
-                  <span 
-                    className="text-xl md:text-2xl font-bold tracking-tight"
-                    style={{ color: COLORS.white }}
-                  >
-                  </span>
-                  <span 
+                 
+                  <span
                     className="text-xs md:text-sm font-medium -mt-1"
                     style={{ color: COLORS.primary[300] }}
                   >
@@ -247,7 +542,7 @@ export default function Header({ stats }: HeaderProps) {
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Search properties, locations, owners..."
+                  placeholder="Search properties, locations, types..."
                   value={searchQuery}
                   onChange={handleSearchChange}
                   onFocus={handleSearchFocus}
@@ -276,7 +571,7 @@ export default function Header({ stats }: HeaderProps) {
                     )}
                   </AnimatePresence>
                   <span
-                    className="px-2 py-1 rounded-lg text-xs font-semibold"
+                    className="px-2 py-1 rounded-lg text-xs font-semibold hidden lg:inline-block"
                     style={{
                       background: `${COLORS.primary[500]}1A`,
                       color: COLORS.primary[700],
@@ -314,101 +609,33 @@ export default function Header({ stats }: HeaderProps) {
                             No properties found
                           </p>
                           <p className="text-sm" style={{ color: COLORS.primary[300] }}>
-                            Try a different search term
+                            Try a different search term or browse all properties
                           </p>
+                          <Link
+                            href="/properties"
+                            className="inline-block mt-4 px-6 py-2 rounded-full font-semibold text-white transition"
+                            style={{ background: GRADIENTS.button.primary }}
+                            onClick={handleViewAllResults}
+                          >
+                            Browse All Properties
+                          </Link>
                         </div>
                       ) : hasResults ? (
                         <>
                           <div
-                            className="px-2 py-4 border-b"
+                            className="px-2 py-4 border-b flex items-center justify-between"
                             style={{ borderColor: `${COLORS.primary[400]}40` }}
                           >
                             <p className="text-sm font-semibold" style={{ color: COLORS.primary[100] }}>
                               Found {searchResults.length} {searchResults.length === 1 ? 'property' : 'properties'}
                             </p>
+                            <p className="text-xs" style={{ color: COLORS.primary[300] }}>
+                              Use ↑↓ to navigate, Enter to select
+                            </p>
                           </div>
                           <div className="max-h-[500px] overflow-y-auto py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {searchResults.map((property, idx) => (
-                                <motion.div
-                                  key={`${property.table}-${property.id}`}
-                                  initial={{ opacity: 0, y: 20 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: idx * 0.05 }}
-                                  onClick={() => handleViewProperty(property)}
-                                  className="group cursor-pointer rounded-xl overflow-hidden transition-all hover:shadow-xl"
-                                  style={{
-                                    background: `${COLORS.primary[800]}99`,
-                                    border: `1px solid ${COLORS.primary[600]}60`,
-                                  }}
-                                >
-                                  <div className="relative h-40 overflow-hidden">
-                                    <img
-                                      src={property.images.length > 0 ? property.images[0] : getPlaceholderImage(property.type)}
-                                      alt={property.title}
-                                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = getPlaceholderImage(property.type);
-                                      }}
-                                    />
-                                    <div
-                                      className="absolute inset-0"
-                                      style={{ background: GRADIENTS.overlay.darkReverse }}
-                                    />
-                                    <div className="absolute top-3 left-3 flex gap-2">
-                                      <span
-                                        className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm"
-                                        style={{
-                                          background: `${COLORS.primary[400]}E6`,
-                                          color: COLORS.white,
-                                        }}
-                                      >
-                                        {property.type}
-                                      </span>
-                                      <span
-                                        className="px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
-                                        style={{
-                                          background: `${COLORS.emerald[500]}E6`,
-                                          color: COLORS.white,
-                                        }}
-                                      >
-                                        {property.status}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="p-4">
-                                    <h4
-                                      className="font-bold text-base mb-2 line-clamp-1 group-hover:text-primary-200 transition-colors"
-                                      style={{ color: COLORS.white }}
-                                    >
-                                      {property.title}
-                                    </h4>
-                                    <p
-                                      className="flex items-center gap-1.5 text-sm mb-3 line-clamp-1"
-                                      style={{ color: COLORS.primary[200] }}
-                                    >
-                                      <MapPin className="w-4 h-4 flex-shrink-0" />
-                                      {property.location}
-                                    </p>
-                                    <div className="flex items-center justify-between">
-                                      <p
-                                        className="font-bold text-lg"
-                                        style={{ color: COLORS.primary[300] }}
-                                      >
-                                        {property.price}
-                                      </p>
-                                      <p
-                                        className="text-xs flex items-center gap-1"
-                                        style={{ color: COLORS.primary[300] }}
-                                      >
-                                        <Square className="w-3 h-3" />
-                                        {property.surface}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              ))}
+                              {searchResults.map((property, idx) => renderPropertyCard(property, idx, false))}
                             </div>
                           </div>
                           <div
@@ -423,7 +650,7 @@ export default function Header({ stats }: HeaderProps) {
                               style={{ background: GRADIENTS.button.primary }}
                               onClick={handleViewAllResults}
                             >
-                              View all {searchResults.length} results
+                              View all results →
                             </Link>
                           </div>
                         </>
@@ -446,15 +673,74 @@ export default function Header({ stats }: HeaderProps) {
                 <Search className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </motion.button>
 
+              {/* Properties link */}
+              <Link href="/properties">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full font-medium text-white transition"
+                  style={{ background: 'rgba(255,255,255,0.1)' }}
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>Properties</span>
+                </motion.button>
+              </Link>
+
               {/* Account button */}
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setShowAccountMenu(!showAccountMenu)}
-                className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-full hover:bg-white/20 transition"
-              >
-                <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </motion.button>
+              <div className="relative">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setShowAccountMenu(!showAccountMenu)}
+                  className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-full hover:bg-white/20 transition"
+                >
+                  <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                </motion.button>
+
+                {/* Account dropdown */}
+                <AnimatePresence>
+                  {showAccountMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-48 rounded-xl shadow-xl overflow-hidden"
+                      style={{
+                        background: COLORS.white,
+                        border: `1px solid ${COLORS.gray[200]}`,
+                      }}
+                    >
+                      <Link
+                        href="/admin"
+                        className="block px-4 py-3 text-sm font-medium hover:bg-gray-50 transition"
+                        style={{ color: COLORS.gray[700] }}
+                        onClick={() => setShowAccountMenu(false)}
+                      >
+                        Admin Dashboard
+                      </Link>
+                      <Link
+                        href="/properties"
+                        className="block px-4 py-3 text-sm font-medium hover:bg-gray-50 transition"
+                        style={{ color: COLORS.gray[700] }}
+                        onClick={() => setShowAccountMenu(false)}
+                      >
+                        All Properties
+                      </Link>
+                      <div
+                        className="border-t"
+                        style={{ borderColor: COLORS.gray[200] }}
+                      />
+                      <button
+                        className="block w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 transition"
+                        style={{ color: COLORS.gray[500] }}
+                        onClick={() => setShowAccountMenu(false)}
+                      >
+                        Sign In
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
@@ -493,7 +779,6 @@ export default function Header({ stats }: HeaderProps) {
                     placeholder="Search properties..."
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    autoFocus
                     className="w-full pl-12 pr-12 py-4 rounded-xl text-base focus:outline-none focus:ring-2"
                     style={{
                       background: COLORS.white,
@@ -533,6 +818,14 @@ export default function Header({ stats }: HeaderProps) {
                       <p className="text-sm mt-1" style={{ color: COLORS.primary[300] }}>
                         Try a different search term
                       </p>
+                      <Link
+                        href="/properties"
+                        className="inline-block mt-4 px-6 py-2 rounded-full font-semibold text-white transition"
+                        style={{ background: GRADIENTS.button.primary }}
+                        onClick={handleMobileSearchClose}
+                      >
+                        Browse All
+                      </Link>
                     </div>
                   ) : (
                     <>
@@ -544,64 +837,9 @@ export default function Header({ stats }: HeaderProps) {
                           Found {searchResults.length} {searchResults.length === 1 ? 'property' : 'properties'}
                         </p>
                       </div>
-                      {searchResults.map((property, idx) => (
-                        <motion.div
-                          key={`mobile-${property.table}-${property.id}`}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          onClick={() => handleViewProperty(property)}
-                          className="flex items-center gap-3 p-4 cursor-pointer border-b transition-colors active:bg-primary-800/40"
-                          style={{ borderColor: `${COLORS.primary[400]}30` }}
-                        >
-                          <img
-                            src={property.images.length > 0 ? property.images[0] : getPlaceholderImage(property.type)}
-                            alt={property.title}
-                            className="w-14 h-14 rounded-lg object-cover shadow flex-shrink-0"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = getPlaceholderImage(property.type);
-                            }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <span
-                              className="px-2 py-0.5 rounded-full text-xs font-bold"
-                              style={{
-                                background: `${COLORS.primary[400]}CC`,
-                                color: COLORS.white,
-                              }}
-                            >
-                              {property.type}
-                            </span>
-                            <h4
-                              className="font-bold text-sm truncate mt-1"
-                              style={{ color: COLORS.white }}
-                            >
-                              {property.title}
-                            </h4>
-                            <p
-                              className="text-xs truncate"
-                              style={{ color: COLORS.primary[200] }}
-                            >
-                              {property.location}
-                            </p>
-                          </div>
-                          <div className="text-right flex-shrink-0">
-                            <p
-                              className="font-bold text-sm"
-                              style={{ color: COLORS.primary[300] }}
-                            >
-                              {property.price}
-                            </p>
-                            <p
-                              className="text-xs"
-                              style={{ color: COLORS.primary[400] }}
-                            >
-                              {property.surface}
-                            </p>
-                          </div>
-                        </motion.div>
-                      ))}
+                      <div className="divide-y" style={{ borderColor: `${COLORS.primary[400]}30` }}>
+                        {searchResults.map((property, idx) => renderPropertyCard(property, idx, true))}
+                      </div>
                       <div
                         className="p-4"
                         style={{ background: `${COLORS.primary[900]}80` }}

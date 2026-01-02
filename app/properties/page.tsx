@@ -1,6 +1,7 @@
+// File: app/properties/page.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -25,19 +26,87 @@ import {
   Loader2,
   ArrowLeft,
   User,
+  Bed,
+  Bath,
+  Car,
+  Zap,
+  Sparkles,
+  DollarSign,
+  Filter,
 } from 'lucide-react';
-import { useProperties, searchProperties, calculateStats } from '@/lib/hooks/useProperties';
+import {
+  useProperties,
+  searchProperties,
+  filterProperties,
+  sortProperties,
+  calculateStats,
+  formatPrice,
+  formatPriceCompact,
+  getPropertyImages,
+  getPropertyLocation,
+  formatArea,
+  Property,
+  PropertyType,
+  PropertyTypes,
+  PropertyFilters,
+  SortOption,
+  PropertyStats,
+} from '@/lib/hooks/useProperties';
 import Footer from '@/components/Footer';
 import { COLORS, GRADIENTS } from '@/lib/constants/colors';
 
-const PLACEHOLDER_IMAGES: Record<string, string> = {
+// Placeholder images by property type
+const PLACEHOLDER_IMAGES: Record<PropertyType | 'default', string> = {
   Villa: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop&q=80',
   Apartment: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&h=600&fit=crop&q=80',
   Land: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&h=600&fit=crop&q=80',
   Commercial: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop&q=80',
-  Lotissement: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&h=600&fit=crop&q=80',
   Building: 'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=800&h=600&fit=crop&q=80',
+  House: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&h=600&fit=crop&q=80',
+  Office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop&q=80',
+  Studio: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop&q=80',
+  Duplex: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop&q=80',
   default: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&h=600&fit=crop&q=80',
+};
+
+// Property type icons
+const TYPE_ICONS: Record<PropertyType, React.ComponentType<any>> = {
+  Apartment: Building2,
+  House: Home,
+  Villa: Home,
+  Office: Building2,
+  Commercial: Building2,
+  Land: TreePine,
+  Building: Building2,
+  Studio: Home,
+  Duplex: Home,
+};
+
+// Get property status
+const getPropertyStatus = (property: Property): string => {
+  if (property.forSale && property.forRent) return 'Sale / Rent';
+  if (property.forSale) return 'For Sale';
+  if (property.forRent) return 'For Rent';
+  return 'Available';
+};
+
+// Get status color
+const getStatusColor = (property: Property): string => {
+  if (property.forSale && property.forRent) return COLORS.primary[500];
+  if (property.forSale) return '#22c55e';
+  if (property.forRent) return '#3b82f6';
+  return COLORS.gray[500];
+};
+
+// Get first available image
+const getPropertyImage = (property: Property): string => {
+  const images = getPropertyImages(property);
+  return images.length > 0 ? images[0] : PLACEHOLDER_IMAGES[property.type] || PLACEHOLDER_IMAGES.default;
+};
+
+// Get placeholder image by type
+const getPlaceholderImage = (type: PropertyType): string => {
+  return PLACEHOLDER_IMAGES[type] || PLACEHOLDER_IMAGES.default;
 };
 
 export default function AllPropertiesPage() {
@@ -46,56 +115,121 @@ export default function AllPropertiesPage() {
 
   const { properties, loading, error } = useProperties();
 
+  // Filter states
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [selectedType, setSelectedType] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
-  const [selectedTable, setSelectedTable] = useState('All');
+  const [selectedType, setSelectedType] = useState<PropertyType | 'All'>('All');
+  const [selectedStatus, setSelectedStatus] = useState<'All' | 'For Sale' | 'For Rent'>('All');
+  const [minPrice, setMinPrice] = useState<string>('');
+  const [maxPrice, setMaxPrice] = useState<string>('');
+  const [minBedrooms, setMinBedrooms] = useState<string>('');
+  const [hasParking, setHasParking] = useState<boolean | undefined>(undefined);
+  const [hasGenerator, setHasGenerator] = useState<boolean | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  
+  // View states
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
   const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState('newest');
 
+  // Calculate stats
   const stats = useMemo(() => calculateStats(properties), [properties]);
 
-  const filteredProperties = useMemo(() => {
-    let filtered = properties;
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  
+  // Handle status parameter
+  const status = params.get('status');
+  if (status === 'sale') {
+    setSelectedStatus('For Sale');
+  } else if (status === 'rent') {
+    setSelectedStatus('For Rent');
+  }
+  
+  // Handle type parameter
+  const type = params.get('type');
+  if (type && PropertyTypes.includes(type as PropertyType)) {
+    setSelectedType(type as PropertyType);
+  }
+}, []);
 
-    if (searchQuery.trim()) {
-      filtered = searchProperties(filtered, searchQuery);
-    }
+  // Filter and sort properties
+  const filteredProperties = useMemo(() => {
+    // Build filters object
+    const filters: PropertyFilters = {
+      published: true,
+    };
 
     if (selectedType !== 'All') {
-      filtered = filtered.filter((p) => p.type.includes(selectedType));
+      filters.type = selectedType;
     }
 
-    if (selectedStatus !== 'All') {
-      filtered = filtered.filter((p) => p.status === selectedStatus);
+    if (selectedStatus === 'For Sale') {
+      filters.forSale = true;
+    } else if (selectedStatus === 'For Rent') {
+      filters.forRent = true;
     }
 
-    if (selectedTable !== 'All') {
-      filtered = filtered.filter((p) => p.table === selectedTable);
+    if (minPrice) {
+      filters.minPrice = parseInt(minPrice);
+    }
+    if (maxPrice) {
+      filters.maxPrice = parseInt(maxPrice);
+    }
+    if (minBedrooms) {
+      filters.minBedrooms = parseInt(minBedrooms);
+    }
+    if (hasParking !== undefined) {
+      filters.hasParking = hasParking;
+    }
+    if (hasGenerator !== undefined) {
+      filters.hasGenerator = hasGenerator;
     }
 
-    return filtered;
-  }, [properties, searchQuery, selectedType, selectedStatus, selectedTable]);
+    // Apply search
+    let result = properties;
+    if (searchQuery.trim()) {
+      result = searchProperties(result, searchQuery);
+    }
 
-  const propertyTypes = ['All', 'Lotissement', 'Building', 'Land', 'Villa', 'Apartment'];
-  const statuses = ['All', 'For Sale', 'For Rent', 'Sold'];
-  const tables = ['All', 'Lotissement', 'Parcelle', 'Batiment'];
+    // Apply filters
+    result = filterProperties(result, filters);
 
-  const getPlaceholderImage = (type: string) => {
-    return PLACEHOLDER_IMAGES[type] || PLACEHOLDER_IMAGES.default;
-  };
+    // Apply sort
+    result = sortProperties(result, sortBy);
 
-  const clearFilters = () => {
+    return result;
+  }, [properties, searchQuery, selectedType, selectedStatus, minPrice, maxPrice, minBedrooms, hasParking, hasGenerator, sortBy]);
+
+  // Property types for filter
+  const propertyTypes: (PropertyType | 'All')[] = ['All', ...PropertyTypes];
+
+  // Clear all filters
+  const clearFilters = useCallback(() => {
     setSelectedType('All');
     setSelectedStatus('All');
-    setSelectedTable('All');
+    setMinPrice('');
+    setMaxPrice('');
+    setMinBedrooms('');
+    setHasParking(undefined);
+    setHasGenerator(undefined);
     setSearchQuery('');
-  };
+    setSortBy('newest');
+  }, []);
 
-  const hasActiveFilters =
-    selectedType !== 'All' || selectedStatus !== 'All' || selectedTable !== 'All' || searchQuery !== '';
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return (
+      selectedType !== 'All' ||
+      selectedStatus !== 'All' ||
+      minPrice !== '' ||
+      maxPrice !== '' ||
+      minBedrooms !== '' ||
+      hasParking !== undefined ||
+      hasGenerator !== undefined ||
+      searchQuery !== ''
+    );
+  }, [selectedType, selectedStatus, minPrice, maxPrice, minBedrooms, hasParking, hasGenerator, searchQuery]);
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: COLORS.gray[900] }}>
@@ -103,13 +237,438 @@ export default function AllPropertiesPage() {
           <Home className="w-16 h-16 mx-auto mb-4" style={{ color: COLORS.primary[600] }} />
           <p className="text-xl text-white mb-2">Error loading properties</p>
           <p style={{ color: COLORS.primary[400] }}>{error}</p>
+          <Link
+            href="/"
+            className="inline-block mt-6 px-6 py-3 rounded-xl font-semibold text-white"
+            style={{ background: GRADIENTS.button.primary }}
+          >
+            Go Home
+          </Link>
         </div>
       </div>
     );
   }
 
+  // Render property card (grid view)
+  const renderGridCard = (property: Property, index: number) => {
+    const TypeIcon = TYPE_ICONS[property.type] || Home;
+
+    return (
+      <motion.div
+        key={property.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.03 }}
+        whileHover={{ y: -8, scale: 1.02 }}
+      >
+        <Link
+          href={`/property/${property.id}`}
+          className="group block rounded-2xl shadow-xl border overflow-hidden transition-all"
+          style={{
+            background: `${COLORS.primary[800]}60`,
+            borderColor: `${COLORS.primary[600]}40`,
+          }}
+        >
+          <div className="relative h-64 overflow-hidden">
+            <img
+              src={getPropertyImage(property)}
+              alt={property.title}
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = getPlaceholderImage(property.type);
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+            
+            {/* Status badge */}
+            <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
+              <span
+                className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm"
+                style={{
+                  background: getStatusColor(property),
+                  color: COLORS.white,
+                }}
+              >
+                {getPropertyStatus(property)}
+              </span>
+              {property.featured && (
+                <span
+                  className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1"
+                  style={{
+                    background: COLORS.yellow[500],
+                    color: COLORS.gray[900],
+                  }}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Featured
+                </span>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="absolute top-3 right-3 flex gap-2">
+              <motion.button
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  // TODO: Add to favorites
+                }}
+                className="w-8 h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
+              >
+                <Heart className="w-4 h-4" style={{ color: COLORS.gray[700] }} />
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.2 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  // TODO: Share property
+                }}
+                className="w-8 h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
+              >
+                <Share2 className="w-4 h-4" style={{ color: COLORS.gray[700] }} />
+              </motion.button>
+            </div>
+
+            {/* Amenity badges */}
+            <div className="absolute bottom-3 left-3 flex gap-2">
+              {property.bedrooms !== null && property.bedrooms > 0 && (
+                <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                  <Bed className="w-3 h-3" /> {property.bedrooms}
+                </span>
+              )}
+              {property.bathrooms !== null && property.bathrooms > 0 && (
+                <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                  <Bath className="w-3 h-3" /> {property.bathrooms}
+                </span>
+              )}
+              {property.hasParking && (
+                <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                  <Car className="w-3 h-3" />
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="p-5">
+            {/* Type badge */}
+            <div className="flex items-center gap-2 mb-3">
+              <span
+                className="px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1"
+                style={{
+                  background: `${COLORS.primary[500]}30`,
+                  color: COLORS.primary[200],
+                }}
+              >
+                <TypeIcon className="w-3 h-3" />
+                {property.type}
+              </span>
+              {property.isLandForDevelopment && (
+                <span
+                  className="px-2 py-1 rounded-lg text-xs font-medium"
+                  style={{
+                    background: `${COLORS.emerald[500]}30`,
+                    color: COLORS.emerald[300],
+                  }}
+                >
+                  For Development
+                </span>
+              )}
+            </div>
+
+            {/* Title */}
+            <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-green-300 transition">
+              {property.title}
+            </h3>
+
+            {/* Location */}
+            <div className="flex items-center gap-2 text-sm mb-4" style={{ color: COLORS.primary[300] }}>
+              <MapPin className="w-4 h-4 flex-shrink-0" style={{ color: COLORS.primary[400] }} />
+              <span className="truncate">{getPropertyLocation(property)}</span>
+            </div>
+
+            {/* Price and area */}
+            <div
+              className="flex items-center justify-between pt-4 border-t"
+              style={{ borderColor: `${COLORS.primary[600]}40` }}
+            >
+              <div className="flex items-center gap-2">
+                <Square className="w-4 h-4" style={{ color: COLORS.primary[400] }} />
+                <span className="font-semibold text-sm text-white">
+                  {formatArea(property.surface)}
+                </span>
+              </div>
+              <div className="text-right">
+                <p className="text-lg font-bold" style={{ color: COLORS.primary[300] }}>
+                  {formatPriceCompact(property.price, property.currency)}
+                </p>
+                {property.forRent && property.rentPrice && (
+                  <p className="text-xs" style={{ color: COLORS.primary[400] }}>
+                    {formatPriceCompact(property.rentPrice, property.currency)}/mo
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </Link>
+      </motion.div>
+    );
+  };
+
+  // Render property card (list view)
+  const renderListCard = (property: Property, index: number) => {
+    const TypeIcon = TYPE_ICONS[property.type] || Home;
+
+    return (
+      <motion.div
+        key={property.id}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: index * 0.03 }}
+        whileHover={{ x: 8 }}
+      >
+        <Link
+          href={`/property/${property.id}`}
+          className="group flex flex-col sm:flex-row rounded-2xl shadow-xl border overflow-hidden transition-all"
+          style={{
+            background: `${COLORS.primary[800]}60`,
+            borderColor: `${COLORS.primary[600]}40`,
+          }}
+        >
+          {/* Image */}
+          <div className="relative w-full sm:w-72 lg:w-80 h-64 sm:h-auto flex-shrink-0">
+            <img
+              src={getPropertyImage(property)}
+              alt={property.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.src = getPlaceholderImage(property.type);
+              }}
+            />
+            <div className="absolute top-3 left-3 flex gap-2">
+              <span
+                className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm"
+                style={{
+                  background: getStatusColor(property),
+                  color: COLORS.white,
+                }}
+              >
+                {getPropertyStatus(property)}
+              </span>
+              {property.featured && (
+                <span
+                  className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1"
+                  style={{
+                    background: COLORS.yellow[500],
+                    color: COLORS.gray[900],
+                  }}
+                >
+                  <Sparkles className="w-3 h-3" />
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 p-6">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  className="px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1"
+                  style={{
+                    background: `${COLORS.primary[500]}30`,
+                    color: COLORS.primary[200],
+                  }}
+                >
+                  <TypeIcon className="w-3 h-3" />
+                  {property.type}
+                </span>
+                {property.isLandForDevelopment && (
+                  <span
+                    className="px-3 py-1 rounded-lg text-sm font-medium"
+                    style={{
+                      background: `${COLORS.emerald[500]}30`,
+                      color: COLORS.emerald[300],
+                    }}
+                  >
+                    For Development
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <motion.button
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition"
+                  style={{ background: `${COLORS.white}10` }}
+                >
+                  <Heart className="w-5 h-5 text-white" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                  }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition"
+                  style={{ background: `${COLORS.white}10` }}
+                >
+                  <Share2 className="w-5 h-5 text-white" />
+                </motion.button>
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-300 transition">
+              {property.title}
+            </h3>
+
+            {/* Short description */}
+            {property.shortDescription && (
+              <p className="text-sm mb-3 line-clamp-2" style={{ color: COLORS.primary[300] }}>
+                {property.shortDescription}
+              </p>
+            )}
+
+            {/* Location */}
+            <div className="flex items-center gap-2 mb-4" style={{ color: COLORS.primary[300] }}>
+              <MapPin className="w-5 h-5 flex-shrink-0" style={{ color: COLORS.primary[400] }} />
+              <span>{getPropertyLocation(property)}</span>
+            </div>
+
+            {/* Stats row */}
+            <div
+              className="flex items-center gap-6 pt-4 border-t flex-wrap"
+              style={{ borderColor: `${COLORS.primary[600]}40` }}
+            >
+              {property.surface && (
+                <div className="flex items-center gap-2">
+                  <Square className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                  <div>
+                    <p className="text-xs" style={{ color: COLORS.primary[400] }}>
+                      Area
+                    </p>
+                    <p className="font-semibold text-white">{formatArea(property.surface)}</p>
+                  </div>
+                </div>
+              )}
+              {property.bedrooms !== null && property.bedrooms > 0 && (
+                <div className="flex items-center gap-2">
+                  <Bed className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                  <div>
+                    <p className="text-xs" style={{ color: COLORS.primary[400] }}>
+                      Bedrooms
+                    </p>
+                    <p className="font-semibold text-white">{property.bedrooms}</p>
+                  </div>
+                </div>
+              )}
+              {property.bathrooms !== null && property.bathrooms > 0 && (
+                <div className="flex items-center gap-2">
+                  <Bath className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                  <div>
+                    <p className="text-xs" style={{ color: COLORS.primary[400] }}>
+                      Bathrooms
+                    </p>
+                    <p className="font-semibold text-white">{property.bathrooms}</p>
+                  </div>
+                </div>
+              )}
+              {property.hasParking && (
+                <div className="flex items-center gap-2">
+                  <Car className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                  <span className="text-sm text-white">Parking</span>
+                </div>
+              )}
+              {property.hasGenerator && (
+                <div className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                  <span className="text-sm text-white">Generator</span>
+                </div>
+              )}
+              <div className="ml-auto text-right">
+                <p className="text-xs" style={{ color: COLORS.primary[400] }}>
+                  Price
+                </p>
+                <p className="text-2xl font-bold" style={{ color: COLORS.primary[300] }}>
+                  {formatPrice(property.price, property.currency)}
+                </p>
+                {property.forRent && property.rentPrice && (
+                  <p className="text-xs" style={{ color: COLORS.primary[400] }}>
+                    Rent: {formatPrice(property.rentPrice, property.currency)}/mo
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </Link>
+      </motion.div>
+    );
+  };
+
+  // Render map sidebar item
+  const renderMapSidebarItem = (property: Property, index: number) => (
+    <Link
+      key={property.id}
+      href={`/property/${property.id}`}
+      className="block p-4 transition hover:bg-white/5"
+    >
+      <div className="flex gap-3">
+        <img
+          src={getPropertyImage(property)}
+          alt={property.title}
+          className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = getPlaceholderImage(property.type);
+          }}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className="text-xs px-2 py-0.5 rounded font-medium"
+              style={{
+                background: getStatusColor(property),
+                color: COLORS.white,
+              }}
+            >
+              {getPropertyStatus(property)}
+            </span>
+          </div>
+          <p className="font-semibold text-sm text-white truncate mb-1">{property.title}</p>
+          <p className="text-xs truncate mb-2" style={{ color: COLORS.primary[300] }}>
+            {getPropertyLocation(property)}
+          </p>
+          <div className="flex items-center gap-2">
+            <span
+              className="text-xs px-2 py-0.5 rounded font-medium"
+              style={{
+                background: `${COLORS.primary[500]}30`,
+                color: COLORS.primary[200],
+              }}
+            >
+              {property.type}
+            </span>
+            {property.surface && (
+              <span className="text-xs" style={{ color: COLORS.primary[400] }}>
+                {formatArea(property.surface)}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+
   return (
     <div className="min-h-screen" style={{ background: COLORS.gray[900] }}>
+      {/* Header */}
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -120,6 +679,7 @@ export default function AllPropertiesPage() {
           borderColor: `${COLORS.primary[700]}4D`,
         }}
       >
+        {/* Top stats bar */}
         <div
           className="border-b"
           style={{
@@ -133,57 +693,79 @@ export default function AllPropertiesPage() {
                 <div className="flex items-center gap-2">
                   <Home className="w-4 h-4" style={{ color: COLORS.yellow[400] }} />
                   <span>
-                    <strong style={{ color: COLORS.yellow[400] }}>{stats.total}</strong> Properties
+                    <strong style={{ color: COLORS.yellow[400] }}>{stats.published}</strong> Properties
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" style={{ color: COLORS.primary[400] }} />
+                  <Tag className="w-4 h-4" style={{ color: '#22c55e' }} />
                   <span>
-                    <strong style={{ color: COLORS.primary[400] }}>{stats.forSale}</strong> For Sale
+                    <strong style={{ color: '#22c55e' }}>{stats.forSale}</strong> For Sale
                   </span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Tag className="w-4 h-4" style={{ color: '#3b82f6' }} />
+                  <span>
+                    <strong style={{ color: '#3b82f6' }}>{stats.forRent}</strong> For Rent
+                  </span>
+                </div>
+                {stats.featured > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" style={{ color: COLORS.yellow[400] }} />
+                    <span>
+                      <strong style={{ color: COLORS.yellow[400] }}>{stats.featured}</strong> Featured
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="flex sm:hidden items-center gap-3 text-xs">
                 <span>
-                  <strong style={{ color: COLORS.yellow[400] }}>{stats.total}</strong> Properties
+                  <strong style={{ color: COLORS.yellow[400] }}>{stats.published}</strong> Properties
                 </span>
                 <span>•</span>
                 <span>
-                  <strong style={{ color: COLORS.primary[400] }}>{stats.forSale}</strong> For Sale
+                  <strong style={{ color: '#22c55e' }}>{stats.forSale}</strong> Sale
+                </span>
+                <span>•</span>
+                <span>
+                  <strong style={{ color: '#3b82f6' }}>{stats.forRent}</strong> Rent
                 </span>
               </div>
               <div className="flex items-center gap-4">
                 <span className="hidden lg:inline opacity-80">📍 Yaoundé, Cameroon</span>
-                <span className="opacity-80">📞 +237 XXX XXX XXX</span>
+                <span className="opacity-80">📞 +237 677 212 279</span>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Main header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-4">
+            {/* Logo */}
             <Link href="/">
               <motion.div
                 whileHover={{ scale: 1.05 }}
                 className="flex items-center gap-3 sm:gap-4 flex-shrink-0 cursor-pointer"
               >
-                <div
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-lg"
-                  style={{ background: GRADIENTS.button.primary }}
-                >
-                  <Home className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                </div>
-                <div className="hidden sm:block">
-                  <h1 className="text-xl md:text-2xl lg:text-3xl font-extrabold tracking-tight text-white">
-                    Earth Design
-                  </h1>
-                  <p className="text-xs md:text-sm hidden md:block" style={{ color: COLORS.primary[200] }}>
-                    Premium Real Estate
-                  </p>
-                </div>
+               
+                 <div
+                    className="relative w-22 h-12 flex items-center justify-center"
+                    style={{ borderColor: `${COLORS.primary[400]}60` }}
+                  >
+                    <img
+                      src="/logo.png"
+                      alt="earth design Logo"
+                      className="w-full h-60 object-contain p-1"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  </div>
               </motion.div>
             </Link>
 
+            {/* Search bar */}
             <div className="flex-1 max-w-2xl mx-4">
               <div className="relative">
                 <Search
@@ -192,7 +774,7 @@ export default function AllPropertiesPage() {
                 />
                 <input
                   type="text"
-                  placeholder="Search properties..."
+                  placeholder="Search properties, locations, types..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-14 pr-12 py-3 sm:py-4 rounded-full text-base shadow-xl transition-all focus:outline-none focus:ring-4"
@@ -212,6 +794,7 @@ export default function AllPropertiesPage() {
               </div>
             </div>
 
+            {/* Actions */}
             <div className="flex items-center gap-2 sm:gap-4">
               <Link href="/">
                 <motion.button
@@ -221,7 +804,7 @@ export default function AllPropertiesPage() {
                   style={{ background: `${COLORS.white}15` }}
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back
+                  Home
                 </motion.button>
               </Link>
               <motion.button
@@ -236,6 +819,7 @@ export default function AllPropertiesPage() {
         </div>
       </motion.header>
 
+      {/* Hero section */}
       <section
         className="py-12 sm:py-16"
         style={{
@@ -252,10 +836,11 @@ export default function AllPropertiesPage() {
               All Properties
             </h1>
             <p className="text-lg sm:text-xl" style={{ color: COLORS.primary[200] }}>
-              Discover {properties.length}+ premium properties across Cameroon
+              Discover {stats.published}+ premium properties across Cameroon
             </p>
           </motion.div>
 
+          {/* Stats cards */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -263,10 +848,10 @@ export default function AllPropertiesPage() {
             className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10"
           >
             {[
-              { label: 'Total Properties', value: stats.total, icon: Building2 },
-              { label: 'For Sale', value: stats.forSale, icon: Tag },
-              { label: 'For Rent', value: stats.forRent, icon: Home },
-              { label: 'Sold', value: stats.sold, icon: TreePine },
+              { label: 'Total Properties', value: stats.published, icon: Building2, color: COLORS.yellow[400] },
+              { label: 'For Sale', value: stats.forSale, icon: Tag, color: '#22c55e' },
+              { label: 'For Rent', value: stats.forRent, icon: Home, color: '#3b82f6' },
+              { label: 'Featured', value: stats.featured, icon: Sparkles, color: COLORS.yellow[400] },
             ].map((stat, index) => (
               <motion.div
                 key={stat.label}
@@ -279,7 +864,7 @@ export default function AllPropertiesPage() {
                   borderColor: `${COLORS.primary[600]}40`,
                 }}
               >
-                <stat.icon className="w-8 h-8 mx-auto mb-3" style={{ color: COLORS.primary[400] }} />
+                <stat.icon className="w-8 h-8 mx-auto mb-3" style={{ color: stat.color }} />
                 <p className="text-2xl sm:text-3xl font-bold text-white">{stat.value}</p>
                 <p className="text-sm" style={{ color: COLORS.primary[300] }}>
                   {stat.label}
@@ -290,7 +875,9 @@ export default function AllPropertiesPage() {
         </div>
       </section>
 
+      {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {/* Toolbar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -305,18 +892,20 @@ export default function AllPropertiesPage() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={clearFilters}
-                className="text-sm font-medium px-3 py-1 rounded-full transition"
+                className="text-sm font-medium px-3 py-1 rounded-full transition flex items-center gap-1"
                 style={{
                   color: COLORS.primary[300],
                   background: `${COLORS.primary[500]}20`,
                 }}
               >
+                <X className="w-3 h-3" />
                 Clear filters
               </motion.button>
             )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* View mode buttons */}
             {[
               { mode: 'grid' as const, icon: Grid3x3, label: 'Grid' },
               { mode: 'list' as const, icon: List, label: 'List' },
@@ -338,6 +927,7 @@ export default function AllPropertiesPage() {
               </motion.button>
             ))}
 
+            {/* Filter button */}
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -351,6 +941,12 @@ export default function AllPropertiesPage() {
             >
               <SlidersHorizontal className="w-4 h-4" />
               <span>Filters</span>
+              {hasActiveFilters && (
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: COLORS.primary[400] }}
+                />
+              )}
               <motion.div animate={{ rotate: showFilters ? 180 : 0 }}>
                 <ChevronDown className="w-4 h-4" />
               </motion.div>
@@ -358,6 +954,7 @@ export default function AllPropertiesPage() {
           </div>
         </motion.div>
 
+        {/* Filters panel */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -371,37 +968,19 @@ export default function AllPropertiesPage() {
                 backdropFilter: 'blur(20px)',
               }}
             >
-              <h3 className="text-lg font-bold text-white mb-4">Filter Properties</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
-                    Category
-                  </label>
-                  <select
-                    value={selectedTable}
-                    onChange={(e) => setSelectedTable(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
-                    style={{
-                      background: `${COLORS.primary[700]}80`,
-                      color: COLORS.white,
-                      borderColor: `${COLORS.primary[500]}40`,
-                    }}
-                  >
-                    {tables.map((t) => (
-                      <option key={t} value={t} style={{ background: COLORS.primary[900] }}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Filter className="w-5 h-5" />
+                Filter Properties
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {/* Property Type */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
                     Property Type
                   </label>
                   <select
                     value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
+                    onChange={(e) => setSelectedType(e.target.value as PropertyType | 'All')}
                     className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
                     style={{
                       background: `${COLORS.primary[700]}80`,
@@ -417,13 +996,14 @@ export default function AllPropertiesPage() {
                   </select>
                 </div>
 
+                {/* Status */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
                     Status
                   </label>
                   <select
                     value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    onChange={(e) => setSelectedStatus(e.target.value as 'All' | 'For Sale' | 'For Rent')}
                     className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
                     style={{
                       background: `${COLORS.primary[700]}80`,
@@ -431,21 +1011,82 @@ export default function AllPropertiesPage() {
                       borderColor: `${COLORS.primary[500]}40`,
                     }}
                   >
-                    {statuses.map((s) => (
-                      <option key={s} value={s} style={{ background: COLORS.primary[900] }}>
-                        {s}
-                      </option>
-                    ))}
+                    <option value="All" style={{ background: COLORS.primary[900] }}>All</option>
+                    <option value="For Sale" style={{ background: COLORS.primary[900] }}>For Sale</option>
+                    <option value="For Rent" style={{ background: COLORS.primary[900] }}>For Rent</option>
                   </select>
                 </div>
 
+                {/* Min Price */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
+                    Min Price (XAF)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
+                    style={{
+                      background: `${COLORS.primary[700]}80`,
+                      color: COLORS.white,
+                      borderColor: `${COLORS.primary[500]}40`,
+                    }}
+                  />
+                </div>
+
+                {/* Max Price */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
+                    Max Price (XAF)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Any"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
+                    style={{
+                      background: `${COLORS.primary[700]}80`,
+                      color: COLORS.white,
+                      borderColor: `${COLORS.primary[500]}40`,
+                    }}
+                  />
+                </div>
+
+                {/* Min Bedrooms */}
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
+                    Min Bedrooms
+                  </label>
+                  <select
+                    value={minBedrooms}
+                    onChange={(e) => setMinBedrooms(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
+                    style={{
+                      background: `${COLORS.primary[700]}80`,
+                      color: COLORS.white,
+                      borderColor: `${COLORS.primary[500]}40`,
+                    }}
+                  >
+                    <option value="" style={{ background: COLORS.primary[900] }}>Any</option>
+                    <option value="1" style={{ background: COLORS.primary[900] }}>1+</option>
+                    <option value="2" style={{ background: COLORS.primary[900] }}>2+</option>
+                    <option value="3" style={{ background: COLORS.primary[900] }}>3+</option>
+                    <option value="4" style={{ background: COLORS.primary[900] }}>4+</option>
+                    <option value="5" style={{ background: COLORS.primary[900] }}>5+</option>
+                  </select>
+                </div>
+
+                {/* Sort By */}
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
                     Sort By
                   </label>
                   <select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
                     className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
                     style={{
                       background: `${COLORS.primary[700]}80`,
@@ -453,25 +1094,50 @@ export default function AllPropertiesPage() {
                       borderColor: `${COLORS.primary[500]}40`,
                     }}
                   >
-                    <option value="newest" style={{ background: COLORS.primary[900] }}>
-                      Newest First
-                    </option>
-                    <option value="price-low" style={{ background: COLORS.primary[900] }}>
-                      Price: Low to High
-                    </option>
-                    <option value="price-high" style={{ background: COLORS.primary[900] }}>
-                      Price: High to Low
-                    </option>
-                    <option value="size-large" style={{ background: COLORS.primary[900] }}>
-                      Size: Largest First
-                    </option>
+                    <option value="newest" style={{ background: COLORS.primary[900] }}>Newest First</option>
+                    <option value="oldest" style={{ background: COLORS.primary[900] }}>Oldest First</option>
+                    <option value="price-asc" style={{ background: COLORS.primary[900] }}>Price: Low to High</option>
+                    <option value="price-desc" style={{ background: COLORS.primary[900] }}>Price: High to Low</option>
+                    <option value="bedrooms-desc" style={{ background: COLORS.primary[900] }}>Most Bedrooms</option>
                   </select>
+                </div>
+
+                {/* Amenities */}
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
+                    Amenities
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setHasParking(hasParking === true ? undefined : true)}
+                      className="px-4 py-2 rounded-xl font-medium transition flex items-center gap-2"
+                      style={{
+                        background: hasParking ? GRADIENTS.button.primary : `${COLORS.primary[700]}80`,
+                        color: COLORS.white,
+                      }}
+                    >
+                      <Car className="w-4 h-4" />
+                      Parking
+                    </button>
+                    <button
+                      onClick={() => setHasGenerator(hasGenerator === true ? undefined : true)}
+                      className="px-4 py-2 rounded-xl font-medium transition flex items-center gap-2"
+                      style={{
+                        background: hasGenerator ? GRADIENTS.button.primary : `${COLORS.primary[700]}80`,
+                        color: COLORS.white,
+                      }}
+                    >
+                      <Zap className="w-4 h-4" />
+                      Generator
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
+        {/* Properties display */}
         {loading ? (
           <div className="text-center py-20">
             <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: COLORS.primary[400] }} />
@@ -495,6 +1161,7 @@ export default function AllPropertiesPage() {
             </motion.button>
           </div>
         ) : viewMode === 'map' ? (
+          // Map view
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -529,7 +1196,7 @@ export default function AllPropertiesPage() {
                 }}
               >
                 <div
-                  className="p-4 border-b"
+                  className="p-4 border-b sticky top-0"
                   style={{
                     background: `${COLORS.primary[800]}60`,
                     borderColor: `${COLORS.primary[600]}40`,
@@ -541,317 +1208,25 @@ export default function AllPropertiesPage() {
                   </p>
                 </div>
                 <div className="divide-y" style={{ borderColor: `${COLORS.primary[700]}40` }}>
-                  {filteredProperties.slice(0, 20).map((property, index) => (
-                    <Link
-                      key={`${property.table}-${property.id}-${index}`}
-                      href={`/property/${property.table}-${property.id}`}
-                      className="block p-4 transition hover:bg-white/5"
-                    >
-                      <div className="flex gap-3">
-                        <img
-                          src={
-                            property.images.length > 0
-                              ? property.images[0]
-                              : getPlaceholderImage(property.type)
-                          }
-                          alt={property.title}
-                          className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = getPlaceholderImage(property.type);
-                          }}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-white truncate mb-1">
-                            {property.title}
-                          </p>
-                          <p className="text-xs truncate mb-2" style={{ color: COLORS.primary[300] }}>
-                            {property.location}
-                          </p>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="text-xs px-2 py-0.5 rounded font-medium"
-                              style={{
-                                background: `${COLORS.primary[500]}30`,
-                                color: COLORS.primary[200],
-                              }}
-                            >
-                              {property.type}
-                            </span>
-                            <span className="text-xs" style={{ color: COLORS.primary[400] }}>
-                              {property.surface} m²
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+                  {filteredProperties.slice(0, 20).map((property, index) => renderMapSidebarItem(property, index))}
                 </div>
               </div>
             </div>
           </motion.div>
         ) : viewMode === 'grid' ? (
+          // Grid view
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProperties.map((property, index) => (
-              <motion.div
-                key={`${property.table}-${property.id}-${index}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-                whileHover={{ y: -8, scale: 1.02 }}
-              >
-                <Link
-                  href={`/property/${property.table}-${property.id}`}
-                  className="group block rounded-2xl shadow-xl border overflow-hidden transition-all"
-                  style={{
-                    background: `${COLORS.primary[800]}60`,
-                    borderColor: `${COLORS.primary[600]}40`,
-                  }}
-                >
-                  <div className="relative h-64 overflow-hidden">
-                    <img
-                      src={
-                        property.images.length > 0
-                          ? property.images[0]
-                          : getPlaceholderImage(property.type)
-                      }
-                      alt={property.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = getPlaceholderImage(property.type);
-                      }}
-                    />
-                    <div className="absolute inset-0" style={{ background: GRADIENTS.overlay.darkReverse }} />
-                    <div className="absolute top-3 left-3 flex gap-2">
-                      <span
-                        className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm"
-                        style={{
-                          background: GRADIENTS.button.primary,
-                          color: COLORS.white,
-                        }}
-                      >
-                        {property.status}
-                      </span>
-                    </div>
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <motion.button
-                        whileHover={{ scale: 1.2 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                        }}
-                        className="w-8 h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
-                      >
-                        <Heart className="w-4 h-4" style={{ color: COLORS.gray[700] }} />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.2 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                        }}
-                        className="w-8 h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
-                      >
-                        <Share2 className="w-4 h-4" style={{ color: COLORS.gray[700] }} />
-                      </motion.button>
-                    </div>
-                  </div>
-
-                  <div className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span
-                        className="px-2 py-1 rounded-lg text-xs font-medium"
-                        style={{
-                          background: `${COLORS.primary[500]}30`,
-                          color: COLORS.primary[200],
-                        }}
-                      >
-                        {property.type}
-                      </span>
-                      <span
-                        className="px-2 py-1 rounded-lg text-xs font-medium"
-                        style={{
-                          background: `${COLORS.primary[600]}30`,
-                          color: COLORS.primary[300],
-                        }}
-                      >
-                        {property.table}
-                      </span>
-                    </div>
-
-                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-green-300 transition">
-                      {property.title}
-                    </h3>
-
-                    <div className="flex items-center gap-2 text-sm mb-4" style={{ color: COLORS.primary[300] }}>
-                      <MapPin className="w-4 h-4" style={{ color: COLORS.primary[400] }} />
-                      <span className="truncate">{property.location}</span>
-                    </div>
-
-                    <div
-                      className="flex items-center justify-between pt-4 border-t"
-                      style={{ borderColor: `${COLORS.primary[600]}40` }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Square className="w-4 h-4" style={{ color: COLORS.primary[400] }} />
-                        <span className="font-semibold text-sm text-white">{property.surface} m²</span>
-                      </div>
-                      <p className="text-lg font-bold" style={{ color: COLORS.primary[300] }}>
-                        {property.price}
-                      </p>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+            {filteredProperties.map((property, index) => renderGridCard(property, index))}
           </div>
         ) : (
+          // List view
           <div className="space-y-4">
-            {filteredProperties.map((property, index) => (
-              <motion.div
-                key={`${property.table}-${property.id}-${index}`}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.03 }}
-                whileHover={{ x: 8 }}
-              >
-                <Link
-                  href={`/property/${property.table}-${property.id}`}
-                  className="group flex flex-col sm:flex-row rounded-2xl shadow-xl border overflow-hidden transition-all"
-                  style={{
-                    background: `${COLORS.primary[800]}60`,
-                    borderColor: `${COLORS.primary[600]}40`,
-                  }}
-                >
-                  <div className="relative w-full sm:w-72 h-64 sm:h-auto flex-shrink-0">
-                    <img
-                      src={
-                        property.images.length > 0
-                          ? property.images[0]
-                          : getPlaceholderImage(property.type)
-                      }
-                      alt={property.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = getPlaceholderImage(property.type);
-                      }}
-                    />
-                    <div className="absolute top-3 left-3">
-                      <span
-                        className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm"
-                        style={{
-                          background: GRADIENTS.button.primary,
-                          color: COLORS.white,
-                        }}
-                      >
-                        {property.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="px-3 py-1 rounded-lg text-sm font-medium"
-                          style={{
-                            background: `${COLORS.primary[500]}30`,
-                            color: COLORS.primary[200],
-                          }}
-                        >
-                          {property.type}
-                        </span>
-                        <span
-                          className="px-3 py-1 rounded-lg text-sm font-medium"
-                          style={{
-                            background: `${COLORS.primary[600]}30`,
-                            color: COLORS.primary[300],
-                          }}
-                        >
-                          {property.table}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.2 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                          }}
-                          className="w-8 h-8 rounded-full flex items-center justify-center transition"
-                          style={{ background: `${COLORS.white}10` }}
-                        >
-                          <Heart className="w-5 h-5 text-white" />
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.2 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                          }}
-                          className="w-8 h-8 rounded-full flex items-center justify-center transition"
-                          style={{ background: `${COLORS.white}10` }}
-                        >
-                          <Share2 className="w-5 h-5 text-white" />
-                        </motion.button>
-                      </div>
-                    </div>
-
-                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-300 transition">
-                      {property.title}
-                    </h3>
-
-                    <div
-                      className="flex items-center gap-2 mb-4"
-                      style={{ color: COLORS.primary[300] }}
-                    >
-                      <MapPin className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                      <span>{property.location}</span>
-                    </div>
-
-                    <div
-                      className="flex items-center gap-6 pt-4 border-t"
-                      style={{ borderColor: `${COLORS.primary[600]}40` }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Square className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                        <div>
-                          <p className="text-sm" style={{ color: COLORS.primary[400] }}>
-                            Surface
-                          </p>
-                          <p className="font-semibold text-white">{property.surface} m²</p>
-                        </div>
-                      </div>
-                      {property.bedrooms && (
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                          <div>
-                            <p className="text-sm" style={{ color: COLORS.primary[400] }}>
-                              Lots
-                            </p>
-                            <p className="font-semibold text-white">{property.bedrooms}</p>
-                          </div>
-                        </div>
-                      )}
-                      <div className="ml-auto text-right">
-                        <p className="text-sm" style={{ color: COLORS.primary[400] }}>
-                          Price
-                        </p>
-                        <p className="text-2xl font-bold" style={{ color: COLORS.primary[300] }}>
-                          {property.price}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+            {filteredProperties.map((property, index) => renderListCard(property, index))}
           </div>
         )}
       </main>
 
+      {/* CTA Section */}
       <section
         className="py-16"
         style={{
@@ -886,15 +1261,15 @@ export default function AllPropertiesPage() {
               </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link
-                  href="/about"
+                  href="/"
                   className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-white transition"
                   style={{
                     background: `${COLORS.primary[700]}80`,
                     border: `2px solid ${COLORS.primary[500]}`,
                   }}
                 >
-                  <Mail className="w-5 h-5" />
-                  Request Info
+                  <Home className="w-5 h-5" />
+                  Back to Home
                 </Link>
               </motion.div>
             </div>

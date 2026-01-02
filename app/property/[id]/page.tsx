@@ -1,13 +1,9 @@
+// app/property/[id]/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  motion,
-  useMotionValue,
-  useTransform,
-  useSpring,
-} from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Heart,
   Share2,
@@ -38,36 +34,97 @@ import {
   Award,
   Camera,
   Video,
+  Car,
+  Zap,
+  TreePine,
+  Layers,
+  Grid3X3,
 } from "lucide-react";
+import Link from "next/link";
+import {
+  useProperty,
+  useProperties,
+  UnifiedProperty,
+  formatPrice,
+  formatPriceCompact,
+  formatArea,
+  getPropertyImages,
+  getPropertyLocation,
+  getSourceLabel,
+  getSourceColor,
+  getSimilarProperties,
+} from "@/lib/hooks/useProperties";
+import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 
-interface PropertyDetail {
-  id: number;
-  table: string;
-  title: string;
-  location: string;
-  price: string;
-  type: string;
-  status: string;
-  surface: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  description?: string;
-  images: string[];
-  video?: string;
-  owner?: string;
-  contactPhone?: string;
-  contactEmail?: string;
-  rawData?: any;
-}
+// Placeholder images by type
+const PLACEHOLDER_IMAGES: Record<string, string> = {
+  Villa: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200",
+  Apartment: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200",
+  Land: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200",
+  Commercial: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200",
+  Building: "https://images.unsplash.com/photo-1565008576549-57569a49371d?w=1200",
+  House: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=1200",
+  Office: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200",
+  Studio: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200",
+  Duplex: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200",
+  default: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200",
+};
+
+// Get placeholder by type
+const getPlaceholderImage = (type: string): string => {
+  return PLACEHOLDER_IMAGES[type] || PLACEHOLDER_IMAGES.default;
+};
+
+// Get property status
+const getPropertyStatus = (property: UnifiedProperty): string => {
+  if (property.forSale && property.forRent) return "Sale / Rent";
+  if (property.forSale) return "For Sale";
+  if (property.forRent) return "For Rent";
+  return "Available";
+};
+
+// Get status color
+const getStatusBgColor = (property: UnifiedProperty): string => {
+  if (property.forSale && property.forRent) return "from-purple-500 to-indigo-600";
+  if (property.forSale) return "from-green-500 to-emerald-600";
+  if (property.forRent) return "from-blue-500 to-cyan-600";
+  return "from-gray-500 to-gray-600";
+};
+
+// YouTube helpers
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
+
+const getVideoThumbnail = (videoUrl: string, type: string): string => {
+  const videoId = getYouTubeVideoId(videoUrl);
+  if (videoId) {
+    return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  }
+  return getPlaceholderImage(type);
+};
+
+const getYouTubeEmbedUrl = (videoUrl: string): string => {
+  const videoId = getYouTubeVideoId(videoUrl);
+  if (videoId) {
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+  }
+  return videoUrl;
+};
 
 export default function PropertyDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const idParam = params.id as string;
+  const propertyId = params.id as string;
 
-  const [property, setProperty] = useState<PropertyDetail | null>(null);
-  const [relatedProperties, setRelatedProperties] = useState<PropertyDetail[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Fetch property using the hook
+  const { property, loading, error } = useProperty(propertyId);
+  const { properties } = useProperties();
+
+  // UI State
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
@@ -75,226 +132,117 @@ export default function PropertyDetailPage() {
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  // Mouse tracking for spotlight
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
+  // Get related properties
+  const relatedProperties = property
+    ? getSimilarProperties(property, properties, 6)
+    : [];
 
+  // Mouse tracking for spotlight effect
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      const { clientX, clientY } = e;
-      setMousePosition({ x: clientX, y: clientY });
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
-      mouseX.set(clientX - centerX);
-      mouseY.set(clientY - centerY);
+      setMousePosition({ x: e.clientX, y: e.clientY });
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [mouseX, mouseY]);
+  }, []);
 
-  useEffect(() => {
-    const fetchProperty = async () => {
-      setLoading(true);
-      try {
-        let tableName: string | null = null;
-        let propertyId: string | null = null;
+  // Get images array
+  const images = property ? getPropertyImages(property) : [];
+  const hasImages = images.length > 0;
+  const hasVideo = property?.videoUrl && property.videoUrl.trim() !== "";
+  const hasMedia = hasImages || hasVideo;
 
-        const validTables = ["Lotissement", "Parcelle", "Batiment"];
-        for (const table of validTables) {
-          if (idParam.startsWith(`${table}-`)) {
-            tableName = table;
-            propertyId = idParam.substring(table.length + 1);
-            break;
-          }
-        }
-
-        if (!tableName || !propertyId) {
-          propertyId = idParam;
-          for (const table of validTables) {
-            const res = await fetch(`/api/data/${table}`);
-            if (res.ok) {
-              const result = await res.json();
-              const item = result.data.find((p: any) => {
-                const itemId = p.Id_Lotis || p.Id_Parcel || p.Id_Bat;
-                return itemId?.toString() === propertyId;
-              });
-              if (item) {
-                tableName = table;
-                await processProperty(item, table);
-                await fetchRelatedProperties(table, propertyId);
-                return;
-              }
-            }
-          }
-          setLoading(false);
-          return;
-        }
-
-        const res = await fetch(`/api/data/${tableName}`);
-        if (!res.ok) {
-          setLoading(false);
-          return;
-        }
-        const result = await res.json();
-        const foundProperty = result.data.find((p: any) => {
-          const itemId = p.Id_Lotis || p.Id_Parcel || p.Id_Bat;
-          return itemId?.toString() === propertyId;
-        });
-        if (!foundProperty) {
-          setLoading(false);
-          return;
-        }
-        await processProperty(foundProperty, tableName);
-        await fetchRelatedProperties(tableName, propertyId);
-      } catch (err) {
-        console.error("Error fetching property:", err);
-        setLoading(false);
-      }
-    };
-
-    const fetchRelatedProperties = async (currentTable: string, currentId: string) => {
-      try {
-        const res = await fetch(`/api/data/${currentTable}`);
-        if (res.ok) {
-          const result = await res.json();
-          const related = result.data
-            .filter((p: any) => {
-              const itemId = p.Id_Lotis || p.Id_Parcel || p.Id_Bat;
-              return itemId?.toString() !== currentId;
-            })
-            .slice(0, 6)
-            .map((item: any) => processPropertySync(item, currentTable));
-          setRelatedProperties(related);
-        }
-      } catch (err) {
-        console.error("Error fetching related properties:", err);
-      }
-    };
-
-    const processPropertySync = (foundProperty: any, tableName: string): PropertyDetail => {
-      const realId = foundProperty.Id_Lotis || foundProperty.Id_Parcel || foundProperty.Id_Bat;
-      let type = "Land";
-      if (tableName === "Batiment") {
-        type = foundProperty.Cat_Bat || foundProperty.Type_Usage || "Building";
-      } else if (tableName === "Lotissement") {
-        type = "Lotissement";
-      } else if (tableName === "Parcelle") {
-        type = foundProperty.Mise_Val ? "Developed Land" : "Land";
-      }
-
-      const imageUrls: string[] = [];
-      for (let i = 1; i <= 6; i++) {
-        const imageUrl = foundProperty[`Image_URL_${i}`];
-        if (imageUrl && imageUrl.trim() !== '' && !isPlaceholderUrl(imageUrl)) {
-          imageUrls.push(imageUrl.trim());
-        }
-      }
-
-      return {
-        id: realId,
-        table: tableName,
-        title: `${foundProperty.Nom_proprio || foundProperty.Nom_Prop || foundProperty.Nom || "Premium Property"}`,
-        location: foundProperty.Lieudit || foundProperty.Lieu_dit || "Yaoundé",
-        price: "Contact for price",
-        type,
-        status: foundProperty.Status || foundProperty.Statut || "For Sale",
-        surface: foundProperty.Surface || foundProperty.Sup || "",
-        images: imageUrls,
-        video: foundProperty.Video_URL?.trim(),
-        owner: foundProperty.Nom_proprio || foundProperty.Nom_Prop || foundProperty.Nom || "Earth Design",
-        contactPhone: "+237 6XX XXX XXX",
-        contactEmail: "contact@earthdesign.cm",
-        rawData: foundProperty,
-      };
-    };
-
-    const processProperty = async (foundProperty: any, tableName: string) => {
-      const mapped = processPropertySync(foundProperty, tableName);
-      
-      let description = "";
-      if (tableName === "Lotissement") {
-        description = `This subdivision property consists of ${foundProperty.Nbre_lots || 'multiple'} lots with a total surface area of ${foundProperty.Surface || 'N/A'} m². `;
-        if (foundProperty.Date_approb) {
-          description += `Approved on ${new Date(foundProperty.Date_approb).toLocaleDateString()}. `;
-        }
-      } else if (tableName === "Parcelle") {
-        description = `This parcel covers ${foundProperty.Sup || 'N/A'} m² located in ${foundProperty.Lieu_dit || 'the area'}. `;
-        if (foundProperty.Mise_Val) description += "The land has been developed. ";
-      } else if (tableName === "Batiment") {
-        description = `${foundProperty.Type_Usage || 'Property'} - ${foundProperty.Cat_Bat || 'Building'}. `;
-        if (foundProperty.Standing) description += `Standing: ${foundProperty.Standing}. `;
-      }
-
-      if (!description.trim()) {
-        description = "Stunning property with modern amenities and excellent location.";
-      }
-
-      mapped.description = description;
-      setProperty(mapped);
-      setLoading(false);
-    };
-
-    if (idParam) fetchProperty();
-  }, [idParam]);
-
-  const isPlaceholderUrl = (url: string): boolean => {
-    if (!url) return true;
-    const placeholderPatterns = [
-      /^https?:\/\/example\.com/i,
-      /^https?:\/\/placeholder/i,
-      /^https?:\/\/test\./i,
-      /^https?:\/\/demo\./i,
-      /^https?:\/\/sample/i,
-      /^https?:\/\/localhost/i,
-    ];
-    return placeholderPatterns.some(pattern => pattern.test(url));
+  // Image navigation
+  const nextImage = () => {
+    if (images.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }
   };
 
-  const getPlaceholderImage = (type: string) => {
-    const map: Record<string, string> = {
-      Villa: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200",
-      Apartment: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200",
-      Land: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200",
-      Commercial: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200",
-      Lotissement: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=1200",
-      Building: "https://images.unsplash.com/photo-1565008576549-57569a49371d?w=1200",
-    };
-    return map[type] || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200";
+  const prevImage = () => {
+    if (images.length > 0) {
+      setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    }
   };
 
+  const selectImage = (index: number) => {
+    setCurrentImageIndex(index);
+    setShowVideo(false);
+  };
+
+  const handleImageError = (index: number) => {
+    setImageErrors((prev) => new Set(prev).add(index));
+  };
+
+  const getCurrentImage = (): string => {
+    if (!property) return "";
+    if (images.length === 0 || imageErrors.has(currentImageIndex)) {
+      return getPlaceholderImage(property.type);
+    }
+    return images[currentImageIndex];
+  };
+
+  // Render property details based on source
   const renderPropertyFields = () => {
-    if (!property?.rawData) return null;
-    const data = property.rawData;
-    const table = property.table;
+    if (!property?._meta) return null;
+    const meta = property._meta;
+    const source = property.source;
 
     const fields: { label: string; value: any; icon: any }[] = [];
 
-    if (table === "Lotissement") {
-      if (data.Num_TF) fields.push({ label: "Title Deed", value: data.Num_TF, icon: FileText });
-      if (data.Nbre_lots) fields.push({ label: "Number of Lots", value: data.Nbre_lots, icon: Building2 });
-      if (data.Date_approb) fields.push({ label: "Approval Date", value: new Date(data.Date_approb).toLocaleDateString(), icon: Calendar });
-      if (data.Geo_exe) fields.push({ label: "Surveyor", value: data.Geo_exe, icon: User });
-      if (data.Echelle) fields.push({ label: "Scale", value: `1:${data.Echelle}`, icon: Ruler });
-      if (data.Ccp) fields.push({ label: "CCP", value: data.Ccp, icon: FileText });
-    } else if (table === "Parcelle") {
-      if (data.TF_Cree) fields.push({ label: "Title Deed", value: data.TF_Cree, icon: FileText });
-      if (data.Num_lot) fields.push({ label: "Lot Number", value: data.Num_lot, icon: Tag });
-      if (data.Num_bloc) fields.push({ label: "Block Number", value: data.Num_bloc, icon: Building2 });
-      if (data.Mode_Obtent) fields.push({ label: "Acquisition Mode", value: data.Mode_Obtent, icon: ShieldCheck });
-      if (data.Date_visa) fields.push({ label: "Visa Date", value: new Date(data.Date_visa).toLocaleDateString(), icon: Calendar });
-      if (data.Geometre) fields.push({ label: "Surveyor", value: data.Geometre, icon: User });
-      if (data.Mise_Val !== null) fields.push({ label: "Developed", value: data.Mise_Val ? "Yes" : "No", icon: data.Mise_Val ? CheckCircle2 : XCircle });
-      if (data.Cloture !== null) fields.push({ label: "Enclosed", value: data.Cloture ? "Yes" : "No", icon: data.Cloture ? CheckCircle2 : XCircle });
-    } else if (table === "Batiment") {
-      if (data.Type_Usage) fields.push({ label: "Usage Type", value: data.Type_Usage, icon: Building2 });
-      if (data.Cat_Bat) fields.push({ label: "Category", value: data.Cat_Bat, icon: Tag });
-      if (data.Standing) fields.push({ label: "Standing", value: data.Standing, icon: ShieldCheck });
-      if (data.Etat_Bat) fields.push({ label: "Condition", value: data.Etat_Bat, icon: CheckCircle2 });
-      if (data.Mat_Bati) fields.push({ label: "Construction Material", value: data.Mat_Bati, icon: Building2 });
-      if (data.Type_Lodg) fields.push({ label: "Housing Type", value: data.Type_Lodg, icon: Home });
-      if (data.No_Permis) fields.push({ label: "Permit Number", value: data.No_Permis, icon: FileText });
-      if (data.Cloture !== null) fields.push({ label: "Enclosed", value: data.Cloture ? "Yes" : "No", icon: data.Cloture ? CheckCircle2 : XCircle });
+    // Common fields
+    if (property.surface) {
+      fields.push({
+        label: "Surface Area",
+        value: formatArea(property.surface),
+        icon: Square,
+      });
     }
+
+    if (source === "lotissement") {
+      if (meta.Num_TF) fields.push({ label: "Title Deed", value: meta.Num_TF, icon: FileText });
+      if (property.nbreLots) fields.push({ label: "Number of Lots", value: property.nbreLots, icon: Grid3X3 });
+      if (meta.Date_approb) fields.push({ label: "Approval Date", value: new Date(meta.Date_approb).toLocaleDateString(), icon: Calendar });
+      if (meta.Geo_exe) fields.push({ label: "Surveyor", value: meta.Geo_exe, icon: User });
+      if (meta.Statut) fields.push({ label: "Status", value: meta.Statut, icon: Tag });
+      if (meta.Nom_visa_lotis) fields.push({ label: "Visa", value: meta.Nom_visa_lotis, icon: ShieldCheck });
+    } else if (source === "parcelle") {
+      if (meta.TF_Cree) fields.push({ label: "Title Deed", value: meta.TF_Cree, icon: FileText });
+      if (meta.TF_Mere) fields.push({ label: "Parent Title", value: meta.TF_Mere, icon: FileText });
+      if (meta.Num_lot) fields.push({ label: "Lot Number", value: meta.Num_lot, icon: Tag });
+      if (meta.Num_bloc) fields.push({ label: "Block Number", value: meta.Num_bloc, icon: Building2 });
+      if (meta.Largeur_Rte) fields.push({ label: "Road Width", value: meta.Largeur_Rte, icon: Ruler });
+      if (meta.Mise_Val !== undefined) {
+        fields.push({
+          label: "Developed",
+          value: meta.Mise_Val ? "Yes" : "No",
+          icon: meta.Mise_Val ? CheckCircle2 : XCircle,
+        });
+      }
+      if (meta.Cloture !== undefined) {
+        fields.push({
+          label: "Enclosed",
+          value: meta.Cloture ? "Yes" : "No",
+          icon: meta.Cloture ? CheckCircle2 : XCircle,
+        });
+      }
+    } else if (source === "batiment") {
+      if (property.bedrooms) fields.push({ label: "Bedrooms", value: property.bedrooms, icon: Bed });
+      if (property.bathrooms) fields.push({ label: "Bathrooms", value: property.bathrooms, icon: Bath });
+      if (property.kitchens) fields.push({ label: "Kitchens", value: property.kitchens, icon: Home });
+      if (property.livingRooms) fields.push({ label: "Living Rooms", value: property.livingRooms, icon: Home });
+      if (property.totalFloors) fields.push({ label: "Floors", value: property.totalFloors, icon: Layers });
+      if (meta.Standing) fields.push({ label: "Standing", value: meta.Standing, icon: Award });
+      if (meta.Etat_Bat) fields.push({ label: "Condition", value: meta.Etat_Bat, icon: CheckCircle2 });
+      if (meta.Mat_Bati) fields.push({ label: "Material", value: meta.Mat_Bati, icon: Building2 });
+      if (meta.No_Permis) fields.push({ label: "Permit #", value: meta.No_Permis, icon: FileText });
+      if (property.hasParking) fields.push({ label: "Parking", value: `${meta.parkingSpaces || 'Yes'}`, icon: Car });
+      if (property.hasGenerator) fields.push({ label: "Generator", value: "Available", icon: Zap });
+      if (meta.hasElevator) fields.push({ label: "Elevator", value: "Yes", icon: Building2 });
+      if (meta.totalUnits) fields.push({ label: "Total Units", value: meta.totalUnits, icon: Grid3X3 });
+    }
+
+    if (fields.length === 0) return null;
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -306,9 +254,16 @@ export default function PropertyDetailPage() {
             viewport={{ once: true }}
             transition={{ delay: idx * 0.05 }}
             whileHover={{ scale: 1.02 }}
-            className="flex items-start gap-3 p-4 bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 hover:border-green-500/30 transition"
+            className="flex items-start gap-3 p-4 rounded-xl border transition"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              borderColor: "rgba(255,255,255,0.1)",
+            }}
           >
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: GRADIENTS.button.primary }}
+            >
               <field.icon className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -321,73 +276,26 @@ export default function PropertyDetailPage() {
     );
   };
 
-  const getYouTubeVideoId = (url: string): string | null => {
-    if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return match && match[2].length === 11 ? match[2] : null;
-  };
-
-  const getVideoThumbnail = (videoUrl: string): string => {
-    const videoId = getYouTubeVideoId(videoUrl);
-    if (videoId) {
-      return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-    }
-    return getPlaceholderImage(property?.type || "Building");
-  };
-
-  const getYouTubeEmbedUrl = (videoUrl: string): string => {
-    const videoId = getYouTubeVideoId(videoUrl);
-    if (videoId) {
-      return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
-    }
-    return videoUrl;
-  };
-
-  const handleImageError = (index: number) => {
-    setImageErrors((prev) => new Set(prev).add(index));
-  };
-
-  const nextImage = () => {
-    if (property && property.images.length > 0) {
-      setCurrentImageIndex((prev) => (prev + 1) % property.images.length);
-    }
-  };
-
-  const prevImage = () => {
-    if (property && property.images.length > 0) {
-      setCurrentImageIndex((prev) => (prev - 1 + property.images.length) % property.images.length);
-    }
-  };
-
-  const selectImage = (index: number) => {
-    setCurrentImageIndex(index);
-    setShowVideo(false);
-  };
-
-  const handleShowVideo = () => {
-    setShowVideo(true);
-    setIsPlayingVideo(false);
-  };
-
-  const getCurrentImage = () => {
-    if (!property) return "";
-    if (property.images.length === 0 || imageErrors.has(currentImageIndex)) {
-      return getPlaceholderImage(property.type);
-    }
-    return property.images[currentImageIndex];
-  };
-
+  // Loading state
   if (loading) {
     return (
-      <div className="relative min-h-screen bg-black overflow-hidden">
+      <div className="relative min-h-screen overflow-hidden" style={{ background: COLORS.gray[900] }}>
         <div className="fixed inset-0">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:64px_64px]" />
-          <div className="absolute inset-0 bg-gradient-to-br from-green-900 via-emerald-900 to-teal-950" />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `linear-gradient(to right, ${COLORS.gray[600]}2e 1px, transparent 1px), linear-gradient(to bottom, ${COLORS.gray[600]}2e 1px, transparent 1px)`,
+              backgroundSize: "64px 64px",
+            }}
+          />
+          <div className="absolute inset-0" style={{ background: GRADIENTS.background.hero }} />
         </div>
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-green-500 border-t-transparent mb-4"></div>
+            <div
+              className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-t-transparent mb-4"
+              style={{ borderColor: COLORS.primary[500], borderTopColor: "transparent" }}
+            />
             <p className="text-lg font-medium text-white">Loading property...</p>
           </div>
         </div>
@@ -395,12 +303,12 @@ export default function PropertyDetailPage() {
     );
   }
 
-  if (!property) {
+  // Error or not found state
+  if (error || !property) {
     return (
-      <div className="relative min-h-screen bg-black overflow-hidden">
+      <div className="relative min-h-screen overflow-hidden" style={{ background: COLORS.gray[900] }}>
         <div className="fixed inset-0">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:64px_64px]" />
-          <div className="absolute inset-0 bg-gradient-to-br from-green-900 via-emerald-900 to-teal-950" />
+          <div className="absolute inset-0" style={{ background: GRADIENTS.background.hero }} />
         </div>
         <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
           <motion.div
@@ -408,18 +316,24 @@ export default function PropertyDetailPage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center max-w-md"
           >
-            <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Home className="w-10 h-10 text-green-400" />
+            <div
+              className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ background: "rgba(255,255,255,0.1)" }}
+            >
+              <Home className="w-10 h-10" style={{ color: COLORS.primary[400] }} />
             </div>
             <h1 className="text-2xl font-bold text-white mb-2">Property Not Found</h1>
-            <p className="text-gray-300 mb-6">The property you're looking for doesn't exist.</p>
+            <p className="text-gray-300 mb-6">
+              {error || "The property you're looking for doesn't exist or has been removed."}
+            </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => router.back()}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg font-medium hover:shadow-xl transition"
+              onClick={() => router.push("/properties")}
+              className="inline-flex items-center gap-2 px-6 py-3 text-white rounded-xl font-medium transition"
+              style={{ background: GRADIENTS.button.primary }}
             >
-              <ArrowLeft className="w-4 h-4" /> Go Back
+              <ArrowLeft className="w-4 h-4" /> Browse Properties
             </motion.button>
           </motion.div>
         </div>
@@ -427,16 +341,18 @@ export default function PropertyDetailPage() {
     );
   }
 
-  const hasImages = property.images.length > 0;
-  const hasVideo = property.video && !isPlaceholderUrl(property.video);
-  const hasMedia = hasImages || hasVideo;
-
   return (
-    <div className="relative min-h-screen bg-black overflow-x-hidden">
+    <div className="relative min-h-screen overflow-x-hidden" style={{ background: COLORS.gray[900] }}>
       {/* Background */}
       <div className="fixed inset-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:64px_64px]" />
-        <div className="absolute inset-0 bg-gradient-to-br from-green-900 via-emerald-900 to-teal-950" />
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `linear-gradient(to right, ${COLORS.gray[600]}2e 1px, transparent 1px), linear-gradient(to bottom, ${COLORS.gray[600]}2e 1px, transparent 1px)`,
+            backgroundSize: "64px 64px",
+          }}
+        />
+        <div className="absolute inset-0" style={{ background: GRADIENTS.background.hero }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
       </div>
 
@@ -444,7 +360,7 @@ export default function PropertyDetailPage() {
       <motion.div
         className="pointer-events-none fixed inset-0 z-10 transition duration-300"
         style={{
-          background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(34, 197, 94, 0.15), transparent 40%)`,
+          background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, ${COLORS.primary[500]}15, transparent 40%)`,
         }}
       />
 
@@ -463,17 +379,20 @@ export default function PropertyDetailPage() {
               setIsPlayingVideo(false);
               setShowVideo(false);
             }}
-            className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition z-10"
+            className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center z-10 transition"
+            style={{ background: "rgba(255,255,255,0.1)" }}
           >
-            <ChevronLeft className="w-6 h-6 text-white rotate-180" />
+            <XCircle className="w-6 h-6 text-white" />
           </motion.button>
-          {!showVideo && property.images.length > 1 && (
+
+          {!showVideo && images.length > 1 && (
             <>
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={prevImage}
-                className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition z-10"
+                className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center z-10 transition"
+                style={{ background: "rgba(255,255,255,0.1)" }}
               >
                 <ChevronLeft className="w-7 h-7 text-white" />
               </motion.button>
@@ -481,17 +400,19 @@ export default function PropertyDetailPage() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={nextImage}
-                className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition z-10"
+                className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center z-10 transition"
+                style={{ background: "rgba(255,255,255,0.1)" }}
               >
                 <ChevronRight className="w-7 h-7 text-white" />
               </motion.button>
             </>
           )}
+
           <div className="max-w-full max-h-[90vh] w-full flex items-center justify-center">
-            {showVideo && property.video ? (
+            {showVideo && property.videoUrl ? (
               isPlayingVideo ? (
                 <iframe
-                  src={getYouTubeEmbedUrl(property.video)}
+                  src={getYouTubeEmbedUrl(property.videoUrl)}
                   className="w-full aspect-video max-h-[90vh] rounded-2xl"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -500,12 +421,11 @@ export default function PropertyDetailPage() {
               ) : (
                 <div className="relative w-full aspect-video max-h-[90vh]">
                   <img
-                    src={getVideoThumbnail(property.video)}
+                    src={getVideoThumbnail(property.videoUrl, property.type)}
                     alt="Video thumbnail"
                     className="w-full h-full object-contain rounded-2xl"
                     onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = getPlaceholderImage(property.type);
+                      (e.target as HTMLImageElement).src = getPlaceholderImage(property.type);
                     }}
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -526,8 +446,7 @@ export default function PropertyDetailPage() {
                 alt={property.title}
                 className="max-w-full max-h-[90vh] object-contain rounded-2xl"
                 onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = getPlaceholderImage(property.type);
+                  (e.target as HTMLImageElement).src = getPlaceholderImage(property.type);
                 }}
               />
             ) : null}
@@ -539,28 +458,62 @@ export default function PropertyDetailPage() {
       <motion.header
         initial={{ y: -100 }}
         animate={{ y: 0 }}
-        className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-green-900/95 via-emerald-900/95 to-teal-900/95 backdrop-blur-lg border-b border-green-700/30"
+        className="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg border-b"
+        style={{
+          background: GRADIENTS.background.hero,
+          borderColor: `${COLORS.primary[700]}4D`,
+        }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            onClick={() => router.push('/')}
-            className="flex items-center gap-2 hover:opacity-80 transition"
-          >
-            <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-lg flex items-center justify-center">
-              <Home className="w-6 h-6 text-white" />
-            </div>
-            <span className="font-bold text-xl text-white">Earth Design</span>
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => router.back()}
-            className="flex items-center gap-2 px-4 py-2 text-white hover:text-green-300 font-medium transition"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back
-          </motion.button>
+          <Link href="/">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <div
+                    className="relative w-22 h-12 flex items-center justify-center"
+                    style={{ borderColor: `${COLORS.primary[400]}60` }}
+                  >
+                    <img
+                      src="/logo.png"
+                      alt="earth design Logo"
+                      className="w-full h-60 object-contain p-1"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+            </motion.div>
+          </Link>
+
+          {/*lets make the title of the property at the top bar*/}
+          <div className="flex items-center gap-2">
+            <h1 className="text-white font-bold text-lg">{property.title}</h1>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Link href="/properties">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 text-white font-medium transition rounded-xl"
+                style={{ background: "rgba(255,255,255,0.1)" }}
+              >
+                <Building2 className="w-4 h-4" />
+                <span className="hidden sm:inline">All Properties</span>
+              </motion.button>
+            </Link>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.back()}
+              className="flex items-center gap-2 px-4 py-2 text-white font-medium transition"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="hidden sm:inline">Back</span>
+            </motion.button>
+          </div>
         </div>
       </motion.header>
 
@@ -574,13 +527,17 @@ export default function PropertyDetailPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl overflow-hidden border border-white/20"
+                className="rounded-3xl shadow-2xl overflow-hidden border"
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  borderColor: "rgba(255,255,255,0.2)",
+                }}
               >
                 <div className="relative aspect-video">
                   {showVideo && hasVideo ? (
                     isPlayingVideo ? (
                       <iframe
-                        src={getYouTubeEmbedUrl(property.video!)}
+                        src={getYouTubeEmbedUrl(property.videoUrl!)}
                         className="w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -589,12 +546,11 @@ export default function PropertyDetailPage() {
                     ) : (
                       <div className="relative w-full h-full">
                         <img
-                          src={getVideoThumbnail(property.video!)}
+                          src={getVideoThumbnail(property.videoUrl!, property.type)}
                           alt="Video thumbnail"
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = getPlaceholderImage(property.type);
+                            (e.target as HTMLImageElement).src = getPlaceholderImage(property.type);
                           }}
                         />
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -615,25 +571,26 @@ export default function PropertyDetailPage() {
                       alt={property.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = getPlaceholderImage(property.type);
+                        (e.target as HTMLImageElement).src = getPlaceholderImage(property.type);
                       }}
                     />
                   )}
+
+                  {/* Action buttons */}
                   <div className="absolute top-4 right-4 flex gap-2">
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
                     >
-                      <Heart className="w-5 h-5 text-gray-800" />
+                      <Heart className="w-5 h-5" style={{ color: COLORS.gray[800] }} />
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
                     >
-                      <Share2 className="w-5 h-5 text-gray-800" />
+                      <Share2 className="w-5 h-5" style={{ color: COLORS.gray[800] }} />
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.1 }}
@@ -641,28 +598,53 @@ export default function PropertyDetailPage() {
                       onClick={() => setShowLightbox(true)}
                       className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
                     >
-                      <Maximize2 className="w-5 h-5 text-gray-800" />
+                      <Maximize2 className="w-5 h-5" style={{ color: COLORS.gray[800] }} />
                     </motion.button>
                   </div>
+
+                  {/* Navigation arrows */}
+                  {!showVideo && images.length > 1 && (
+                    <>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        onClick={prevImage}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                      >
+                        <ChevronLeft className="w-6 h-6" />
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        onClick={nextImage}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                      >
+                        <ChevronRight className="w-6 h-6" />
+                      </motion.button>
+                    </>
+                  )}
                 </div>
-                <div className="p-4 flex gap-2 overflow-x-auto scrollbar-hide">
-                  {property.images.map((img, idx) => (
+
+                {/* Thumbnails */}
+                <div className="p-4 flex gap-2 overflow-x-auto">
+                  {images.map((img, idx) => (
                     <motion.button
                       key={idx}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => selectImage(idx)}
-                      className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition ${
-                        !showVideo && currentImageIndex === idx ? "border-green-500" : "border-white/20"
-                      }`}
+                      className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition"
+                      style={{
+                        borderColor:
+                          !showVideo && currentImageIndex === idx
+                            ? COLORS.primary[500]
+                            : "rgba(255,255,255,0.2)",
+                      }}
                     >
-                      <img 
-                        src={img} 
-                        alt="" 
+                      <img
+                        src={img}
+                        alt=""
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = getPlaceholderImage(property.type);
+                          (e.target as HTMLImageElement).src = getPlaceholderImage(property.type);
                           handleImageError(idx);
                         }}
                       />
@@ -672,18 +654,21 @@ export default function PropertyDetailPage() {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={handleShowVideo}
-                      className={`relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition ${
-                        showVideo ? "border-red-500" : "border-white/20"
-                      }`}
+                      onClick={() => {
+                        setShowVideo(true);
+                        setIsPlayingVideo(false);
+                      }}
+                      className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition"
+                      style={{
+                        borderColor: showVideo ? "#ef4444" : "rgba(255,255,255,0.2)",
+                      }}
                     >
                       <img
-                        src={getVideoThumbnail(property.video!)}
-                        alt="Video thumbnail"
+                        src={getVideoThumbnail(property.videoUrl!, property.type)}
+                        alt="Video"
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = getPlaceholderImage(property.type);
+                          (e.target as HTMLImageElement).src = getPlaceholderImage(property.type);
                         }}
                       />
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -699,181 +684,299 @@ export default function PropertyDetailPage() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20"
+              transition={{ delay: 0.1 }}
+              className="rounded-3xl shadow-2xl p-6 border"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                borderColor: "rgba(255,255,255,0.2)",
+              }}
             >
-              <div className="flex items-center gap-2 mb-4">
-                <span className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-full text-sm font-medium">
+              {/* Badges */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                <span
+                  className={`px-3 py-1 bg-gradient-to-r ${getStatusBgColor(property)} text-white rounded-full text-sm font-medium`}
+                >
+                  {getPropertyStatus(property)}
+                </span>
+                <span
+                  className="px-3 py-1 rounded-full text-sm font-medium text-white"
+                  style={{ background: getSourceColor(property.source) }}
+                >
+                  {getSourceLabel(property.source)}
+                </span>
+                <span
+                  className="px-3 py-1 rounded-full text-sm font-medium"
+                  style={{
+                    background: `${COLORS.primary[500]}33`,
+                    color: COLORS.primary[300],
+                  }}
+                >
                   {property.type}
                 </span>
-                <span className="px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full text-sm font-medium">
-                  {property.status}
-                </span>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{property.title}</h1>
-              <div className="flex items-center gap-2 text-gray-300 mb-6">
-                <MapPin className="w-5 h-5 text-green-400" />
-                <span>{property.location}</span>
-              </div>
-              
-              <div className="flex items-baseline gap-8 py-6 border-y border-white/20">
-                <div>
-                  <p className="text-3xl font-bold text-green-400">{property.price}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Square className="w-5 h-5 text-gray-400" />
-                  <div>
-                    <p className="text-2xl font-bold text-white">{property.surface}</p>
-                    <p className="text-sm text-gray-400">Surface</p>
-                  </div>
-                </div>
+                {property.featured && (
+                  <span
+                    className="px-3 py-1 rounded-full text-sm font-medium"
+                    style={{ background: COLORS.yellow[500], color: COLORS.gray[900] }}
+                  >
+                    ⭐ Featured
+                  </span>
+                )}
               </div>
 
+              {/* Title */}
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{property.title}</h1>
+
+              {/* Location */}
+              <div className="flex items-center gap-2 mb-6" style={{ color: COLORS.gray[300] }}>
+                <MapPin className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                <span>{getPropertyLocation(property)}</span>
+              </div>
+
+              {/* Price and Surface */}
+              <div
+                className="flex flex-wrap items-baseline gap-8 py-6 border-y"
+                style={{ borderColor: "rgba(255,255,255,0.2)" }}
+              >
+                <div>
+                  <p className="text-3xl font-bold" style={{ color: COLORS.primary[400] }}>
+                    {formatPrice(property.price, property.currency)}
+                  </p>
+                  {property.forRent && property.rentPrice && (
+                    <p className="text-sm" style={{ color: COLORS.gray[400] }}>
+                      Rent: {formatPrice(property.rentPrice, property.currency)}/month
+                    </p>
+                  )}
+                  {property.pricePerSqM && (
+                    <p className="text-sm" style={{ color: COLORS.gray[400] }}>
+                      {formatPrice(property.pricePerSqM, property.currency)}/m²
+                    </p>
+                  )}
+                </div>
+
+                {property.surface && (
+                  <div className="flex items-center gap-2">
+                    <Square className="w-5 h-5" style={{ color: COLORS.gray[400] }} />
+                    <div>
+                      <p className="text-2xl font-bold text-white">{formatArea(property.surface)}</p>
+                      <p className="text-sm" style={{ color: COLORS.gray[400] }}>
+                        Surface
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {property.nbreLots && (
+                  <div className="flex items-center gap-2">
+                    <Grid3X3 className="w-5 h-5" style={{ color: COLORS.gray[400] }} />
+                    <div>
+                      <p className="text-2xl font-bold text-white">{property.nbreLots}</p>
+                      <p className="text-sm" style={{ color: COLORS.gray[400] }}>
+                        Lots
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {property.bedrooms && property.bedrooms > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Bed className="w-5 h-5" style={{ color: COLORS.gray[400] }} />
+                    <div>
+                      <p className="text-2xl font-bold text-white">{property.bedrooms}</p>
+                      <p className="text-sm" style={{ color: COLORS.gray[400] }}>
+                        Bedrooms
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {property.bathrooms && property.bathrooms > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Bath className="w-5 h-5" style={{ color: COLORS.gray[400] }} />
+                    <div>
+                      <p className="text-2xl font-bold text-white">{property.bathrooms}</p>
+                      <p className="text-sm" style={{ color: COLORS.gray[400] }}>
+                        Bathrooms
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
               <div className="mt-6">
                 <h2 className="text-xl font-bold text-white mb-4">Description</h2>
-                <p className="text-gray-300 leading-relaxed">{property.description}</p>
+                <p className="leading-relaxed" style={{ color: COLORS.gray[300] }}>
+                  {property.description || property.shortDescription || "No description available."}
+                </p>
               </div>
+
+              {/* Amenities */}
+              {(property.hasParking || property.hasGenerator) && (
+                <div className="mt-6">
+                  <h2 className="text-xl font-bold text-white mb-4">Amenities</h2>
+                  <div className="flex flex-wrap gap-3">
+                    {property.hasParking && (
+                      <span
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
+                        style={{ background: "rgba(255,255,255,0.1)" }}
+                      >
+                        <Car className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                        Parking
+                      </span>
+                    )}
+                    {property.hasGenerator && (
+                      <span
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
+                        style={{ background: "rgba(255,255,255,0.1)" }}
+                      >
+                        <Zap className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                        Generator
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </motion.div>
 
             {/* Property Details */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20"
+              transition={{ delay: 0.2 }}
+              className="rounded-3xl shadow-2xl p-6 border"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                borderColor: "rgba(255,255,255,0.2)",
+              }}
             >
               <h2 className="text-xl font-bold text-white mb-6">Property Details</h2>
               {renderPropertyFields()}
             </motion.div>
 
-            {/* Location Map */}
+            {/* Location */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20"
+              transition={{ delay: 0.3 }}
+              className="rounded-3xl shadow-2xl p-6 border"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                borderColor: "rgba(255,255,255,0.2)",
+              }}
             >
               <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                <MapPinned className="w-6 h-6 text-green-400" />
+                <MapPinned className="w-6 h-6" style={{ color: COLORS.primary[400] }} />
                 Location
               </h2>
-              <div className="aspect-video bg-gradient-to-br from-green-900/20 to-emerald-900/20 rounded-2xl flex items-center justify-center border border-white/10">
+              <div
+                className="aspect-video rounded-2xl flex items-center justify-center border"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  borderColor: "rgba(255,255,255,0.1)",
+                }}
+              >
                 <div className="text-center">
-                  <MapPinned className="w-16 h-16 text-green-400 mx-auto mb-3" />
+                  <MapPinned className="w-16 h-16 mx-auto mb-3" style={{ color: COLORS.primary[500] }} />
                   <p className="text-white font-semibold text-lg">Interactive Map</p>
-                  <p className="text-gray-400 mt-1">Coming soon</p>
-                  <p className="text-sm text-green-400 mt-2">{property.location}</p>
+                  <p className="mt-1" style={{ color: COLORS.gray[400] }}>
+                    Coming soon
+                  </p>
+                  <p className="text-sm mt-2" style={{ color: COLORS.primary[400] }}>
+                    {getPropertyLocation(property)}
+                  </p>
                 </div>
-              </div>
-            </motion.div>
-
-            {/* Investment Potential */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20"
-            >
-              <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                <TrendingUp className="w-6 h-6 text-green-400" />
-                Investment Potential
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="p-4 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl border border-green-500/30"
-                >
-                  <TrendingUp className="w-8 h-8 text-green-400 mb-2" />
-                  <p className="text-2xl font-bold text-white mb-1">High</p>
-                  <p className="text-sm text-gray-300">Growth Potential</p>
-                </motion.div>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="p-4 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-xl border border-blue-500/30"
-                >
-                  <ShieldCheck className="w-8 h-8 text-blue-400 mb-2" />
-                  <p className="text-2xl font-bold text-white mb-1">Secure</p>
-                  <p className="text-sm text-gray-300">Investment</p>
-                </motion.div>
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="p-4 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30"
-                >
-                  <Award className="w-8 h-8 text-purple-400 mb-2" />
-                  <p className="text-2xl font-bold text-white mb-1">Premium</p>
-                  <p className="text-sm text-gray-300">Location</p>
-                </motion.div>
               </div>
             </motion.div>
           </div>
 
-          {/* Right Column - Contact & Related */}
+          {/* Right Column - Contact */}
           <div className="space-y-6">
             {/* Contact Card */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-gradient-to-br from-green-600 to-emerald-700 rounded-3xl shadow-2xl p-6 text-white sticky top-24 border border-green-500/30"
+              className="rounded-3xl shadow-2xl p-6 text-white sticky top-24 border"
+              style={{
+                background: GRADIENTS.button.primary,
+                borderColor: `${COLORS.primary[500]}50`,
+              }}
             >
               <h3 className="text-xl font-bold mb-6">Contact Agent</h3>
-              <div className="flex items-center gap-3 mb-6 p-4 bg-white/10 rounded-xl backdrop-blur">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+              <div
+                className="flex items-center gap-3 mb-6 p-4 rounded-xl backdrop-blur"
+                style={{ background: "rgba(255,255,255,0.1)" }}
+              >
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center"
+                  style={{ background: "rgba(255,255,255,0.2)" }}
+                >
                   <User className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="font-semibold">{property.owner}</p>
+                  <p className="font-semibold">Mr. Cletus</p>
                   <p className="text-sm opacity-90">Property Agent</p>
                 </div>
               </div>
+
               <div className="space-y-3 mb-6">
                 <motion.a
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  href={`tel:${property.contactPhone}`}
-                  className="flex items-center gap-3 p-3 bg-white/10 rounded-xl hover:bg-white/20 transition"
+                  href="tel:+237677212279"
+                  className="flex items-center gap-3 p-3 rounded-xl transition"
+                  style={{ background: "rgba(255,255,255,0.1)" }}
                 >
                   <Phone className="w-5 h-5" />
-                  <span className="text-sm">{property.contactPhone}</span>
+                  <span className="text-sm">+237 677 212 279</span>
                 </motion.a>
                 <motion.a
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  href={`mailto:${property.contactEmail}`}
-                  className="flex items-center gap-3 p-3 bg-white/10 rounded-xl hover:bg-white/20 transition"
+                  href="mailto:realeastate@earthdesignengineeringltd.com"
+                  className="flex items-center gap-3 p-3 rounded-xl transition"
+                  style={{ background: "rgba(255,255,255,0.1)" }}
                 >
                   <Mail className="w-5 h-5" />
-                  <span className="text-sm">{property.contactEmail}</span>
+                  <span className="text-sm">realeastate@earthdesignengineeringltd.com</span>
                 </motion.a>
               </div>
+
               <div className="space-y-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full py-3 bg-white text-green-700 font-semibold rounded-xl hover:bg-gray-100 transition"
+                  className="w-full py-3 bg-white font-semibold rounded-xl transition"
+                  style={{ color: COLORS.primary[700] }}
                 >
                   Request Info
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full py-3 bg-white/10 border-2 border-white/30 font-semibold rounded-xl hover:bg-white/20 transition"
+                  className="w-full py-3 border-2 font-semibold rounded-xl transition"
+                  style={{ borderColor: "rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.1)" }}
                 >
                   Schedule Visit
                 </motion.button>
               </div>
-              <div className="mt-6 pt-6 border-t border-white/20 text-sm space-y-2">
+
+              {/* Property ID */}
+              <div
+                className="mt-6 pt-6 border-t text-sm space-y-2"
+                style={{ borderColor: "rgba(255,255,255,0.2)" }}
+              >
                 <div className="flex justify-between">
                   <span className="opacity-75">Property ID</span>
-                  <span className="font-semibold">{property.table}-{property.id}</span>
+                  <span className="font-semibold">{property.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="opacity-75">Source</span>
+                  <span className="font-semibold">{getSourceLabel(property.source)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="opacity-75">Type</span>
                   <span className="font-semibold">{property.type}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="opacity-75">Status</span>
-                  <span className="font-semibold">{property.status}</span>
                 </div>
               </div>
             </motion.div>
@@ -883,29 +986,44 @@ export default function PropertyDetailPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-6 border border-white/20"
+              className="rounded-3xl shadow-2xl p-6 border"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                borderColor: "rgba(255,255,255,0.2)",
+              }}
             >
               <h3 className="text-xl font-bold text-white mb-4">Quick Stats</h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                <div
+                  className="flex items-center justify-between p-3 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.05)" }}
+                >
                   <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-green-400" />
-                    <span className="text-gray-300">Listed</span>
+                    <Clock className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                    <span style={{ color: COLORS.gray[300] }}>Listed</span>
                   </div>
-                  <span className="font-semibold text-white">2 days ago</span>
+                  <span className="font-semibold text-white">
+                    {new Date(property.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                <div
+                  className="flex items-center justify-between p-3 rounded-xl"
+                  style={{ background: "rgba(255,255,255,0.05)" }}
+                >
                   <div className="flex items-center gap-2">
-                    <Camera className="w-5 h-5 text-green-400" />
-                    <span className="text-gray-300">Photos</span>
+                    <Camera className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                    <span style={{ color: COLORS.gray[300] }}>Photos</span>
                   </div>
-                  <span className="font-semibold text-white">{property.images.length}</span>
+                  <span className="font-semibold text-white">{images.length}</span>
                 </div>
                 {hasVideo && (
-                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                  <div
+                    className="flex items-center justify-between p-3 rounded-xl"
+                    style={{ background: "rgba(255,255,255,0.05)" }}
+                  >
                     <div className="flex items-center gap-2">
-                      <Video className="w-5 h-5 text-green-400" />
-                      <span className="text-gray-300">Video Tour</span>
+                      <Video className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                      <span style={{ color: COLORS.gray[300] }}>Video Tour</span>
                     </div>
                     <span className="font-semibold text-white">Available</span>
                   </div>
@@ -926,55 +1044,93 @@ export default function PropertyDetailPage() {
           >
             <div className="text-center mb-12">
               <h2 className="text-4xl font-extrabold text-white mb-4">Similar Properties</h2>
-              <p className="text-xl text-gray-300">You might also be interested in these</p>
+              <p className="text-xl" style={{ color: COLORS.gray[300] }}>
+                You might also be interested in these
+              </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {relatedProperties.map((related, index) => (
-                <motion.div
-                  key={related.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -8, scale: 1.02 }}
-                  onClick={() => router.push(`/property/${related.table}-${related.id}`)}
-                  className="group bg-white/10 backdrop-blur-lg rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-500 border border-white/20 hover:border-green-500/50 cursor-pointer"
-                >
-                  <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={related.images[0] || getPlaceholderImage(related.type)}
-                      alt={related.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = getPlaceholderImage(related.type);
+              {relatedProperties.map((related, index) => {
+                const relatedImages = getPropertyImages(related);
+                return (
+                  <motion.div
+                    key={related.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ y: -8, scale: 1.02 }}
+                  >
+                    <Link
+                      href={`/property/${related.id}`}
+                      className="group block rounded-3xl shadow-xl overflow-hidden transition-all duration-500 border cursor-pointer"
+                      style={{
+                        background: "rgba(255,255,255,0.1)",
+                        borderColor: "rgba(255,255,255,0.2)",
                       }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    <div className="absolute top-3 right-3">
-                      <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                        {related.status}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <span className="inline-block px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs font-bold mb-2">
-                      {related.type}
-                    </span>
-                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-green-400 transition">
-                      {related.title}
-                    </h3>
-                    <p className="text-gray-300 flex items-center gap-2 mb-3 text-sm">
-                      <MapPin className="w-4 h-4 text-green-400" />
-                      <span className="truncate">{related.location}</span>
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-xl font-bold text-green-400">{related.surface}</p>
-                      <span className="text-gray-400 text-sm">View Details →</span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                    >
+                      <div className="relative h-48 overflow-hidden">
+                        <img
+                          src={relatedImages[0] || getPlaceholderImage(related.type)}
+                          alt={related.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = getPlaceholderImage(related.type);
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute top-3 left-3 flex gap-2">
+                          <span
+                            className={`bg-gradient-to-r ${getStatusBgColor(related)} text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg`}
+                          >
+                            {getPropertyStatus(related)}
+                          </span>
+                        </div>
+                        <div className="absolute top-3 right-3">
+                          <span
+                            className="px-2 py-1 rounded-full text-xs font-bold text-white"
+                            style={{ background: getSourceColor(related.source) }}
+                          >
+                            {getSourceLabel(related.source)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <span
+                          className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-2"
+                          style={{
+                            background: `${COLORS.primary[500]}33`,
+                            color: COLORS.primary[300],
+                          }}
+                        >
+                          {related.type}
+                        </span>
+                        <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-green-400 transition">
+                          {related.title}
+                        </h3>
+                        <p
+                          className="flex items-center gap-2 mb-3 text-sm"
+                          style={{ color: COLORS.gray[300] }}
+                        >
+                          <MapPin className="w-4 h-4" style={{ color: COLORS.primary[400] }} />
+                          <span className="truncate">{getPropertyLocation(related)}</span>
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xl font-bold" style={{ color: COLORS.primary[400] }}>
+                            {related.price > 0
+                              ? formatPriceCompact(related.price, related.currency)
+                              : "Contact"}
+                          </p>
+                          {related.surface && (
+                            <span className="text-sm" style={{ color: COLORS.gray[400] }}>
+                              {formatArea(related.surface)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.div>
         )}

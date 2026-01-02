@@ -1,37 +1,106 @@
-// File 3: app/page.tsx (Complete)
+// File: app/page.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import {
-  Search, Filter, Heart, Share2, Bed, Square, MapPin,
+  Search, Filter, Heart, Share2, Bed, Bath, Square, MapPin,
   Grid3x3, List, ChevronDown, X, Sparkles, Award,
-  ShieldCheck, ArrowRight, Key,
-  Database,
+  ShieldCheck, ArrowRight, Key, Home, Building2, TreePine,
+  Car, Zap,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { COLORS, GRADIENTS, SHADOWS } from '@/lib/constants/colors';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useProperties, searchProperties, calculateStats, Property } from '@/lib/hooks/useProperties';
+import {
+  useProperties,
+  searchProperties,
+  filterProperties,
+  sortProperties,
+  calculateStats,
+  formatPrice,
+  formatPriceCompact,
+  getPropertyImages,
+  getPropertyLocation,
+  formatArea,
+  getFeaturedProperties,
+  Property,
+  PropertyType,
+  PropertyTypes,
+  PropertyFilters,
+  SortOption,
+} from '@/lib/hooks/useProperties';
+
+// Property type icons
+const propertyTypeIcons: Record<PropertyType, React.ComponentType<any>> = {
+  Apartment: Building2,
+  House: Home,
+  Villa: Home,
+  Office: Building2,
+  Commercial: Building2,
+  Land: TreePine,
+  Building: Building2,
+  Studio: Home,
+  Duplex: Home,
+};
+
+// Placeholder images by type
+const getPlaceholderImage = (type: PropertyType): string => {
+  const map: Record<PropertyType, string> = {
+    Villa: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&h=800&fit=crop&q=80',
+    Apartment: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&h=800&fit=crop&q=80',
+    Land: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&h=800&fit=crop&q=80',
+    Commercial: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=800&fit=crop&q=80',
+    Building: 'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=1200&h=800&fit=crop&q=80',
+    House: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=1200&h=800&fit=crop&q=80',
+    Office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&h=800&fit=crop&q=80',
+    Studio: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200&h=800&fit=crop&q=80',
+    Duplex: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&h=800&fit=crop&q=80',
+  };
+  return map[type] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200&h=800&fit=crop&q=80';
+};
+
+// Get property status label
+const getPropertyStatus = (property: Property): string => {
+  if (property.forSale && property.forRent) return 'Sale / Rent';
+  if (property.forSale) return 'For Sale';
+  if (property.forRent) return 'For Rent';
+  return 'Available';
+};
+
+// Get status color
+const getStatusColor = (property: Property): string => {
+  if (property.forSale && property.forRent) return COLORS.primary[500];
+  if (property.forSale) return '#22c55e'; // green
+  if (property.forRent) return '#3b82f6'; // blue
+  return COLORS.gray[500];
+};
+
+// Get first available image
+const getPropertyImage = (property: Property): string => {
+  const images = getPropertyImages(property);
+  return images.length > 0 ? images[0] : getPlaceholderImage(property.type);
+};
 
 export default function HomePage() {
-  const { properties, loading } = useProperties();
+  const { properties, loading, error } = useProperties();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedType, setSelectedType] = useState<PropertyType | 'All'>('All');
+  const [selectedStatus, setSelectedStatus] = useState<'All' | 'For Sale' | 'For Rent'>('All');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
-  const [searchResults, setSearchResults] = useState<Property[]>([]);
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [particlePositions, setParticlePositions] = useState<Array<{left: string, top: string}>>([]);
+  const [particlePositions, setParticlePositions] = useState<Array<{ left: string; top: string }>>([]);
   const router = useRouter();
 
   const modalSearchInputRef = useRef<HTMLInputElement>(null);
   const heroIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Generate particle positions on mount
   useEffect(() => {
     setParticlePositions(
       Array.from({ length: 20 }, () => ({
@@ -41,14 +110,7 @@ export default function HomePage() {
     );
   }, []);
 
-  const handleViewAllProperties = () => {
-    router.push('/properties');
-  };
-
-  const handleViewProperty = (property: Property) => {
-    router.push(`/property/${property.table}-${property.id}`);
-  };
-
+  // Mouse tracking for 3D effect
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
   const rotateX = useTransform(mouseY, [-300, 300], [10, -10]);
@@ -70,9 +132,52 @@ export default function HomePage() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [mouseX, mouseY]);
 
-  const featuredProperties = properties.slice(0, 10);
-  const stats = calculateStats(properties);
+  // Calculate stats from properties
+  const stats = useMemo(() => calculateStats(properties), [properties]);
 
+  // Get featured properties for hero carousel
+  const featuredProperties = useMemo(
+    () => getFeaturedProperties(properties, 10),
+    [properties]
+  );
+
+  // Filter and sort properties
+  const filteredProperties = useMemo(() => {
+    // Build filters object
+    const filters: PropertyFilters = {
+      published: true,
+    };
+
+    if (selectedType !== 'All') {
+      filters.type = selectedType;
+    }
+
+    if (selectedStatus === 'For Sale') {
+      filters.forSale = true;
+    } else if (selectedStatus === 'For Rent') {
+      filters.forRent = true;
+    }
+
+    // Apply search, filter, and sort
+    let result = properties;
+
+    if (searchQuery.trim()) {
+      result = searchProperties(result, searchQuery);
+    }
+
+    result = filterProperties(result, filters);
+    result = sortProperties(result, sortBy);
+
+    return result;
+  }, [properties, searchQuery, selectedType, selectedStatus, sortBy]);
+
+  // Search results for modal
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return searchProperties(properties, searchQuery).slice(0, 10);
+  }, [properties, searchQuery]);
+
+  // Hero carousel auto-rotation
   useEffect(() => {
     if (featuredProperties.length === 0) return;
     heroIntervalRef.current = setInterval(() => {
@@ -85,43 +190,28 @@ export default function HomePage() {
     };
   }, [featuredProperties.length]);
 
-  useEffect(() => {
-    const results = searchProperties(properties, searchQuery);
-    setSearchResults(results.slice(0, 10));
-  }, [searchQuery, properties]);
-
+  // Focus search input when modal opens
   useEffect(() => {
     if (showSearchModal && modalSearchInputRef.current) {
       setTimeout(() => modalSearchInputRef.current?.focus(), 100);
     }
   }, [showSearchModal]);
 
-  const filteredProperties = properties.filter((p) => {
-    const matchesSearch =
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.location.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = selectedType === 'All' || p.type === selectedType;
-    const matchesStatus = selectedStatus === 'All' || p.status === selectedStatus;
-    return matchesSearch && matchesType && matchesStatus;
-  });
+  // Navigation handlers
+  const handleViewAllProperties = () => {
+    router.push('/properties');
+  };
 
-  const quickTypes = ['All', 'Villa', 'Apartment', 'Land', 'Commercial'];
-  const statuses = ['All', 'For Sale', 'For Rent', 'Sold'];
-
-  const getPlaceholderImage = (type: string) => {
-    const map: Record<string, string> = {
-      Villa: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&h=800&fit=crop&q=80',
-      Apartment: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200&h=800&fit=crop&q=80',
-      Land: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&h=800&fit=crop&q=80',
-      Commercial: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&h=800&fit=crop&q=80',
-      Lotissement: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=1200&h=800&fit=crop&q=80',
-      Building: 'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=1200&h=800&fit=crop&q=80',
-    };
-    return map[type] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200&h=800&fit=crop&q=80';
+  const handleViewProperty = (property: Property) => {
+    router.push(`/property/${property.id}`);
   };
 
   const currentHeroProperty = featuredProperties[currentHeroIndex];
 
+  // Quick filter types
+  const quickTypes: (PropertyType | 'All')[] = ['All', 'Villa', 'Apartment', 'Land', 'Commercial', 'House'];
+
+  // Features section data
   const features = [
     {
       icon: MapPin,
@@ -153,17 +243,14 @@ export default function HomePage() {
     <div className="relative min-h-screen w-full overflow-hidden">
       {/* Animated Grid Background */}
       <div className="fixed inset-0">
-        <div 
+        <div
           className="absolute inset-0"
           style={{
             backgroundImage: `linear-gradient(to right, ${COLORS.gray[600]}2e 1px, transparent 1px), linear-gradient(to bottom, ${COLORS.gray[600]}2e 1px, transparent 1px)`,
             backgroundSize: '64px 64px',
           }}
         />
-        <div 
-          className="absolute inset-0"
-          style={{ background: GRADIENTS.background.hero }}
-        />
+        <div className="absolute inset-0" style={{ background: GRADIENTS.background.hero }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
       </div>
 
@@ -221,7 +308,7 @@ export default function HomePage() {
             className="relative w-full max-w-4xl mx-4 rounded-3xl shadow-2xl overflow-hidden"
             style={{ background: COLORS.white }}
           >
-            <div 
+            <div
               className="p-6 border-b"
               style={{
                 background: `linear-gradient(to right, ${COLORS.primary[50]}, ${COLORS.white})`,
@@ -229,7 +316,7 @@ export default function HomePage() {
               }}
             >
               <div className="relative">
-                <Search 
+                <Search
                   className="absolute left-5 top-1/2 -translate-y-1/2 w-7 h-7"
                   style={{ color: COLORS.primary[600] }}
                 />
@@ -275,15 +362,18 @@ export default function HomePage() {
               ) : (
                 searchResults.map((property, idx) => (
                   <motion.div
-                    key={idx}
+                    key={property.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
                     className="p-6 flex items-center gap-6 cursor-pointer border-b transition hover:bg-green-50"
-                    onClick={() => handleViewProperty(property)}
+                    onClick={() => {
+                      setShowSearchModal(false);
+                      handleViewProperty(property);
+                    }}
                   >
                     <img
-                      src={property.images.length > 0 ? property.images[0] : getPlaceholderImage(property.type)}
+                      src={getPropertyImage(property)}
                       className="w-24 h-24 rounded-xl object-cover shadow-lg"
                       alt={property.title}
                       onError={(e) => {
@@ -292,7 +382,7 @@ export default function HomePage() {
                       }}
                     />
                     <div className="flex-1">
-                      <span 
+                      <span
                         className="px-3 py-1 rounded-full text-xs font-bold mb-2 inline-block"
                         style={{
                           background: `${COLORS.primary[500]}1A`,
@@ -306,15 +396,15 @@ export default function HomePage() {
                       </h4>
                       <p className="flex items-center gap-2 text-sm" style={{ color: COLORS.gray[600] }}>
                         <MapPin className="w-4 h-4" style={{ color: COLORS.primary[600] }} />
-                        {property.location}
+                        {getPropertyLocation(property)}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-lg" style={{ color: COLORS.primary[600] }}>
-                        {property.price}
+                        {formatPrice(property.price, property.currency)}
                       </p>
                       <p className="text-sm" style={{ color: COLORS.gray[500] }}>
-                        {property.surface}
+                        {formatArea(property.surface)}
                       </p>
                     </div>
                   </motion.div>
@@ -326,10 +416,10 @@ export default function HomePage() {
       )}
 
       {/* Header Component */}
-      <Header stats={stats}/>
+      <Header stats={stats} onSearchClick={() => setShowSearchModal(true)} />
 
       {/* Hero Section */}
-      <section 
+      <section
         className="relative z-20 text-white pt-36 sm:pt-40 pb-12 sm:pb-24"
         style={{ background: GRADIENTS.background.hero }}
       >
@@ -346,20 +436,24 @@ export default function HomePage() {
                 <div className="aspect-[4/3] bg-white/10 rounded-2xl sm:rounded-3xl animate-pulse flex items-center justify-center">
                   <div className="inline-block animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-4 border-white border-t-transparent"></div>
                 </div>
+              ) : error ? (
+                <div className="aspect-[4/3] bg-white/10 rounded-2xl sm:rounded-3xl flex items-center justify-center">
+                  <div className="text-center p-8">
+                    <p className="text-xl text-red-400 mb-2">Failed to load properties</p>
+                    <p className="text-sm opacity-70">{error}</p>
+                  </div>
+                </div>
               ) : currentHeroProperty ? (
                 <motion.div
                   key={currentHeroIndex}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5 }}
-                  className="group relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl"
+                  className="group relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl cursor-pointer"
+                  onClick={() => handleViewProperty(currentHeroProperty)}
                 >
                   <img
-                    src={
-                      currentHeroProperty.images.length > 0
-                        ? currentHeroProperty.images[0]
-                        : getPlaceholderImage(currentHeroProperty.type)
-                    }
+                    src={getPropertyImage(currentHeroProperty)}
                     alt={currentHeroProperty.title}
                     className="w-full aspect-[4/3] object-cover transition-transform duration-1000 group-hover:scale-105"
                     onError={(e) => {
@@ -392,7 +486,7 @@ export default function HomePage() {
                       className="flex items-center gap-2 text-sm sm:text-lg opacity-90 mb-3 sm:mb-4"
                     >
                       <MapPin className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" />
-                      <span className="truncate">{currentHeroProperty.location}</span>
+                      <span className="truncate">{getPropertyLocation(currentHeroProperty)}</span>
                     </motion.p>
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
@@ -400,29 +494,47 @@ export default function HomePage() {
                       transition={{ delay: 0.3 }}
                       className="flex items-center gap-4 sm:gap-6 text-sm sm:text-base"
                     >
-                      <span className="flex items-center gap-1 sm:gap-2">
-                        <Square className="w-4 h-4 sm:w-5 sm:h-5" /> {currentHeroProperty.surface}
-                      </span>
-                      {currentHeroProperty.bedrooms && (
+                     {currentHeroProperty.surface && (
+  <span className="flex items-center gap-1 sm:gap-2">
+    <Square className="w-4 h-4 sm:w-5 sm:h-5" />
+    {formatArea(currentHeroProperty.surface)}
+  </span>
+)}
+                      {currentHeroProperty.bedrooms && currentHeroProperty.bedrooms > 0 && (
                         <span className="flex items-center gap-1 sm:gap-2">
                           <Bed className="w-4 h-4 sm:w-5 sm:h-5" /> {currentHeroProperty.bedrooms} Beds
                         </span>
                       )}
+                      {currentHeroProperty.bathrooms && currentHeroProperty.bathrooms > 0 && (
+                        <span className="flex items-center gap-1 sm:gap-2">
+                          <Bath className="w-4 h-4 sm:w-5 sm:h-5" /> {currentHeroProperty.bathrooms} Baths
+                        </span>
+                      )}
                     </motion.div>
                   </div>
-                  <div className="absolute top-4 sm:top-6 right-4 sm:right-6">
-                    <span 
+                  <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex flex-col gap-2">
+                    <span
                       className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl"
-                      style={{ background: GRADIENTS.button.primary }}
+                      style={{ background: getStatusColor(currentHeroProperty) }}
                     >
-                      {currentHeroProperty.status}
+                      {getPropertyStatus(currentHeroProperty)}
+                    </span>
+                    <span
+                      className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl text-center"
+                      style={{ background: 'rgba(0,0,0,0.6)' }}
+                    >
+                      {formatPriceCompact(currentHeroProperty.price, currentHeroProperty.currency)}
                     </span>
                   </div>
+                  {/* Carousel dots */}
                   <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
                     {featuredProperties.slice(0, 10).map((_, idx) => (
                       <motion.button
                         key={idx}
-                        onClick={() => setCurrentHeroIndex(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentHeroIndex(idx);
+                        }}
                         whileHover={{ scale: 1.2 }}
                         className="w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all"
                         style={{
@@ -435,7 +547,11 @@ export default function HomePage() {
                 </motion.div>
               ) : (
                 <div className="aspect-[4/3] bg-white/10 rounded-2xl sm:rounded-3xl flex items-center justify-center">
-                  <p className="text-lg sm:text-2xl opacity-70">No featured properties yet</p>
+                  <div className="text-center">
+                    <Home className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg sm:text-2xl opacity-70">No featured properties yet</p>
+                    <p className="text-sm opacity-50 mt-2">Add properties and mark them as featured</p>
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -473,7 +589,7 @@ export default function HomePage() {
 
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold leading-tight mb-4 sm:mb-6">
                   Discover Your{' '}
-                  <span 
+                  <span
                     className="bg-clip-text text-transparent"
                     style={{
                       backgroundImage: GRADIENTS.text.primary,
@@ -484,8 +600,10 @@ export default function HomePage() {
                       ? 'Perfect Land'
                       : currentHeroProperty?.type === 'Building'
                       ? 'Dream Building'
-                      : currentHeroProperty?.type === 'Lotissement'
-                      ? 'Ideal Plot'
+                      : currentHeroProperty?.type === 'Commercial'
+                      ? 'Business Space'
+                      : currentHeroProperty?.type === 'Apartment'
+                      ? 'Ideal Apartment'
                       : 'Dream Home'}
                   </span>{' '}
                   in Cameroon
@@ -498,7 +616,8 @@ export default function HomePage() {
                 transition={{ delay: 0.6 }}
                 className="text-base sm:text-xl lg:text-2xl opacity-90 mb-6 sm:mb-10 max-w-2xl mx-auto lg:mx-0"
               >
-                {currentHeroProperty?.description ||
+                {currentHeroProperty?.shortDescription ||
+                  currentHeroProperty?.description?.substring(0, 150) ||
                   'Explore our exclusive collection of premium properties across Cameroon.'}
               </motion.p>
 
@@ -512,14 +631,15 @@ export default function HomePage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => currentHeroProperty && handleViewProperty(currentHeroProperty)}
-                  className="group px-6 sm:px-8 py-4 sm:py-5 text-white rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition transform"
-                  style={{ 
+                  disabled={!currentHeroProperty}
+                  className="group px-6 sm:px-8 py-4 sm:py-5 text-white rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition transform disabled:opacity-50"
+                  style={{
                     background: GRADIENTS.button.primary,
                     boxShadow: SHADOWS.glow,
                   }}
                 >
-                  <Database className="w-5 h-5 sm:w-6 sm:h-6 inline mr-2" />
-                  Property Details
+                  <Home className="w-5 h-5 sm:w-6 sm:h-6 inline mr-2" />
+                  View Property
                   <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 inline ml-2 group-hover:translate-x-1 transition-transform" />
                 </motion.button>
 
@@ -542,21 +662,27 @@ export default function HomePage() {
               >
                 <div className="text-center">
                   <p className="text-2xl sm:text-4xl font-bold" style={{ color: COLORS.primary[400] }}>
-                    {properties.length}+
+                    {stats.published}+
                   </p>
                   <p className="text-sm sm:text-base opacity-80">Properties</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl sm:text-4xl font-bold" style={{ color: COLORS.primary[400] }}>
-                    500+
+                    {stats.forSale}
                   </p>
-                  <p className="text-sm sm:text-base opacity-80">Happy Clients</p>
+                  <p className="text-sm sm:text-base opacity-80">For Sale</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl sm:text-4xl font-bold" style={{ color: COLORS.primary[400] }}>
+                    {stats.forRent}
+                  </p>
+                  <p className="text-sm sm:text-base opacity-80">For Rent</p>
                 </div>
                 <div className="text-center hidden sm:block">
                   <p className="text-2xl sm:text-4xl font-bold" style={{ color: COLORS.primary[400] }}>
-                    10+
+                    {stats.featured}
                   </p>
-                  <p className="text-sm sm:text-base opacity-80">Years Experience</p>
+                  <p className="text-sm sm:text-base opacity-80">Featured</p>
                 </div>
               </motion.div>
             </motion.div>
@@ -574,9 +700,7 @@ export default function HomePage() {
             transition={{ duration: 0.8 }}
             className="text-center mb-12"
           >
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
-              Why Choose Earth Design
-            </h2>
+            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">Why Choose Earth Design</h2>
             <p className="text-xl" style={{ color: COLORS.gray[300] }}>
               Experience excellence in every transaction
             </p>
@@ -673,10 +797,7 @@ export default function HomePage() {
               >
                 <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>Filters</span>
-                <motion.div
-                  animate={{ rotate: showFilters ? 180 : 0 }}
-                  transition={{ duration: 0.3 }}
-                >
+                <motion.div animate={{ rotate: showFilters ? 180 : 0 }} transition={{ duration: 0.3 }}>
                   <ChevronDown className="w-4 h-4" />
                 </motion.div>
               </motion.button>
@@ -695,9 +816,7 @@ export default function HomePage() {
                 borderColor: 'rgba(255, 255, 255, 0.2)',
               }}
             >
-              <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">
-                Refine Your Search
-              </h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-white mb-4 sm:mb-6">Refine Your Search</h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
                 <div>
                   <label className="block text-sm sm:text-base font-semibold mb-2" style={{ color: COLORS.gray[200] }}>
@@ -705,7 +824,7 @@ export default function HomePage() {
                   </label>
                   <select
                     value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
+                    onChange={(e) => setSelectedType(e.target.value as PropertyType | 'All')}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 rounded-xl focus:ring-2 text-sm sm:text-base"
                     style={{
                       borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -726,7 +845,7 @@ export default function HomePage() {
                   </label>
                   <select
                     value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    onChange={(e) => setSelectedStatus(e.target.value as 'All' | 'For Sale' | 'For Rent')}
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 rounded-xl focus:ring-2 text-sm sm:text-base"
                     style={{
                       borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -734,12 +853,50 @@ export default function HomePage() {
                       color: COLORS.white,
                     }}
                   >
-                    {statuses.map((s) => (
-                      <option key={s} value={s} style={{ background: COLORS.gray[900] }}>
-                        {s}
-                      </option>
-                    ))}
+                    <option value="All" style={{ background: COLORS.gray[900] }}>All</option>
+                    <option value="For Sale" style={{ background: COLORS.gray[900] }}>For Sale</option>
+                    <option value="For Rent" style={{ background: COLORS.gray[900] }}>For Rent</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm sm:text-base font-semibold mb-2" style={{ color: COLORS.gray[200] }}>
+                    Sort By
+                  </label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 rounded-xl focus:ring-2 text-sm sm:text-base"
+                    style={{
+                      borderColor: 'rgba(255, 255, 255, 0.2)',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      color: COLORS.white,
+                    }}
+                  >
+                    <option value="newest" style={{ background: COLORS.gray[900] }}>Newest First</option>
+                    <option value="oldest" style={{ background: COLORS.gray[900] }}>Oldest First</option>
+                    <option value="price-asc" style={{ background: COLORS.gray[900] }}>Price: Low to High</option>
+                    <option value="price-desc" style={{ background: COLORS.gray[900] }}>Price: High to Low</option>
+                    <option value="bedrooms-desc" style={{ background: COLORS.gray[900] }}>Most Bedrooms</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setSelectedType('All');
+                      setSelectedStatus('All');
+                      setSortBy('newest');
+                      setSearchQuery('');
+                    }}
+                    className="w-full px-4 py-2.5 sm:py-3 rounded-xl font-semibold transition text-sm sm:text-base"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: COLORS.white,
+                    }}
+                  >
+                    Clear Filters
+                  </motion.button>
                 </div>
               </div>
             </motion.div>
@@ -748,7 +905,7 @@ export default function HomePage() {
           {/* Properties Grid */}
           {loading ? (
             <div className="text-center py-16 sm:py-24">
-              <div 
+              <div
                 className="inline-block animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-4 border-t-transparent"
                 style={{ borderColor: COLORS.primary[600], borderTopColor: 'transparent' }}
               />
@@ -756,20 +913,25 @@ export default function HomePage() {
                 Loading properties...
               </p>
             </div>
+          ) : error ? (
+            <div className="text-center py-16 sm:py-24">
+              <p className="text-xl sm:text-2xl font-semibold text-red-400">{error}</p>
+            </div>
           ) : filteredProperties.length === 0 ? (
             <div className="text-center py-16 sm:py-24">
+              <Home className="w-16 h-16 mx-auto mb-4 opacity-50" style={{ color: COLORS.gray[400] }} />
               <p className="text-xl sm:text-2xl font-semibold" style={{ color: COLORS.gray[300] }}>
                 No properties found
               </p>
               <p className="text-base sm:text-lg mt-2" style={{ color: COLORS.gray[400] }}>
-                Try adjusting your filters
+                Try adjusting your filters or search query
               </p>
             </div>
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-              {filteredProperties.map((property, index) => (
+              {filteredProperties.slice(0, 12).map((property, index) => (
                 <motion.div
-                  key={`${property.table}-${property.id}`}
+                  key={property.id}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -786,7 +948,7 @@ export default function HomePage() {
                     <motion.img
                       whileHover={{ scale: 1.1 }}
                       transition={{ duration: 0.6 }}
-                      src={property.images.length > 0 ? property.images[0] : getPlaceholderImage(property.type)}
+                      src={getPropertyImage(property)}
                       alt={property.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -814,17 +976,30 @@ export default function HomePage() {
                       </motion.button>
                     </div>
                     <div className="absolute top-4 right-4">
-                      <span 
+                      <span
                         className="text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg"
-                        style={{ background: GRADIENTS.button.primary }}
+                        style={{ background: getStatusColor(property) }}
                       >
-                        {property.status}
+                        {getPropertyStatus(property)}
                       </span>
+                    </div>
+                    {/* Amenity badges */}
+                    <div className="absolute bottom-4 left-4 flex gap-2">
+                      {property.hasParking && (
+                        <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                          <Car className="w-3 h-3" /> Parking
+                        </span>
+                      )}
+                      {property.hasGenerator && (
+                        <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+                          <Zap className="w-3 h-3" /> Generator
+                        </span>
+                      )}
                     </div>
                   </div>
 
                   <div className="p-6">
-                    <span 
+                    <span
                       className="inline-block px-4 py-1 rounded-full text-sm font-bold mb-3"
                       style={{
                         background: `${COLORS.primary[500]}33`,
@@ -837,33 +1012,47 @@ export default function HomePage() {
                       {property.title}
                     </h3>
                     <p className="flex items-center gap-2 mb-4" style={{ color: COLORS.gray[300] }}>
-                      <MapPin className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                      <span className="font-medium truncate">{property.location}</span>
+                      <MapPin className="w-5 h-5 flex-shrink-0" style={{ color: COLORS.primary[400] }} />
+                      <span className="font-medium truncate">{getPropertyLocation(property)}</span>
                     </p>
                     <p className="text-2xl font-extrabold mb-4" style={{ color: COLORS.primary[400] }}>
-                      {property.price}
+                      {formatPrice(property.price, property.currency)}
                     </p>
+                    {property.forRent && property.rentPrice && (
+                      <p className="text-sm mb-4" style={{ color: COLORS.gray[400] }}>
+                        Rent: {formatPrice(property.rentPrice, property.currency)}/month
+                      </p>
+                    )}
                     <div className="flex items-center gap-4 text-sm" style={{ color: COLORS.gray[300] }}>
-                      {property.bedrooms && (
+                      {property.bedrooms !== null && property.bedrooms > 0 && (
                         <div className="flex items-center gap-2">
                           <Bed className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
                           <span>{property.bedrooms} Beds</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2">
-                        <Square className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                        <span>{property.surface}</span>
-                      </div>
+                      {property.bathrooms !== null && property.bathrooms > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Bath className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                          <span>{property.bathrooms} Baths</span>
+                        </div>
+                      )}
+                      {property.surface && (
+                        <div className="flex items-center gap-2">
+                          <Square className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                          <span>{formatArea(property.surface)}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>
               ))}
             </div>
           ) : (
+            // List View
             <div className="space-y-4 sm:space-y-6">
-              {filteredProperties.map((property, index) => (
+              {filteredProperties.slice(0, 12).map((property, index) => (
                 <motion.div
-                  key={`${property.table}-${property.id}`}
+                  key={property.id}
                   initial={{ opacity: 0, x: -20 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
@@ -878,7 +1067,7 @@ export default function HomePage() {
                 >
                   <div className="relative w-full sm:w-64 lg:w-80 h-48 sm:h-auto flex-shrink-0">
                     <img
-                      src={property.images.length > 0 ? property.images[0] : getPlaceholderImage(property.type)}
+                      src={getPropertyImage(property)}
                       alt={property.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -887,18 +1076,18 @@ export default function HomePage() {
                       }}
                     />
                     <div className="absolute top-3 right-3">
-                      <span 
+                      <span
                         className="text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg"
-                        style={{ background: GRADIENTS.button.primary }}
+                        style={{ background: getStatusColor(property) }}
                       >
-                        {property.status}
+                        {getPropertyStatus(property)}
                       </span>
                     </div>
                   </div>
                   <div className="flex-1 p-4 sm:p-6">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-3">
                       <div>
-                        <span 
+                        <span
                           className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-2"
                           style={{
                             background: `${COLORS.primary[500]}33`,
@@ -912,7 +1101,7 @@ export default function HomePage() {
                         </h3>
                         <p className="flex items-center gap-2 text-sm mt-1" style={{ color: COLORS.gray[300] }}>
                           <MapPin className="w-4 h-4" style={{ color: COLORS.primary[400] }} />
-                          {property.location}
+                          {getPropertyLocation(property)}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -936,25 +1125,68 @@ export default function HomePage() {
                         </motion.button>
                       </div>
                     </div>
+                    {property.shortDescription && (
+                      <p className="text-sm mb-3 line-clamp-2" style={{ color: COLORS.gray[400] }}>
+                        {property.shortDescription}
+                      </p>
+                    )}
                     <p className="text-2xl font-extrabold mb-3" style={{ color: COLORS.primary[400] }}>
-                      {property.price}
+                      {formatPrice(property.price, property.currency)}
                     </p>
-                    <div className="flex items-center gap-4 sm:gap-6 text-sm" style={{ color: COLORS.gray[300] }}>
-                      {property.bedrooms && (
+                    <div className="flex items-center gap-4 sm:gap-6 text-sm flex-wrap" style={{ color: COLORS.gray[300] }}>
+                      {property.bedrooms !== null && property.bedrooms > 0 && (
                         <div className="flex items-center gap-2">
                           <Bed className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
                           <span>{property.bedrooms} Beds</span>
                         </div>
                       )}
-                      <div className="flex items-center gap-2">
-                        <Square className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                        <span>{property.surface}</span>
-                      </div>
+                      {property.bathrooms !== null && property.bathrooms > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Bath className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                          <span>{property.bathrooms} Baths</span>
+                        </div>
+                      )}
+                      {property.surface && (
+                        <div className="flex items-center gap-2">
+                          <Square className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                          <span>{formatArea(property.surface)}</span>
+                        </div>
+                      )}
+                      {property.hasParking && (
+                        <div className="flex items-center gap-2">
+                          <Car className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                          <span>Parking</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>
               ))}
             </div>
+          )}
+
+          {/* View All Button */}
+          {filteredProperties.length > 12 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mt-12"
+            >
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleViewAllProperties}
+                className="px-8 py-4 text-white rounded-2xl font-bold text-lg transition"
+                style={{
+                  background: GRADIENTS.button.primary,
+                  boxShadow: SHADOWS.glow,
+                }}
+              >
+                View All {filteredProperties.length} Properties
+                <ArrowRight className="w-5 h-5 inline ml-2" />
+              </motion.button>
+            </motion.div>
           )}
         </div>
       </section>
@@ -963,7 +1195,7 @@ export default function HomePage() {
       <Footer />
 
       {/* Bottom Glow */}
-      <div 
+      <div
         className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-64 pointer-events-none"
         style={{
           background: `linear-gradient(to top, ${COLORS.primary[900]}33, transparent)`,

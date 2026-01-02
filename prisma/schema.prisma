@@ -6,13 +6,27 @@ datasource db {
   provider = "postgresql"
 }
 
+enum PropertyType {
+  Apartment
+  House
+  Villa
+  Office
+  Commercial
+  Land
+  Building
+  Studio
+  Duplex
+}
+
 model Region {
   Id_Reg        Int           @id @default(autoincrement())
   Nom_Reg       String?
   Sup_Reg       Float?
   Chef_lieu_Reg String?
   WKT_Geometry  String?
-  departements  Departement[] // Added: inverse of Departement -> Region
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  departements  Departement[]
 }
 
 model Departement {
@@ -22,8 +36,10 @@ model Departement {
   Chef_lieu_Dept  String?
   Id_Reg          Int?
   WKT_Geometry    String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   region          Region?          @relation(fields: [Id_Reg], references: [Id_Reg])
-  arrondissements Arrondissement[] // Added: inverse of Arrondissement -> Departement
+  arrondissements Arrondissement[]
 }
 
 model Arrondissement {
@@ -34,8 +50,10 @@ model Arrondissement {
   Commune          String?
   Id_Dept          Int?
   WKT_Geometry     String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
   departement      Departement?  @relation(fields: [Id_Dept], references: [Id_Dept])
-  lotissements     Lotissement[] // Added: inverse of Lotissement -> Arrondissement
+  lotissements     Lotissement[]
 }
 
 model Lotissement {
@@ -52,6 +70,19 @@ model Lotissement {
   Lieudit        String?
   Echelle        Int?
   Ccp            String?
+  
+  // Pricing fields for Lotissement
+  price          Decimal?        @db.Decimal(15, 2)
+  pricePerSqM    Decimal?        @db.Decimal(15, 2) // Price per square meter
+  currency       String?         @default("XAF")
+  forSale        Boolean?        @default(false)
+  forRent        Boolean?        @default(false)
+  rentPrice      Decimal?        @db.Decimal(15, 2) // Monthly rent if applicable
+  shortDescription String?       @db.VarChar(255)
+  description    String?         @db.Text
+  published      Boolean?        @default(false)
+  featured       Boolean?        @default(false)
+  
   Video_URL      String?
   Image_URL_1    String?
   Image_URL_2    String?
@@ -61,9 +92,16 @@ model Lotissement {
   Image_URL_6    String?
   Id_Arrond      Int?
   WKT_Geometry   String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   arrondissement Arrondissement? @relation(fields: [Id_Arrond], references: [Id_Arrond])
-  parcelles      Parcelle[] // Added: inverse of Parcelle -> Lotissement
-  limitrophes    Limitrophe[] // Added: inverse for Limitrophe
+  parcelles      Parcelle[]
+  limitrophes    Limitrophe[]
+  
+  @@index([price])
+  @@index([forSale])
+  @@index([forRent])
+  @@index([published])
 }
 
 model Parcelle {
@@ -86,6 +124,19 @@ model Parcelle {
   Ccp_N        String?
   Mise_Val     Boolean?
   Cloture      Boolean?
+  
+  // Pricing fields for Parcelle (land)
+  price          Decimal?     @db.Decimal(15, 2)
+  pricePerSqM    Decimal?     @db.Decimal(15, 2) // Price per square meter
+  currency       String?      @default("XAF")
+  forSale        Boolean?     @default(false)
+  forRent        Boolean?     @default(false)
+  rentPrice      Decimal?     @db.Decimal(15, 2) // Monthly rent if applicable
+  shortDescription String?    @db.VarChar(255)
+  description    String?      @db.Text
+  published      Boolean?     @default(false)
+  featured       Boolean?     @default(false)
+  
   Video_URL    String?
   Image_URL_1  String?
   Image_URL_2  String?
@@ -95,13 +146,21 @@ model Parcelle {
   Image_URL_6  String?
   Id_Lotis     Int?
   WKT_Geometry String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  properties   Property[]
   lotissement  Lotissement? @relation(fields: [Id_Lotis], references: [Id_Lotis])
-  batiments    Batiment[] // Added: inverse of Batiment -> Parcelle
-  payers       Payer[] // Added: inverse for Payer
-  contenirs    Contenir[] // Added: inverse for Contenir
-  trouvrs      Trouver[] // Added: inverse for Trouver
-  eclairers    Eclairer[] // Added: inverse for Eclairer
-  desservirs   Desservir[] // Added: inverse for Desservir
+  batiments    Batiment[]
+  payers       Payer[]
+  contenirs    Contenir[]
+  trouvrs      Trouver[]
+  eclairers    Eclairer[]
+  desservirs   Desservir[]
+  
+  @@index([price])
+  @@index([forSale])
+  @@index([forRent])
+  @@index([published])
 }
 
 model Batiment {
@@ -116,6 +175,19 @@ model Batiment {
   Etat_Bat        String?
   Nom             String?
   Mat_Bati        String?
+  
+  // Physical features of the building
+  bedrooms        Int?             // Total bedrooms in building
+  bathrooms       Int?             // Total bathrooms
+  kitchens        Int?             // Number of kitchens
+  livingRooms     Int?             // Number of living rooms
+  totalFloors     Int?             // Number of floors in building
+  totalUnits      Int?             // Number of units (for apartment buildings)
+  hasElevator     Boolean?         @default(false)
+  hasGenerator    Boolean?         @default(false)
+  hasParking      Boolean?         @default(false)
+  parkingSpaces   Int?             // Number of parking spaces
+  
   Video_URL       String?
   Image_URL_1     String?
   Image_URL_2     String?
@@ -125,10 +197,13 @@ model Batiment {
   Image_URL_6     String?
   Id_Parcel       Int?
   WKT_Geometry    String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  properties      Property[]
   parcelle        Parcelle?        @relation(fields: [Id_Parcel], references: [Id_Parcel])
-  payers          Payer[] // Added: inverse for Payer
-  alimenters      Alimenter[] // Added: inverse for Alimenter
-  approvisionners Approvisionner[] // Added: inverse for Approvisionner
+  payers          Payer[]
+  alimenters      Alimenter[]
+  approvisionners Approvisionner[]
 }
 
 model Route {
@@ -139,7 +214,9 @@ model Route {
   Etat_Rte     String?
   Mat_Rte      String?
   WKT_Geometry String?
-  desservirs   Desservir[] // Added: inverse for Desservir
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  desservirs   Desservir[]
 }
 
 model Riviere {
@@ -149,7 +226,9 @@ model Riviere {
   Etat_amenag  String?
   Debit_Riv    String?
   WKT_Geometry String?
-  limitrophes  Limitrophe[] // Added: inverse for Limitrophe
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  limitrophes  Limitrophe[]
 }
 
 model Taxe_immobiliere {
@@ -161,7 +240,9 @@ model Taxe_immobiliere {
   Taxe_Payee    Boolean?
   Date_declaree DateTime? @db.Date
   Type_taxe     String?
-  payers        Payer[] // Added: inverse for Payer
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  payers        Payer[]
 }
 
 model Equipement {
@@ -171,7 +252,9 @@ model Equipement {
   Etat_Equip   String?
   Mat_Equip    String?
   WKT_Geometry String?
-  eclairers    Eclairer[] // Added: inverse for Eclairer
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  eclairers    Eclairer[]
 }
 
 model Reseau_energetique {
@@ -181,7 +264,9 @@ model Reseau_energetique {
   Etat_Res     String?
   Materiau     String?
   WKT_Geometry String?
-  alimenters   Alimenter[] // Added: inverse for Alimenter
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  alimenters   Alimenter[]
 }
 
 model Reseau_en_eau {
@@ -191,7 +276,9 @@ model Reseau_en_eau {
   Etat_Res        String?
   Mat_Res         String?
   WKT_Geometry    String?
-  approvisionners Approvisionner[] // Added: inverse for Approvisionner
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  approvisionners Approvisionner[]
 }
 
 model Infrastructure {
@@ -210,7 +297,9 @@ model Infrastructure {
   Image_URL_5      String?
   Image_URL_6      String?
   WKT_Geometry     String?
-  trouvrs          Trouver[] // Added: inverse for Trouver
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  trouvrs          Trouver[]
 }
 
 model Borne {
@@ -219,15 +308,19 @@ model Borne {
   coord_y      Float?
   coord_z      Float?
   WKT_Geometry String?
-  contenirs    Contenir[] // Added: inverse for Contenir
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  contenirs    Contenir[]
 }
 
-// Relationship Models (with inverses added where missing)
+// Relationship Models
 model Payer {
   Id_Parcel Int
   Id_Bat    Int
   Id_Taxe   Int
   date_paye Int?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   parcelle Parcelle         @relation(fields: [Id_Parcel], references: [Id_Parcel])
   batiment Batiment         @relation(fields: [Id_Bat], references: [Id_Bat])
@@ -237,8 +330,10 @@ model Payer {
 }
 
 model Limitrophe {
-  Id_Lotis Int
-  Id_Riv   Int
+  Id_Lotis  Int
+  Id_Riv    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   lotissement Lotissement @relation(fields: [Id_Lotis], references: [Id_Lotis])
   riviere     Riviere     @relation(fields: [Id_Riv], references: [Id_Riv])
@@ -249,6 +344,8 @@ model Limitrophe {
 model Alimenter {
   Id_Bat     Int
   Id_Reseaux Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   batiment          Batiment           @relation(fields: [Id_Bat], references: [Id_Bat])
   reseauEnergetique Reseau_energetique @relation(fields: [Id_Reseaux], references: [Id_Reseaux])
@@ -259,6 +356,8 @@ model Alimenter {
 model Contenir {
   Id_Parcel Int
   Id_Borne  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   parcelle Parcelle @relation(fields: [Id_Parcel], references: [Id_Parcel])
   borne    Borne    @relation(fields: [Id_Borne], references: [Id_Borne])
@@ -269,6 +368,8 @@ model Contenir {
 model Trouver {
   Id_Parcel Int
   Id_Infras Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   parcelle       Parcelle       @relation(fields: [Id_Parcel], references: [Id_Parcel])
   infrastructure Infrastructure @relation(fields: [Id_Infras], references: [Id_Infras])
@@ -279,6 +380,8 @@ model Trouver {
 model Eclairer {
   Id_Parcel Int
   Id_Equip  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   parcelle   Parcelle   @relation(fields: [Id_Parcel], references: [Id_Parcel])
   equipement Equipement @relation(fields: [Id_Equip], references: [Id_Equip])
@@ -289,6 +392,8 @@ model Eclairer {
 model Desservir {
   Id_Parcel Int
   Id_Rte    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   parcelle Parcelle @relation(fields: [Id_Parcel], references: [Id_Parcel])
   route    Route    @relation(fields: [Id_Rte], references: [Id_Rte])
@@ -299,9 +404,74 @@ model Desservir {
 model Approvisionner {
   Id_Bat     Int
   Id_Reseaux Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   batiment    Batiment      @relation(fields: [Id_Bat], references: [Id_Bat])
   reseauEnEau Reseau_en_eau @relation(fields: [Id_Reseaux], references: [Id_Reseaux])
 
   @@id([Id_Bat, Id_Reseaux])
+}
+
+model Property {
+  id                    Int          @id @default(autoincrement())
+  title                 String
+  shortDescription      String?      @db.VarChar(255)
+  description           String?      @db.Text
+  price                 Decimal      @db.Decimal(15, 2)
+  currency              String       @default("XAF")
+
+  // Property type
+  type                  PropertyType
+
+  // For sale/rent specifics
+  forSale               Boolean      @default(true)
+  forRent               Boolean      @default(false)
+  rentPrice             Decimal?     @db.Decimal(15, 2)
+
+  // Land for development
+  isLandForDevelopment  Boolean      @default(false)
+  approvedForApartments Boolean?
+
+  // Rooms & features
+  bedrooms              Int?
+  bathrooms             Int?
+  kitchens              Int?         @default(1)
+  livingRooms           Int?         @default(1)
+  hasGenerator          Boolean?     @default(false)
+  hasParking            Boolean?     @default(false)
+  floorLevel            Int?
+  totalFloors           Int?
+
+  // Location references
+  parcelleId            Int
+  batimentId            Int?
+
+  // Relations
+  parcelle              Parcelle     @relation(fields: [parcelleId], references: [Id_Parcel])
+  batiment              Batiment?    @relation(fields: [batimentId], references: [Id_Bat])
+
+  // Images & media
+  imageUrl1             String?
+  imageUrl2             String?
+  imageUrl3             String?
+  imageUrl4             String?
+  imageUrl5             String?
+  imageUrl6             String?
+  videoUrl              String?
+
+  // Automatic timestamps
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  // Status
+  published             Boolean      @default(false)
+  featured              Boolean      @default(false)
+
+  @@index([parcelleId])
+  @@index([batimentId])
+  @@index([type])
+  @@index([price])
+  @@index([published])
+  @@index([createdAt])
 }

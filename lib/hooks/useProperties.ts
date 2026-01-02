@@ -1,105 +1,145 @@
-// File: lib/hooks/useProperties.ts
-import { useState, useEffect, useCallback } from 'react';
+// lib/hooks/useProperties.ts
+import { useState, useEffect, useCallback, useMemo } from 'react';
 
-export interface Property {
-  id: number;
-  table: string;
+// Property source types
+export type PropertySource = 'lotissement' | 'parcelle' | 'batiment';
+
+// Property types
+export const PropertyTypes = [
+  'Apartment', 'House', 'Villa', 'Office', 'Commercial',
+  'Land', 'Building', 'Studio', 'Duplex'
+] as const;
+
+export type PropertyType = typeof PropertyTypes[number];
+
+// Unified Property interface
+export interface UnifiedProperty {
+  id: string;              // "source-numericId" format
+  numericId: number;
+  source: PropertySource;
   title: string;
-  location: string;
-  price: string;
-  type: string;
-  status: string;
-  surface: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  images: string[];
-  video?: string;
-  description?: string;
+  shortDescription: string | null;
+  description: string | null;
+  price: number;
+  pricePerSqM: number | null;
+  currency: string;
+  type: PropertyType;
+  forSale: boolean;
+  forRent: boolean;
+  rentPrice: number | null;
+  isLandForDevelopment: boolean;
+  approvedForApartments: boolean | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  kitchens: number | null;
+  livingRooms: number | null;
+  hasGenerator: boolean;
+  hasParking: boolean;
+  floorLevel: number | null;
+  totalFloors: number | null;
+  surface: number | null;
+  nbreLots: number | null;
+  location: {
+    lieudit: string | null;
+    arrondissement: string | null;
+    departement: string | null;
+    region: string | null;
+  };
+  imageUrl1: string | null;
+  imageUrl2: string | null;
+  imageUrl3: string | null;
+  imageUrl4: string | null;
+  imageUrl5: string | null;
+  imageUrl6: string | null;
+  videoUrl: string | null;
+  published: boolean;
+  featured: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _meta?: Record<string, any>;
 }
 
+// Keep Property as alias
+export type Property = UnifiedProperty;
+
+// Filter options
+export interface PropertyFilters {
+  source?: PropertySource | 'all';
+  type?: PropertyType | 'all';
+  forSale?: boolean;
+  forRent?: boolean;
+  minPrice?: number;
+  maxPrice?: number;
+  minBedrooms?: number;
+  maxBedrooms?: number;
+  hasParking?: boolean;
+  hasGenerator?: boolean;
+  isLandForDevelopment?: boolean;
+  published?: boolean;
+  featured?: boolean;
+  region?: string;
+  department?: string;
+  arrondissement?: string;
+}
+
+// Sort options
+export type SortOption =
+  | 'newest' | 'oldest'
+  | 'price-asc' | 'price-desc'
+  | 'bedrooms-asc' | 'bedrooms-desc'
+  | 'surface-asc' | 'surface-desc'
+  | 'title-asc' | 'title-desc';
+
+// Stats interface
+export interface PropertyStats {
+  total: number;
+  published: number;
+  featured: number;
+  forSale: number;
+  forRent: number;
+  saleAndRent: number;
+  landForDevelopment: number;
+  averagePrice: number;
+  byType: Record<PropertyType, number>;
+  bySource: Record<PropertySource, number>;
+  byRegion: Record<string, number>;
+  withParking: number;
+  withGenerator: number;
+}
+
+// Main hook
 export function useProperties() {
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [properties, setProperties] = useState<UnifiedProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [breakdown, setBreakdown] = useState({
+    lotissements: 0,
+    parcelles: 0,
+    batiments: 0,
+  });
 
   const fetchProperties = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const tables = ['Lotissement', 'Parcelle', 'Batiment'];
-      const allData: any[] = [];
-      
-      for (const table of tables) {
-        const res = await fetch(`/api/data/${table}`);
-        if (res.ok) {
-          const result = await res.json();
-          allData.push(
-            ...(result.data || []).map((item: any) => ({ ...item, _table: table }))
-          );
-        }
+      const res = await fetch('/api/properties');
+
+      if (!res.ok) {
+        throw new Error(`Failed to fetch: ${res.status}`);
       }
 
-      const mapped: Property[] = allData.map((item: any) => {
-        const table = item._table;
-        const realId = item.Id_Lotis || item.Id_Parcel || item.Id_Bat || 0;
-        
-        // Determine property type
-        let type = 'Land';
-        if (item.Type_Usage || item.Cat_Bat) type = 'Building';
-        if (item.Nbre_lots) type = 'Lotissement';
-        
-        // Determine status based on table
-        let status = 'For Sale'; // Default for Lotissement and Parcelle (always for sale)
-        if (table === 'Batiment') {
-          // For Batiment, check the actual status from data
-          const rawStatus = item.Status || item.Statut || '';
-          
-          // Normalize the status value
-          if (rawStatus.toLowerCase().includes('rent') || rawStatus.toLowerCase() === 'rent') {
-            status = 'For Rent';
-          } else if (rawStatus.toLowerCase().includes('sale') || rawStatus.toLowerCase() === 'sale') {
-            status = 'For Sale';
-          } else if (rawStatus.toLowerCase().includes('sold') || rawStatus.toLowerCase() === 'sold') {
-            status = 'Sold';
-          } else {
-            // Default to For Sale if status is unclear
-            status = 'For Sale';
-          }
-        }
-        
-        let title = item.Nom_proprio || item.Nom_Prop || item.Nom || 'Premium Property';
-        
-        return {
-          id: realId,
-          table,
-          title: `${title} in ${item.Lieudit || item.Lieu_dit || 'Yaoundé'}`,
-          location: item.Lieudit || item.Lieu_dit || 'Yaoundé, Cameroon',
-          price: 'Contact for price',
-          type,
-          status,
-          surface: item.Surface || item.Sup || 'N/A',
-          bedrooms: item.Nbre_lots || undefined,
-          bathrooms: undefined,
-          images: [
-            item.Image_URL_1,
-            item.Image_URL_2,
-            item.Image_URL_3,
-            item.Image_URL_4,
-            item.Image_URL_5,
-            item.Image_URL_6,
-          ].filter(Boolean),
-          video: item.Video_URL,
-          description:
-            item.Description ||
-            'Stunning property in a prime location with excellent amenities and breathtaking views.',
-        };
-      });
+      const data = await res.json();
 
-      setProperties(mapped);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch properties');
+      }
+
+      setProperties(data.data || []);
+      setBreakdown(data.breakdown || { lotissements: 0, parcelles: 0, batiments: 0 });
     } catch (err) {
       console.error('Error fetching properties:', err);
-      setError('Failed to load properties');
+      setError(err instanceof Error ? err.message : 'Failed to load properties');
     } finally {
       setLoading(false);
     }
@@ -109,43 +149,241 @@ export function useProperties() {
     fetchProperties();
   }, [fetchProperties]);
 
-  return { properties, loading, error, refetch: fetchProperties };
+  return { properties, loading, error, refetch: fetchProperties, breakdown };
 }
 
-// Helper function to search properties
-export function searchProperties(properties: Property[], query: string): Property[] {
-  if (!query.trim()) return [];
-  
-  const searchLower = query.toLowerCase();
-  return properties.filter((property) => {
-    return (
-      property.title.toLowerCase().includes(searchLower) ||
-      property.location.toLowerCase().includes(searchLower) ||
-      property.type.toLowerCase().includes(searchLower) ||
-      property.status.toLowerCase().includes(searchLower)
-    );
+// Single property hook
+export function useProperty(id: string | null) {
+  const [property, setProperty] = useState<UnifiedProperty | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setProperty(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    fetch(`/api/properties/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setProperty(data.data);
+        } else {
+          setError(data.error);
+        }
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  return { property, loading, error };
+}
+
+// Search function
+export function searchProperties(properties: UnifiedProperty[], query: string): UnifiedProperty[] {
+  if (!query.trim()) return properties;
+
+  const terms = query.toLowerCase().split(/\s+/);
+
+  return properties.filter((p) => {
+    const text = [
+      p.title,
+      p.shortDescription,
+      p.description,
+      p.type,
+      p.source,
+      p.location.lieudit,
+      p.location.arrondissement,
+      p.location.departement,
+      p.location.region,
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    return terms.every(term => text.includes(term));
   });
 }
 
-// Helper function to calculate stats
-export function calculateStats(properties: Property[]) {
-  // Separate Batiment from other property types
-  const batimentProperties = properties.filter(p => p.table === 'Batiment');
-  const otherProperties = properties.filter(p => p.table !== 'Batiment');
-  
-  // For Sale: All Lotissement + Parcelle (always for sale) + Batiment with "For Sale" status
-  const forSaleCount = otherProperties.length + batimentProperties.filter((p) => p.status === 'For Sale').length;
-  
-  // For Rent: Only Batiment can be "For Rent"
-  const forRentCount = batimentProperties.filter((p) => p.status === 'For Rent').length;
-  
-  // Sold: Only Batiment can be "Sold"
-  const soldCount = batimentProperties.filter((p) => p.status === 'Sold').length;
-  
+// Filter function
+export function filterProperties(properties: UnifiedProperty[], filters: PropertyFilters): UnifiedProperty[] {
+  return properties.filter((p) => {
+    if (filters.source && filters.source !== 'all' && p.source !== filters.source) return false;
+    if (filters.type && filters.type !== 'all' && p.type !== filters.type) return false;
+    if (filters.forSale !== undefined && p.forSale !== filters.forSale) return false;
+    if (filters.forRent !== undefined && p.forRent !== filters.forRent) return false;
+    if (filters.minPrice !== undefined && p.price < filters.minPrice) return false;
+    if (filters.maxPrice !== undefined && p.price > filters.maxPrice) return false;
+    if (filters.minBedrooms !== undefined && (p.bedrooms ?? 0) < filters.minBedrooms) return false;
+    if (filters.hasParking !== undefined && p.hasParking !== filters.hasParking) return false;
+    if (filters.hasGenerator !== undefined && p.hasGenerator !== filters.hasGenerator) return false;
+    if (filters.published !== undefined && p.published !== filters.published) return false;
+    if (filters.featured !== undefined && p.featured !== filters.featured) return false;
+    if (filters.region && !p.location.region?.toLowerCase().includes(filters.region.toLowerCase())) return false;
+    return true;
+  });
+}
+
+// Sort function
+export function sortProperties(properties: UnifiedProperty[], sortBy: SortOption): UnifiedProperty[] {
+  const sorted = [...properties];
+  switch (sortBy) {
+    case 'newest': return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    case 'oldest': return sorted.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    case 'price-asc': return sorted.sort((a, b) => a.price - b.price);
+    case 'price-desc': return sorted.sort((a, b) => b.price - a.price);
+    case 'bedrooms-desc': return sorted.sort((a, b) => (b.bedrooms ?? 0) - (a.bedrooms ?? 0));
+    case 'surface-desc': return sorted.sort((a, b) => (b.surface ?? 0) - (a.surface ?? 0));
+    default: return sorted;
+  }
+}
+
+// Calculate stats
+export function calculateStats(properties: UnifiedProperty[]): PropertyStats {
+  const published = properties.filter(p => p.published);
+  const forSale = published.filter(p => p.forSale);
+  const forRent = published.filter(p => p.forRent);
+  const dual = published.filter(p => p.forSale && p.forRent);
+
+  const byType = {} as Record<PropertyType, number>;
+  PropertyTypes.forEach(t => { byType[t] = published.filter(p => p.type === t).length; });
+
+  const bySource: Record<PropertySource, number> = {
+    lotissement: published.filter(p => p.source === 'lotissement').length,
+    parcelle: published.filter(p => p.source === 'parcelle').length,
+    batiment: published.filter(p => p.source === 'batiment').length,
+  };
+
+  const byRegion: Record<string, number> = {};
+  published.forEach(p => {
+    const r = p.location.region || 'Unknown';
+    byRegion[r] = (byRegion[r] || 0) + 1;
+  });
+
+  const prices = forSale.filter(p => p.price > 0).map(p => p.price);
+
   return {
     total: properties.length,
-    forSale: forSaleCount,
-    forRent: forRentCount,
-    sold: soldCount,
+    published: published.length,
+    featured: published.filter(p => p.featured).length,
+    forSale: forSale.length,
+    forRent: forRent.length,
+    saleAndRent: dual.length,
+    landForDevelopment: published.filter(p => p.isLandForDevelopment).length,
+    averagePrice: prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0,
+    byType,
+    bySource,
+    byRegion,
+    withParking: published.filter(p => p.hasParking).length,
+    withGenerator: published.filter(p => p.hasGenerator).length,
   };
+}
+
+// Helper functions
+export function formatPrice(price: number | null, currency = 'XAF'): string {
+  if (!price) return 'Prix sur demande';
+  return new Intl.NumberFormat('fr-CM', { style: 'currency', currency, minimumFractionDigits: 0 }).format(price);
+}
+
+export function formatPriceCompact(price: number | null, currency = 'XAF'): string {
+  if (!price) return 'N/A';
+  if (price >= 1e9) return `${(price / 1e9).toFixed(1)}B ${currency}`;
+  if (price >= 1e6) return `${(price / 1e6).toFixed(0)}M ${currency}`;
+  if (price >= 1e3) return `${(price / 1e3).toFixed(0)}K ${currency}`;
+  return `${price} ${currency}`;
+}
+
+export function formatArea(area: number | null): string {
+  if (!area) return 'N/A';
+  return `${area.toLocaleString('fr-CM')} m²`;
+}
+
+export function getPropertyImages(property: UnifiedProperty): string[] {
+  return [property.imageUrl1, property.imageUrl2, property.imageUrl3, property.imageUrl4, property.imageUrl5, property.imageUrl6]
+    .filter((url): url is string => !!url);
+}
+
+export function getPropertyLocation(property: UnifiedProperty): string {
+  return [property.location.lieudit, property.location.arrondissement, property.location.departement, property.location.region]
+    .filter(Boolean).join(', ') || 'Location not specified';
+}
+
+export function getFeaturedProperties(properties: UnifiedProperty[], limit = 10): UnifiedProperty[] {
+  return properties.filter(p => p.featured && p.published).slice(0, limit);
+}
+
+export function getSourceLabel(source: PropertySource): string {
+  return { lotissement: 'Lotissement', parcelle: 'Parcelle', batiment: 'Bâtiment' }[source];
+}
+
+export function getSourceColor(source: PropertySource): string {
+  return { lotissement: '#22c55e', parcelle: '#3b82f6', batiment: '#f59e0b' }[source];
+}
+
+// Get similar properties based on type, location, price range
+export function getSimilarProperties(
+  property: UnifiedProperty,
+  allProperties: UnifiedProperty[],
+  limit = 6
+): UnifiedProperty[] {
+  // Filter out the current property and unpublished properties
+  const candidates = allProperties.filter(
+    p => p.id !== property.id && p.published
+  );
+
+  // Score each property based on similarity
+  const scored = candidates.map(p => {
+    let score = 0;
+
+    // Same type gets highest score
+    if (p.type === property.type) score += 50;
+
+    // Same source
+    if (p.source === property.source) score += 20;
+
+    // Same sale/rent status
+    if (p.forSale === property.forSale) score += 15;
+    if (p.forRent === property.forRent) score += 15;
+
+    // Similar price (within 30%)
+    if (property.price > 0 && p.price > 0) {
+      const priceDiff = Math.abs(p.price - property.price) / property.price;
+      if (priceDiff < 0.3) score += 30;
+      else if (priceDiff < 0.5) score += 15;
+    }
+
+    // Same region
+    if (p.location.region === property.location.region) score += 25;
+    
+    // Same department
+    if (p.location.departement === property.location.departement) score += 15;
+
+    // Same arrondissement (very similar location)
+    if (p.location.arrondissement === property.location.arrondissement) score += 10;
+
+    // Similar surface area (within 30%)
+    if (property.surface && p.surface) {
+      const surfaceDiff = Math.abs(p.surface - property.surface) / property.surface;
+      if (surfaceDiff < 0.3) score += 20;
+      else if (surfaceDiff < 0.5) score += 10;
+    }
+
+    // Similar bedrooms (for buildings)
+    if (property.bedrooms && p.bedrooms) {
+      const bedroomDiff = Math.abs(p.bedrooms - property.bedrooms);
+      if (bedroomDiff === 0) score += 15;
+      else if (bedroomDiff === 1) score += 8;
+    }
+
+    // Featured properties get slight boost
+    if (p.featured) score += 5;
+
+    return { property: p, score };
+  });
+
+  // Sort by score descending and return top matches
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(item => item.property);
 }

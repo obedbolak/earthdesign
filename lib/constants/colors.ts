@@ -1,7 +1,7 @@
+// lib/constants/colors.ts
 
-// File 1: lib/constants/colors.ts
 export const COLORS = {
-  // Primary greens
+  // Primary greens (unchanged)
   primary: {
     50: '#f0fdf4',
     100: '#dcfce7',
@@ -15,8 +15,10 @@ export const COLORS = {
     900: '#14532d',
     950: '#052e16',
   },
-  // Emerald
+
+  // Emerald (unchanged)
   emerald: {
+    300: '#6ee7b7',
     400: '#34d399',
     500: '#10b981',
     600: '#059669',
@@ -24,13 +26,15 @@ export const COLORS = {
     900: '#064e3b',
     950: '#022c22',
   },
-  // Teal
+
+  // Teal (unchanged)
   teal: {
     500: '#14b8a6',
     800: '#115e59',
     950: '#042f2e',
   },
-  // Neutrals
+
+  // Neutrals (unchanged)
   gray: {
     200: '#e5e7eb',
     300: '#d1d5db',
@@ -41,10 +45,14 @@ export const COLORS = {
     800: '#1f2937',
     900: '#111827',
   },
-  // Accent colors
+
+  // Accent colors – EXTENDED
   yellow: {
-    400: '#fbbf24',
+    300: '#fde68a',  // added (for softer accents if needed)
+    400: '#fbbf24',  // existing
+    500: '#f59e0b',  // added – used in some components
   },
+
   // Semantic colors
   white: '#ffffff',
   black: '#000000',
