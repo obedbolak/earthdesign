@@ -489,43 +489,66 @@ export default function HomePage() {
                       <span className="truncate">{getPropertyLocation(currentHeroProperty)}</span>
                     </motion.p>
                     <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="flex items-center gap-4 sm:gap-6 text-sm sm:text-base"
-                    >
-                     {currentHeroProperty.surface && (
-  <span className="flex items-center gap-1 sm:gap-2">
-    <Square className="w-4 h-4 sm:w-5 sm:h-5" />
-    {formatArea(currentHeroProperty.surface)}
-  </span>
-)}
-                      {currentHeroProperty.bedrooms && currentHeroProperty.bedrooms > 0 && (
-                        <span className="flex items-center gap-1 sm:gap-2">
-                          <Bed className="w-4 h-4 sm:w-5 sm:h-5" /> {currentHeroProperty.bedrooms} Beds
-                        </span>
-                      )}
-                      {currentHeroProperty.bathrooms && currentHeroProperty.bathrooms > 0 && (
-                        <span className="flex items-center gap-1 sm:gap-2">
-                          <Bath className="w-4 h-4 sm:w-5 sm:h-5" /> {currentHeroProperty.bathrooms} Baths
-                        </span>
-                      )}
-                    </motion.div>
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.3 }}
+  className="flex items-center gap-4 sm:gap-6 text-sm sm:text-base"
+>
+  {currentHeroProperty.surface && (
+    <span className="flex items-center gap-1 sm:gap-2">
+      <Square className="w-4 h-4 sm:w-5 sm:h-5" />
+      {formatArea(currentHeroProperty.surface)}
+    </span>
+  )}
+  {currentHeroProperty.bedrooms && currentHeroProperty.bedrooms > 0 && (
+    <span className="flex items-center gap-1 sm:gap-2">
+      <Bed className="w-4 h-4 sm:w-5 sm:h-5" /> {currentHeroProperty.bedrooms} Beds
+    </span>
+  )}
+  {currentHeroProperty.bathrooms && currentHeroProperty.bathrooms > 0 && (
+    <span className="flex items-center gap-1 sm:gap-2">
+      <Bath className="w-4 h-4 sm:w-5 sm:h-5" /> {currentHeroProperty.bathrooms} Baths
+    </span>
+  )}
+  {/* NEW: Show parking spaces for Batiment */}
+  {currentHeroProperty.parkingSpaces && currentHeroProperty.parkingSpaces > 0 && (
+    <span className="flex items-center gap-1 sm:gap-2">
+      <Car className="w-4 h-4 sm:w-5 sm:h-5" /> {currentHeroProperty.parkingSpaces} Parking
+    </span>
+  )}
+  {/* NEW: Show elevator for Batiment */}
+  {currentHeroProperty.hasElevator && (
+    <span className="flex items-center gap-1 sm:gap-2">
+      <Building2 className="w-4 h-4 sm:w-5 sm:h-5" /> Elevator
+    </span>
+  )}
+</motion.div>
                   </div>
                   <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex flex-col gap-2">
-                    <span
-                      className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl"
-                      style={{ background: getStatusColor(currentHeroProperty) }}
-                    >
-                      {getPropertyStatus(currentHeroProperty)}
-                    </span>
-                    <span
-                      className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl text-center"
-                      style={{ background: 'rgba(0,0,0,0.6)' }}
-                    >
-                      {formatPriceCompact(currentHeroProperty.price, currentHeroProperty.currency)}
-                    </span>
-                  </div>
+  <span
+    className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl"
+    style={{ background: getStatusColor(currentHeroProperty) }}
+  >
+    {getPropertyStatus(currentHeroProperty)}
+  </span>
+  {/* Show both sale and rent prices if available */}
+  {currentHeroProperty.price > 0 && (
+    <span
+      className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl text-center"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+    >
+      {formatPriceCompact(currentHeroProperty.price, currentHeroProperty.currency)}
+    </span>
+  )}
+  {currentHeroProperty.rentPrice && currentHeroProperty.rentPrice > 0 && (
+    <span
+      className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl text-center"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+    >
+      {formatPriceCompact(currentHeroProperty.rentPrice, currentHeroProperty.currency)}/mo
+    </span>
+  )}
+</div>
                   {/* Carousel dots */}
                   <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
                     {featuredProperties.slice(0, 10).map((_, idx) => (
@@ -984,66 +1007,117 @@ export default function HomePage() {
                       </span>
                     </div>
                     {/* Amenity badges */}
-                    <div className="absolute bottom-4 left-4 flex gap-2">
-                      {property.hasParking && (
-                        <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                          <Car className="w-3 h-3" /> Parking
-                        </span>
-                      )}
-                      {property.hasGenerator && (
-                        <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                          <Zap className="w-3 h-3" /> Generator
-                        </span>
-                      )}
-                    </div>
+
+<div className="absolute bottom-4 left-4 flex flex-wrap gap-2 max-w-[calc(100%-2rem)]">
+  {property.hasParking && (
+    <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+      <Car className="w-3 h-3" /> 
+      {property.parkingSpaces ? `${property.parkingSpaces} Parking` : 'Parking'}
+    </span>
+  )}
+  {property.hasGenerator && (
+    <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+      <Zap className="w-3 h-3" /> Generator
+    </span>
+  )}
+  {property.hasElevator && (
+    <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+      <Building2 className="w-3 h-3" /> Elevator
+    </span>
+  )}
+  {property.totalUnits && property.totalUnits > 0 && (
+    <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+      <Building2 className="w-3 h-3" /> {property.totalUnits} Units
+    </span>
+  )}
+</div>
                   </div>
 
                   <div className="p-6">
-                    <span
-                      className="inline-block px-4 py-1 rounded-full text-sm font-bold mb-3"
-                      style={{
-                        background: `${COLORS.primary[500]}33`,
-                        color: COLORS.primary[300],
-                      }}
-                    >
-                      {property.type}
-                    </span>
-                    <h3 className="text-xl font-bold text-white mb-2 line-clamp-2 group-hover:text-green-400 transition">
-                      {property.title}
-                    </h3>
-                    <p className="flex items-center gap-2 mb-4" style={{ color: COLORS.gray[300] }}>
-                      <MapPin className="w-5 h-5 flex-shrink-0" style={{ color: COLORS.primary[400] }} />
-                      <span className="font-medium truncate">{getPropertyLocation(property)}</span>
-                    </p>
-                    <p className="text-2xl font-extrabold mb-4" style={{ color: COLORS.primary[400] }}>
-                      {formatPrice(property.price, property.currency)}
-                    </p>
-                    {property.forRent && property.rentPrice && (
-                      <p className="text-sm mb-4" style={{ color: COLORS.gray[400] }}>
-                        Rent: {formatPrice(property.rentPrice, property.currency)}/month
-                      </p>
-                    )}
-                    <div className="flex items-center gap-4 text-sm" style={{ color: COLORS.gray[300] }}>
-                      {property.bedrooms !== null && property.bedrooms > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Bed className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                          <span>{property.bedrooms} Beds</span>
-                        </div>
-                      )}
-                      {property.bathrooms !== null && property.bathrooms > 0 && (
-                        <div className="flex items-center gap-2">
-                          <Bath className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                          <span>{property.bathrooms} Baths</span>
-                        </div>
-                      )}
-                      {property.surface && (
-                        <div className="flex items-center gap-2">
-                          <Square className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                          <span>{formatArea(property.surface)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+  <span
+    className="inline-block px-4 py-1 rounded-full text-sm font-bold mb-3"
+    style={{
+      background: `${COLORS.primary[500]}33`,
+      color: COLORS.primary[300],
+    }}
+  >
+    {property.type}
+  </span>
+  <h3 className="text-xl font-bold text-white mb-2 line-clamp-2 group-hover:text-green-400 transition">
+    {property.title}
+  </h3>
+  <p className="flex items-center gap-2 mb-4" style={{ color: COLORS.gray[300] }}>
+    <MapPin className="w-5 h-5 flex-shrink-0" style={{ color: COLORS.primary[400] }} />
+    <span className="font-medium truncate">{getPropertyLocation(property)}</span>
+  </p>
+  
+  {/* Price section - handle both sale and rent */}
+  <div className="mb-4">
+    {property.price > 0 && (
+      <p className="text-2xl font-extrabold" style={{ color: COLORS.primary[400] }}>
+        {formatPrice(property.price, property.currency)}
+      </p>
+    )}
+    {property.forRent && property.rentPrice && property.rentPrice > 0 && (
+      <p className="text-sm mt-1" style={{ color: COLORS.gray[400] }}>
+        Rent: {formatPrice(property.rentPrice, property.currency)}/month
+      </p>
+    )}
+    {property.pricePerSqM && property.pricePerSqM > 0 && (
+      <p className="text-xs mt-1" style={{ color: COLORS.gray[500] }}>
+        {formatPrice(property.pricePerSqM, property.currency)}/m²
+      </p>
+    )}
+  </div>
+
+  {/* Room details */}
+  <div className="flex items-center gap-4 text-sm mb-2" style={{ color: COLORS.gray[300] }}>
+    {property.bedrooms !== null && property.bedrooms > 0 && (
+      <div className="flex items-center gap-2">
+        <Bed className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+        <span>{property.bedrooms}</span>
+      </div>
+    )}
+    {property.bathrooms !== null && property.bathrooms > 0 && (
+      <div className="flex items-center gap-2">
+        <Bath className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+        <span>{property.bathrooms}</span>
+      </div>
+    )}
+    {property.surface && (
+      <div className="flex items-center gap-2">
+        <Square className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+        <span>{formatArea(property.surface)}</span>
+      </div>
+    )}
+  </div>
+
+  {/* Additional amenities for Batiment */}
+  {(property.parkingSpaces || property.totalUnits || property.totalFloors || property.hasElevator) && (
+    <div className="flex flex-wrap items-center gap-2 text-xs pt-2 border-t border-white/10" style={{ color: COLORS.gray[400] }}>
+      {property.parkingSpaces && property.parkingSpaces > 0 && (
+        <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">
+          <Car className="w-3 h-3" /> {property.parkingSpaces}
+        </span>
+      )}
+      {property.totalUnits && property.totalUnits > 0 && (
+        <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">
+          <Building2 className="w-3 h-3" /> {property.totalUnits} units
+        </span>
+      )}
+      {property.totalFloors && property.totalFloors > 0 && (
+        <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">
+          <Building2 className="w-3 h-3" /> {property.totalFloors} floors
+        </span>
+      )}
+      {property.hasElevator && (
+        <span className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded">
+          ✓ Elevator
+        </span>
+      )}
+    </div>
+  )}
+</div>
                 </motion.div>
               ))}
             </div>

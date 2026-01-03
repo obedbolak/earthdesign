@@ -1,5 +1,3 @@
---migration.sql
-
 -- CreateEnum
 CREATE TYPE "PropertyType" AS ENUM ('Apartment', 'House', 'Villa', 'Office', 'Commercial', 'Land', 'Building', 'Studio', 'Duplex');
 
@@ -154,6 +152,16 @@ CREATE TABLE "Batiment" (
     "hasGenerator" BOOLEAN DEFAULT false,
     "hasParking" BOOLEAN DEFAULT false,
     "parkingSpaces" INTEGER,
+    "price" DECIMAL(15,2),
+    "pricePerSqM" DECIMAL(15,2),
+    "currency" TEXT DEFAULT 'XAF',
+    "forSale" BOOLEAN DEFAULT false,
+    "forRent" BOOLEAN DEFAULT false,
+    "rentPrice" DECIMAL(15,2),
+    "shortDescription" VARCHAR(255),
+    "description" TEXT,
+    "published" BOOLEAN DEFAULT false,
+    "featured" BOOLEAN DEFAULT false,
     "Video_URL" TEXT,
     "Image_URL_1" TEXT,
     "Image_URL_2" TEXT,
@@ -436,6 +444,18 @@ CREATE INDEX "Parcelle_forRent_idx" ON "Parcelle"("forRent");
 
 -- CreateIndex
 CREATE INDEX "Parcelle_published_idx" ON "Parcelle"("published");
+
+-- CreateIndex
+CREATE INDEX "Batiment_price_idx" ON "Batiment"("price");
+
+-- CreateIndex
+CREATE INDEX "Batiment_forSale_idx" ON "Batiment"("forSale");
+
+-- CreateIndex
+CREATE INDEX "Batiment_forRent_idx" ON "Batiment"("forRent");
+
+-- CreateIndex
+CREATE INDEX "Batiment_published_idx" ON "Batiment"("published");
 
 -- CreateIndex
 CREATE INDEX "Property_parcelleId_idx" ON "Property"("parcelleId");

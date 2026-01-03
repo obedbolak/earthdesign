@@ -58,31 +58,31 @@ export async function GET(request: Request) {
           })
         : [],
 
-      // Batiments (no published field, show all)
-      (!source || source === 'all' || source === 'batiment')
-        ? prisma.batiment.findMany({
-            include: {
-              parcelle: {
-                include: {
-                  lotissement: {
-                    include: {
-                      arrondissement: {
-                        include: {
-                          departement: {
-                            include: {
-                              region: true,
-                            },
-                          },
-                        },
+      // Batiments - TEMPORARY (until migration is applied)
+(!source || source === 'all' || source === 'batiment')
+  ? prisma.batiment.findMany({
+      include: {
+        parcelle: {
+          include: {
+            lotissement: {
+              include: {
+                arrondissement: {
+                  include: {
+                    departement: {
+                      include: {
+                        region: true,
                       },
                     },
                   },
                 },
               },
             },
-            orderBy: { createdAt: 'desc' },
-          })
-        : [],
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+  : [],
     ]);
 
     // Transform to unified format
@@ -150,6 +150,9 @@ function transformLotissements(lotissements: any[]): UnifiedProperty[] {
     livingRooms: null,
     hasGenerator: false,
     hasParking: false,
+    parkingSpaces: null,
+    hasElevator: null,
+    totalUnits: null,
     floorLevel: null,
     totalFloors: null,
     surface: l.Surface,
@@ -209,6 +212,9 @@ function transformParcelles(parcelles: any[]): UnifiedProperty[] {
     livingRooms: null,
     hasGenerator: false,
     hasParking: false,
+    parkingSpaces: null,
+    hasElevator: null,
+    totalUnits: null,
     floorLevel: null,
     totalFloors: null,
     surface: p.Sup,
@@ -248,15 +254,15 @@ function transformBatiments(batiments: any[]): UnifiedProperty[] {
     numericId: b.Id_Bat,
     source: 'batiment' as const,
     title: b.Nom || `${b.Cat_Bat || 'Bâtiment'} #${b.Id_Bat}`,
-    shortDescription: `${b.Cat_Bat || 'Bâtiment'} - ${b.Type_Usage || 'Usage mixte'}`,
-    description: buildBatimentDescription(b),
-    price: 0, // Batiment doesn't have direct price
-    pricePerSqM: null,
-    currency: 'XAF',
+    shortDescription: b.shortDescription || `${b.Cat_Bat || 'Bâtiment'} - ${b.Type_Usage || 'Usage mixte'}`,
+    description: b.description || buildBatimentDescription(b),
+    price: b.price ? Number(b.price) : 0,  // NOW USING BATIMENT PRICE
+    pricePerSqM: b.pricePerSqM ? Number(b.pricePerSqM) : null,  // NOW USING BATIMENT PRICE PER SQM
+    currency: b.currency || 'XAF',
     type: mapBatimentType(b.Cat_Bat, b.Type_Usage),
-    forSale: b.Status?.toLowerCase().includes('sale') || false,
-    forRent: b.Status?.toLowerCase().includes('rent') || b.Status?.toLowerCase().includes('location') || false,
-    rentPrice: null,
+    forSale: b.forSale ?? false,  // NOW USING BATIMENT forSale
+    forRent: b.forRent ?? false,  // NOW USING BATIMENT forRent
+    rentPrice: b.rentPrice ? Number(b.rentPrice) : null,  // NOW USING BATIMENT rentPrice
     isLandForDevelopment: false,
     approvedForApartments: null,
     bedrooms: b.bedrooms,
@@ -265,6 +271,9 @@ function transformBatiments(batiments: any[]): UnifiedProperty[] {
     livingRooms: b.livingRooms,
     hasGenerator: b.hasGenerator ?? false,
     hasParking: b.hasParking ?? false,
+    parkingSpaces: b.parkingSpaces,  // NEW
+    hasElevator: b.hasElevator ?? false,  // NEW
+    totalUnits: b.totalUnits,  // NEW
     floorLevel: null,
     totalFloors: b.totalFloors,
     surface: b.parcelle?.Sup || null,
@@ -282,8 +291,8 @@ function transformBatiments(batiments: any[]): UnifiedProperty[] {
     imageUrl5: b.Image_URL_5,
     imageUrl6: b.Image_URL_6,
     videoUrl: b.Video_URL,
-    published: true, // Batiments don't have published field
-    featured: false,
+    published: b.published ?? true,  // NOW USING BATIMENT published
+    featured: b.featured ?? false,  // NOW USING BATIMENT featured
     createdAt: b.createdAt?.toISOString() || new Date().toISOString(),
     updatedAt: b.updatedAt?.toISOString() || new Date().toISOString(),
     _meta: {
@@ -309,8 +318,11 @@ function buildBatimentDescription(b: any): string {
   if (b.Standing) parts.push(`Standing: ${b.Standing}`);
   if (b.Etat_Bat) parts.push(`État: ${b.Etat_Bat}`);
   if (b.totalFloors) parts.push(`${b.totalFloors} étage(s)`);
+  if (b.totalUnits) parts.push(`${b.totalUnits} unité(s)`);
   if (b.hasParking) parts.push('Parking disponible');
+  if (b.parkingSpaces) parts.push(`${b.parkingSpaces} place(s) de parking`);
   if (b.hasGenerator) parts.push('Groupe électrogène');
+  if (b.hasElevator) parts.push('Ascenseur');
 
   return parts.join('. ') || 'Bâtiment disponible';
 }
@@ -357,6 +369,9 @@ interface UnifiedProperty {
   livingRooms: number | null;
   hasGenerator: boolean;
   hasParking: boolean;
+  parkingSpaces: number | null;  // NEW
+  hasElevator: boolean | null;   // NEW
+  totalUnits: number | null;     // NEW
   floorLevel: number | null;
   totalFloors: number | null;
   surface: number | null;

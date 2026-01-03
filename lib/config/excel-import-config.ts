@@ -1,5 +1,5 @@
 // lib/config/excel-import-config.ts
-import { toStr, toNum, toBool, toDate } from '@/lib/utils/excel-import';
+import { toStr, toNum, toBool, toDate, toDecimal } from '@/lib/utils/excel-import';
 import { PropertyType } from '@prisma/client';
 
 type ColumnMapper = (cellValue: any) => any;
@@ -357,55 +357,103 @@ export const excelImportConfig: SheetConfig<any>[] = [
     },
   },
 
-  /* =========================================
-   * BATIMENT (30 columns)
-   * ========================================= */
-  {
-    sheetName: 'Batiment',
-    model: 'batiment',
-    columnCount: 30,
-    mappers: [
-      toNum, toStr, toStr, toStr, toStr, toBool, toStr, toStr, toStr, toStr,
-      toStr, toStr, toStr, toStr, toStr, toStr, toStr, toStr, toNum, toStr,
-      toNum, toNum, toNum, toNum, toNum, toNum, toBool, toBool, toBool, toNum
-    ],
-    transform: (row) => {
-      const id = row[0];
-      if (!id || id === 0) return null;
-      return {
-        Id_Bat: id,
-        Type_Usage: defStr(row[1]),
-        Cat_Bat: defStr(row[2]),
-        Status: defStr(row[3]),
-        Standing: defStr(row[4]),
-        Cloture: defBool(row[5]),
-        No_Permis: defStr(row[6]),
-        Type_Lodg: defStr(row[7]),
-        Etat_Bat: defStr(row[8]),
-        Nom: defStr(row[9]),
-        Mat_Bati: defStr(row[10]),
-        Video_URL: defStr(row[11]),
-        Image_URL_1: defStr(row[12]),
-        Image_URL_2: defStr(row[13]),
-        Image_URL_3: defStr(row[14]),
-        Image_URL_4: defStr(row[15]),
-        Image_URL_5: defStr(row[16]),
-        Image_URL_6: defStr(row[17]),
-        Id_Parcel: defNum(row[18]),
-        WKT_Geometry: defStr(row[19]),
-        bedrooms: defNum(row[20], 0),
-        bathrooms: defNum(row[21], 0),
-        kitchens: defNum(row[22], 1),
-        livingRooms: defNum(row[23], 1),
-        totalFloors: defNum(row[24], 0),
-        totalUnits: defNum(row[25], 0),
-        hasElevator: defBool(row[26], false),
-        hasGenerator: defBool(row[27], false),
-        hasParking: defBool(row[28], false),
-        parkingSpaces: defNum(row[29], 0),
-      };
-    },
+/* =========================================
+ * BATIMENT (40 columns) - UPDATED WITH PRICING
+ * ========================================= */
+{
+  sheetName: 'Batiment',
+  model: 'batiment',
+  columnCount: 40,
+  mappers: [
+    toNum,     // 0: Id_Bat
+    toStr,     // 1: Type_Usage
+    toStr,     // 2: Cat_Bat
+    toStr,     // 3: Status
+    toStr,     // 4: Standing
+    toBool,    // 5: Cloture
+    toStr,     // 6: No_Permis
+    toStr,     // 7: Type_Lodg
+    toStr,     // 8: Etat_Bat
+    toStr,     // 9: Nom
+    toStr,     // 10: Mat_Bati
+    toStr,     // 11: Video_URL
+    toStr,     // 12: Image_URL_1
+    toStr,     // 13: Image_URL_2
+    toStr,     // 14: Image_URL_3
+    toStr,     // 15: Image_URL_4
+    toStr,     // 16: Image_URL_5
+    toStr,     // 17: Image_URL_6
+    toNum,     // 18: Id_Parcel
+    toStr,     // 19: WKT_Geometry
+    toNum,     // 20: bedrooms
+    toNum,     // 21: bathrooms
+    toNum,     // 22: kitchens
+    toNum,     // 23: livingRooms
+    toNum,     // 24: totalFloors
+    toNum,     // 25: totalUnits
+    toBool,    // 26: hasElevator
+    toBool,    // 27: hasGenerator
+    toBool,    // 28: hasParking
+    toNum,     // 29: parkingSpaces
+    toDecimal, // 30: price
+    toDecimal, // 31: pricePerSqM
+    toStr,     // 32: currency
+    toBool,    // 33: forSale
+    toBool,    // 34: forRent
+    toDecimal, // 35: rentPrice
+    toStr,     // 36: shortDescription
+    toStr,     // 37: description
+    toBool,    // 38: published
+    toBool,    // 39: featured
+  ],
+  transform: (row) => {
+    const id = row[0];
+    if (!id || id === 0) return null;
+    return {
+      Id_Bat: id,
+      Type_Usage: defStr(row[1]),
+      Cat_Bat: defStr(row[2]),
+      Status: defStr(row[3]),
+      Standing: defStr(row[4]),
+      Cloture: defBool(row[5]),
+      No_Permis: defStr(row[6]),
+      Type_Lodg: defStr(row[7]),
+      Etat_Bat: defStr(row[8]),
+      Nom: defStr(row[9]),
+      Mat_Bati: defStr(row[10]),
+      Video_URL: defStr(row[11]),
+      Image_URL_1: defStr(row[12]),
+      Image_URL_2: defStr(row[13]),
+      Image_URL_3: defStr(row[14]),
+      Image_URL_4: defStr(row[15]),
+      Image_URL_5: defStr(row[16]),
+      Image_URL_6: defStr(row[17]),
+      Id_Parcel: defNum(row[18]),
+      WKT_Geometry: defStr(row[19]),
+      bedrooms: defNum(row[20]),
+      bathrooms: defNum(row[21]),
+      kitchens: defNum(row[22]),
+      livingRooms: defNum(row[23]),
+      totalFloors: defNum(row[24]),
+      totalUnits: defNum(row[25]),
+      hasElevator: defBool(row[26], false),
+      hasGenerator: defBool(row[27], false),
+      hasParking: defBool(row[28], false),
+      parkingSpaces: defNum(row[29]),
+      // New pricing fields
+      price: defNum(row[30]),
+      pricePerSqM: defNum(row[31]),
+      currency: defStr(row[32], 'XAF'),
+      forSale: defBool(row[33], false),
+      forRent: defBool(row[34], false),
+      rentPrice: defNum(row[35]),
+      shortDescription: defStr(row[36]),
+      description: defStr(row[37]),
+      published: defBool(row[38], false),
+      featured: defBool(row[39], false),
+    };
   },
+},
 
   /* =========================================================
    * PROPERTY (30 columns)

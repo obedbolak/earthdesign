@@ -46,17 +46,21 @@ const tableConfigs = {
       "price", "pricePerSqM", "currency", "forSale", "forRent", "rentPrice", "shortDescription", "description", "published", "featured"
     ]
   },
-  Batiment: {
-    icon: Building2, color: "bg-red-500", label: "Bâtiments",
-    fields: [
-      "Id_Bat", "Type_Usage", "Cat_Bat", "Status", "Standing", "Cloture", "No_Permis",
-      "Type_Lodg", "Etat_Bat", "Nom", "Mat_Bati",
-      "Video_URL", "Image_URL_1", "Image_URL_2", "Image_URL_3", "Image_URL_4", "Image_URL_5", "Image_URL_6",
-      "Id_Parcel", "WKT_Geometry",
-      /* NEW */
-      "bedrooms", "bathrooms", "kitchens", "livingRooms", "totalFloors", "totalUnits", "hasElevator", "hasGenerator", "hasParking", "parkingSpaces"
-    ]
-  },
+ Batiment: {
+  icon: Building2, color: "bg-red-500", label: "Bâtiments",
+  fields: [
+    "Id_Bat", "Type_Usage", "Cat_Bat", "Status", "Standing", "Cloture", "No_Permis",
+    "Type_Lodg", "Etat_Bat", "Nom", "Mat_Bati",
+    "Video_URL", "Image_URL_1", "Image_URL_2", "Image_URL_3", "Image_URL_4", "Image_URL_5", "Image_URL_6",
+    "Id_Parcel", "WKT_Geometry",
+    /* Physical features */
+    "bedrooms", "bathrooms", "kitchens", "livingRooms", "totalFloors", "totalUnits", 
+    "hasElevator", "hasGenerator", "hasParking", "parkingSpaces",
+    /* NEW pricing fields */
+    "price", "pricePerSqM", "currency", "forSale", "forRent", "rentPrice", 
+    "shortDescription", "description", "published", "featured"
+  ]
+},
   Route: {
     icon: Route, color: "bg-gray-500", label: "Routes",
     fields: ["Id_Rte", "Cat_Rte", "Type_Rte", "Largeur_Rte", "Etat_Rte", "Mat_Rte", "WKT_Geometry"]

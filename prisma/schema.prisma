@@ -188,6 +188,18 @@ model Batiment {
   hasParking      Boolean?         @default(false)
   parkingSpaces   Int?             // Number of parking spaces
   
+  // Pricing fields for Batiment
+  price           Decimal?         @db.Decimal(15, 2)
+  pricePerSqM     Decimal?         @db.Decimal(15, 2) // Price per square meter
+  currency        String?          @default("XAF")
+  forSale         Boolean?         @default(false)
+  forRent         Boolean?         @default(false)
+  rentPrice       Decimal?         @db.Decimal(15, 2) // Monthly rent if applicable
+  shortDescription String?         @db.VarChar(255)
+  description     String?          @db.Text
+  published       Boolean?         @default(false)
+  featured        Boolean?         @default(false)
+  
   Video_URL       String?
   Image_URL_1     String?
   Image_URL_2     String?
@@ -204,6 +216,11 @@ model Batiment {
   payers          Payer[]
   alimenters      Alimenter[]
   approvisionners Approvisionner[]
+  
+  @@index([price])
+  @@index([forSale])
+  @@index([forRent])
+  @@index([published])
 }
 
 model Route {

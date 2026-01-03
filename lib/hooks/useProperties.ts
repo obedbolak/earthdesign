@@ -35,6 +35,9 @@ export interface UnifiedProperty {
   livingRooms: number | null;
   hasGenerator: boolean;
   hasParking: boolean;
+  parkingSpaces: number | null;      // NEW: for Batiment
+  hasElevator: boolean | null;       // NEW: for Batiment
+  totalUnits: number | null;         // NEW: for Batiment (apartment buildings)
   floorLevel: number | null;
   totalFloors: number | null;
   surface: number | null;
@@ -74,6 +77,7 @@ export interface PropertyFilters {
   maxBedrooms?: number;
   hasParking?: boolean;
   hasGenerator?: boolean;
+  hasElevator?: boolean;              // NEW: filter option
   isLandForDevelopment?: boolean;
   published?: boolean;
   featured?: boolean;
@@ -105,6 +109,7 @@ export interface PropertyStats {
   byRegion: Record<string, number>;
   withParking: number;
   withGenerator: number;
+  withElevator: number;               // NEW: stat
 }
 
 // Main hook
@@ -217,6 +222,7 @@ export function filterProperties(properties: UnifiedProperty[], filters: Propert
     if (filters.minBedrooms !== undefined && (p.bedrooms ?? 0) < filters.minBedrooms) return false;
     if (filters.hasParking !== undefined && p.hasParking !== filters.hasParking) return false;
     if (filters.hasGenerator !== undefined && p.hasGenerator !== filters.hasGenerator) return false;
+    if (filters.hasElevator !== undefined && p.hasElevator !== filters.hasElevator) return false; // NEW
     if (filters.published !== undefined && p.published !== filters.published) return false;
     if (filters.featured !== undefined && p.featured !== filters.featured) return false;
     if (filters.region && !p.location.region?.toLowerCase().includes(filters.region.toLowerCase())) return false;
@@ -276,6 +282,7 @@ export function calculateStats(properties: UnifiedProperty[]): PropertyStats {
     byRegion,
     withParking: published.filter(p => p.hasParking).length,
     withGenerator: published.filter(p => p.hasGenerator).length,
+    withElevator: published.filter(p => p.hasElevator).length,  // NEW
   };
 }
 

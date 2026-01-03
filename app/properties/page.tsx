@@ -400,16 +400,26 @@ export default function AllPropertiesPage() {
                   {formatArea(property.surface)}
                 </span>
               </div>
-              <div className="text-right">
-                <p className="text-lg font-bold" style={{ color: COLORS.primary[300] }}>
-                  {formatPriceCompact(property.price, property.currency)}
-                </p>
-                {property.forRent && property.rentPrice && (
-                  <p className="text-xs" style={{ color: COLORS.primary[400] }}>
-                    {formatPriceCompact(property.rentPrice, property.currency)}/mo
-                  </p>
-                )}
-              </div>
+             <div className="text-right">
+  {property.forSale && property.price && property.price > 0 ? (
+    <p className="text-lg font-bold" style={{ color: COLORS.primary[300] }}>
+      {formatPriceCompact(property.price, property.currency)}
+    </p>
+  ) : property.forRent && property.rentPrice && property.rentPrice > 0 ? (
+    <p className="text-lg font-bold" style={{ color: COLORS.primary[300] }}>
+      {formatPriceCompact(property.rentPrice, property.currency)}/mo
+    </p>
+  ) : (
+    <p className="text-sm font-semibold" style={{ color: COLORS.primary[400] }}>
+      Prix sur demande
+    </p>
+  )}
+  {property.forRent && property.rentPrice && property.rentPrice > 0 && property.forSale && property.price && property.price > 0 && (
+    <p className="text-xs" style={{ color: COLORS.primary[400] }}>
+      Rent: {formatPriceCompact(property.rentPrice, property.currency)}/mo
+    </p>
+  )}
+</div>
             </div>
           </div>
         </Link>
@@ -593,18 +603,28 @@ export default function AllPropertiesPage() {
                 </div>
               )}
               <div className="ml-auto text-right">
-                <p className="text-xs" style={{ color: COLORS.primary[400] }}>
-                  Price
-                </p>
-                <p className="text-2xl font-bold" style={{ color: COLORS.primary[300] }}>
-                  {formatPrice(property.price, property.currency)}
-                </p>
-                {property.forRent && property.rentPrice && (
-                  <p className="text-xs" style={{ color: COLORS.primary[400] }}>
-                    Rent: {formatPrice(property.rentPrice, property.currency)}/mo
-                  </p>
-                )}
-              </div>
+  <p className="text-xs" style={{ color: COLORS.primary[400] }}>
+    {property.forSale ? 'Sale Price' : 'Rent Price'}
+  </p>
+  {property.forSale && property.price && property.price > 0 ? (
+    <p className="text-2xl font-bold" style={{ color: COLORS.primary[300] }}>
+      {formatPrice(property.price, property.currency)}
+    </p>
+  ) : property.forRent && property.rentPrice && property.rentPrice > 0 ? (
+    <p className="text-2xl font-bold" style={{ color: COLORS.primary[300] }}>
+      {formatPrice(property.rentPrice, property.currency)}/mo
+    </p>
+  ) : (
+    <p className="text-lg font-semibold" style={{ color: COLORS.primary[400] }}>
+      Prix sur demande
+    </p>
+  )}
+  {property.forSale && property.forRent && property.price && property.price > 0 && property.rentPrice && property.rentPrice > 0 && (
+    <p className="text-xs mt-1" style={{ color: COLORS.primary[400] }}>
+      Rent: {formatPrice(property.rentPrice, property.currency)}/mo
+    </p>
+  )}
+</div>
             </div>
           </div>
         </Link>

@@ -738,20 +738,60 @@ export default function PropertyDetailPage() {
                 style={{ borderColor: "rgba(255,255,255,0.2)" }}
               >
                 <div>
-                  <p className="text-3xl font-bold" style={{ color: COLORS.primary[400] }}>
-                    {formatPrice(property.price, property.currency)}
-                  </p>
-                  {property.forRent && property.rentPrice && (
-                    <p className="text-sm" style={{ color: COLORS.gray[400] }}>
-                      Rent: {formatPrice(property.rentPrice, property.currency)}/month
-                    </p>
-                  )}
-                  {property.pricePerSqM && (
-                    <p className="text-sm" style={{ color: COLORS.gray[400] }}>
-                      {formatPrice(property.pricePerSqM, property.currency)}/m²
-                    </p>
-                  )}
-                </div>
+  {property.forSale && property.price && property.price > 0 ? (
+    <>
+      <p className="text-sm mb-1" style={{ color: COLORS.gray[400] }}>
+        Sale Price
+      </p>
+      <p className="text-3xl font-bold" style={{ color: COLORS.primary[400] }}>
+        {formatPrice(property.price, property.currency)}
+      </p>
+      {property.pricePerSqM && (
+        <p className="text-sm mt-1" style={{ color: COLORS.gray[400] }}>
+          {formatPrice(property.pricePerSqM, property.currency)}/m²
+        </p>
+      )}
+    </>
+  ) : property.forRent && property.rentPrice && property.rentPrice > 0 ? (
+    <>
+      <p className="text-sm mb-1" style={{ color: COLORS.gray[400] }}>
+        Monthly Rent
+      </p>
+      <p className="text-3xl font-bold" style={{ color: COLORS.primary[400] }}>
+        {formatPrice(property.rentPrice, property.currency)}
+      </p>
+      <p className="text-sm mt-1" style={{ color: COLORS.gray[400] }}>
+        per month
+      </p>
+    </>
+  ) : (
+    <>
+      <p className="text-sm mb-1" style={{ color: COLORS.gray[400] }}>
+        Price
+      </p>
+      <p className="text-2xl font-bold" style={{ color: COLORS.primary[400] }}>
+        Prix sur demande
+      </p>
+      <p className="text-sm mt-1" style={{ color: COLORS.gray[400] }}>
+        Contact us for pricing
+      </p>
+    </>
+  )}
+  
+  {/* Show rent price separately if both sale and rent are available */}
+  {property.forSale && property.forRent && 
+   property.price && property.price > 0 && 
+   property.rentPrice && property.rentPrice > 0 && (
+    <div className="mt-4 pt-4 border-t" style={{ borderColor: "rgba(255,255,255,0.2)" }}>
+      <p className="text-sm mb-1" style={{ color: COLORS.gray[400] }}>
+        Also Available for Rent
+      </p>
+      <p className="text-xl font-bold" style={{ color: COLORS.primary[400] }}>
+        {formatPrice(property.rentPrice, property.currency)}/month
+      </p>
+    </div>
+  )}
+</div>
 
                 {property.surface && (
                   <div className="flex items-center gap-2">
@@ -1116,10 +1156,12 @@ export default function PropertyDetailPage() {
                         </p>
                         <div className="flex items-center justify-between">
                           <p className="text-xl font-bold" style={{ color: COLORS.primary[400] }}>
-                            {related.price > 0
-                              ? formatPriceCompact(related.price, related.currency)
-                              : "Contact"}
-                          </p>
+  {related.forSale && related.price && related.price > 0
+    ? formatPriceCompact(related.price, related.currency)
+    : related.forRent && related.rentPrice && related.rentPrice > 0
+    ? `${formatPriceCompact(related.rentPrice, related.currency)}/mo`
+    : "Prix sur demande"}
+</p>
                           {related.surface && (
                             <span className="text-sm" style={{ color: COLORS.gray[400] }}>
                               {formatArea(related.surface)}
