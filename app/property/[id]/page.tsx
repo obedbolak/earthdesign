@@ -182,6 +182,32 @@ export default function PropertyDetailPage() {
     return images[currentImageIndex];
   };
 
+  function formatTimeAgoIntl(dateString: string, locale = 'en') {
+  const pastDate = new Date(dateString);
+  const now = new Date();
+  const diffInMilliseconds = pastDate.getTime() - now.getTime(); // Past date minus now results in a negative value
+  
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  
+  const MS_PER_SECOND = 1000;
+  const MS_PER_MINUTE = 60 * MS_PER_SECOND;
+  const MS_PER_HOUR = 60 * MS_PER_MINUTE;
+  const MS_PER_DAY = 24 * MS_PER_HOUR;
+  
+  if (Math.abs(diffInMilliseconds) < MS_PER_MINUTE) {
+    return formatter.format(Math.round(diffInMilliseconds / MS_PER_SECOND), 'second');
+  } else if (Math.abs(diffInMilliseconds) < MS_PER_HOUR) {
+    return formatter.format(Math.round(diffInMilliseconds / MS_PER_MINUTE), 'minute');
+  } else if (Math.abs(diffInMilliseconds) < MS_PER_DAY) {
+    return formatter.format(Math.round(diffInMilliseconds / MS_PER_HOUR), 'hour');
+  } else if (Math.abs(diffInMilliseconds) < 30 * MS_PER_DAY) { // Less than approx 30 days
+    return formatter.format(Math.round(diffInMilliseconds / MS_PER_DAY), 'day');
+  } else if (Math.abs(diffInMilliseconds) < 365 * MS_PER_DAY) { // Less than approx 1 year
+    return formatter.format(Math.round(diffInMilliseconds / (30 * MS_PER_DAY)), 'month');
+  } else {
+    return formatter.format(Math.round(diffInMilliseconds / (365 * MS_PER_DAY)), 'year');
+  }
+}
   // Render property details based on source
   const renderPropertyFields = () => {
     if (!property?._meta) return null;
@@ -1066,9 +1092,9 @@ export default function PropertyDetailPage() {
                     <Clock className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
                     <span style={{ color: COLORS.gray[300] }}>Listed</span>
                   </div>
-                  <span className="font-semibold text-white">
-                    {new Date(property.createdAt).toLocaleDateString()}
-                  </span>
+                  <span className="text-gray-400 font-normal ml-2">
+    ({formatTimeAgoIntl(property.createdAt)})
+  </span>
                 </div>
                 <div
                   className="flex items-center justify-between p-3 rounded-xl"

@@ -1,19 +1,35 @@
 // File: components/Header.tsx
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, User, Home, Tag, MapPin, Square, X, 
-  Bed, Bath, Car, Zap, Building2, TreePine,
-  ChevronRight, Sparkles
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { COLORS, GRADIENTS } from '@/lib/constants/colors';
-import { 
-  useProperties, 
-  searchProperties as searchPropertiesHelper, 
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  User,
+  Home,
+  Tag,
+  MapPin,
+  Square,
+  X,
+  Bed,
+  Bath,
+  Car,
+  Building2,
+  TreePine,
+  ChevronRight,
+  Sparkles,
+  Menu,
+  LogIn,
+  UserPlus,
+  Phone,
+  Settings,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { COLORS, GRADIENTS } from "@/lib/constants/colors";
+import {
+  useProperties,
+  searchProperties as searchPropertiesHelper,
   Property,
   PropertyType,
   PropertyStats,
@@ -22,7 +38,7 @@ import {
   getPropertyImages,
   getPropertyLocation,
   formatArea,
-} from '@/lib/hooks/useProperties';
+} from "@/lib/hooks/useProperties";
 
 interface HeaderProps {
   stats: PropertyStats;
@@ -30,18 +46,55 @@ interface HeaderProps {
 }
 
 // Placeholder images by property type
-const PLACEHOLDER_IMAGES: Record<PropertyType | 'default', string> = {
-  Villa: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400&h=300&fit=crop&q=80',
-  Apartment: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop&q=80',
-  Land: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=300&fit=crop&q=80',
-  Commercial: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop&q=80',
-  Building: 'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=400&h=300&fit=crop&q=80',
-  House: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=300&fit=crop&q=80',
-  Office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop&q=80',
-  Studio: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=300&fit=crop&q=80',
-  Duplex: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop&q=80',
-  default: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop&q=80',
+const PLACEHOLDER_IMAGES: Record<PropertyType | "default", string> = {
+  Villa:
+    "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400&h=300&fit=crop&q=80",
+  Apartment:
+    "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop&q=80",
+  Land: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=300&fit=crop&q=80",
+  Commercial:
+    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop&q=80",
+  Building:
+    "https://images.unsplash.com/photo-1565008576549-57569a49371d?w=400&h=300&fit=crop&q=80",
+  House:
+    "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=300&fit=crop&q=80",
+  Office:
+    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop&q=80",
+  Studio:
+    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=300&fit=crop&q=80",
+  Duplex:
+    "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop&q=80",
+  default:
+    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop&q=80",
 };
+
+// Services data for dropdown
+const SERVICES = [
+  {
+    id: "real-estate",
+    title: "Real Estate",
+    description: "Buy, sell, or rent premium properties",
+    icon: Home,
+    href: "/properties",
+    features: ["Property Sales", "Rentals", "Management"],
+  },
+  {
+    id: "land-survey",
+    title: "Land Surveys",
+    description: "Professional surveying services",
+    icon: MapPin,
+    href: "/services/land-survey",
+    features: ["Boundary Surveys", "Topographic", "GPS Surveys"],
+  },
+  {
+    id: "construction",
+    title: "Construction",
+    description: "Complete construction solutions",
+    icon: Building2,
+    href: "/services/construction",
+    features: ["Residential", "Commercial", "Renovations"],
+  },
+];
 
 // Property type icons
 const TYPE_ICONS: Record<PropertyType, React.ComponentType<any>> = {
@@ -58,39 +111,46 @@ const TYPE_ICONS: Record<PropertyType, React.ComponentType<any>> = {
 
 // Get property status
 const getPropertyStatus = (property: Property): string => {
-  if (property.forSale && property.forRent) return 'Sale / Rent';
-  if (property.forSale) return 'For Sale';
-  if (property.forRent) return 'For Rent';
-  return 'Available';
+  if (property.forSale && property.forRent) return "Sale / Rent";
+  if (property.forSale) return "For Sale";
+  if (property.forRent) return "For Rent";
+  return "Available";
 };
 
 // Get status color
 const getStatusColor = (property: Property): string => {
   if (property.forSale && property.forRent) return COLORS.primary[500];
-  if (property.forSale) return '#22c55e';
-  if (property.forRent) return '#3b82f6';
+  if (property.forSale) return "#22c55e";
+  if (property.forRent) return "#3b82f6";
   return COLORS.gray[500];
 };
 
 // Get first available image
 const getPropertyImage = (property: Property): string => {
   const images = getPropertyImages(property);
-  return images.length > 0 ? images[0] : PLACEHOLDER_IMAGES[property.type] || PLACEHOLDER_IMAGES.default;
+  return images.length > 0
+    ? images[0]
+    : PLACEHOLDER_IMAGES[property.type] || PLACEHOLDER_IMAGES.default;
 };
 
 export default function Header({ stats, onSearchClick }: HeaderProps) {
   const { properties } = useProperties();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<Property[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [showServicesMenu, setShowServicesMenu] = useState(false);
+  const [showMobileServicesMenu, setShowMobileServicesMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const searchRef = useRef<HTMLDivElement>(null);
   const mobileSearchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
+  const servicesMenuRef = useRef<HTMLDivElement>(null);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   // Search with debounce
@@ -108,83 +168,103 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
     return () => clearTimeout(timer);
   }, [searchQuery, properties]);
 
-  // Handle click outside to close search
+  // Handle click outside to close all menus
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+
+      if (searchRef.current && !searchRef.current.contains(target)) {
         setIsSearchFocused(false);
       }
-      if (mobileSearchRef.current && !mobileSearchRef.current.contains(event.target as Node)) {
+      if (
+        mobileSearchRef.current &&
+        !mobileSearchRef.current.contains(target)
+      ) {
         setIsMobileSearchOpen(false);
+      }
+      if (
+        servicesMenuRef.current &&
+        !servicesMenuRef.current.contains(target)
+      ) {
+        setShowServicesMenu(false);
+      }
+      if (accountMenuRef.current && !accountMenuRef.current.contains(target)) {
+        setShowAccountMenu(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Open search with Cmd/Ctrl + K
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         inputRef.current?.focus();
         setIsSearchFocused(true);
       }
-      
-      // Close with Escape
-      if (e.key === 'Escape') {
+
+      if (e.key === "Escape") {
         setIsSearchFocused(false);
         setIsMobileSearchOpen(false);
+        setIsMobileMenuOpen(false);
+        setShowAccountMenu(false);
         inputRef.current?.blur();
         mobileInputRef.current?.blur();
         setSelectedIndex(-1);
       }
 
-      // Navigate results with arrow keys
       if (isSearchFocused && searchResults.length > 0) {
-        if (e.key === 'ArrowDown') {
+        if (e.key === "ArrowDown") {
           e.preventDefault();
-          setSelectedIndex(prev => 
+          setSelectedIndex((prev) =>
             prev < searchResults.length - 1 ? prev + 1 : 0
           );
         }
-        if (e.key === 'ArrowUp') {
+        if (e.key === "ArrowUp") {
           e.preventDefault();
-          setSelectedIndex(prev => 
+          setSelectedIndex((prev) =>
             prev > 0 ? prev - 1 : searchResults.length - 1
           );
         }
-        if (e.key === 'Enter' && selectedIndex >= 0) {
+        if (e.key === "Enter" && selectedIndex >= 0) {
           e.preventDefault();
           handleViewProperty(searchResults[selectedIndex]);
         }
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isSearchFocused, searchResults, selectedIndex]);
 
-  const handleViewProperty = useCallback((property: Property) => {
-    router.push(`/property/${property.id}`);
-    setSearchQuery('');
-    setIsSearchFocused(false);
-    setIsMobileSearchOpen(false);
-    setSelectedIndex(-1);
-  }, [router]);
+  const handleViewProperty = useCallback(
+    (property: Property) => {
+      router.push(`/property/${property.id}`);
+      setSearchQuery("");
+      setIsSearchFocused(false);
+      setIsMobileSearchOpen(false);
+      setIsMobileMenuOpen(false);
+      setSelectedIndex(-1);
+    },
+    [router]
+  );
 
   const getPlaceholderImage = useCallback((type: PropertyType) => {
     return PLACEHOLDER_IMAGES[type] || PLACEHOLDER_IMAGES.default;
   }, []);
 
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  }, []);
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(e.target.value);
+    },
+    []
+  );
 
   const handleClearSearch = useCallback(() => {
-    setSearchQuery('');
+    setSearchQuery("");
     setSearchResults([]);
     setSelectedIndex(-1);
   }, []);
@@ -195,30 +275,45 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
 
   const handleMobileSearchOpen = useCallback(() => {
     setIsMobileSearchOpen(true);
+    setIsMobileMenuOpen(false);
     setTimeout(() => mobileInputRef.current?.focus(), 100);
   }, []);
 
   const handleMobileSearchClose = useCallback(() => {
     setIsMobileSearchOpen(false);
-    setSearchQuery('');
+    setSearchQuery("");
     setSearchResults([]);
   }, []);
 
   const handleViewAllResults = useCallback(() => {
     setIsSearchFocused(false);
     setIsMobileSearchOpen(false);
-    setSearchQuery('');
+    setIsMobileMenuOpen(false);
+    setSearchQuery("");
   }, []);
 
-  const showDropdown = isSearchFocused && searchQuery.trim() !== '';
+  const closeMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(false);
+    setShowMobileServicesMenu(false);
+  }, []);
+
+  const closeAccountMenu = useCallback(() => {
+    setShowAccountMenu(false);
+  }, []);
+
+  const showDropdown = isSearchFocused && searchQuery.trim() !== "";
   const hasResults = searchResults.length > 0;
-  const showNoResults = searchQuery.trim() !== '' && !hasResults;
+  const showNoResults = searchQuery.trim() !== "" && !hasResults;
 
   // Render property card for search results
-  const renderPropertyCard = (property: Property, idx: number, isMobile: boolean = false) => {
+  const renderPropertyCard = (
+    property: Property,
+    idx: number,
+    isMobile: boolean = false
+  ) => {
     const TypeIcon = TYPE_ICONS[property.type] || Home;
     const isSelected = idx === selectedIndex && !isMobile;
-    
+
     return (
       <motion.div
         key={property.id}
@@ -227,20 +322,19 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
         transition={{ delay: idx * 0.05 }}
         onClick={() => handleViewProperty(property)}
         className={`group cursor-pointer rounded-xl overflow-hidden transition-all ${
-          isSelected ? 'ring-2 ring-primary-400' : ''
+          isSelected ? "ring-2 ring-primary-400" : ""
         }`}
         style={{
-          background: isSelected 
-            ? `${COLORS.primary[700]}99` 
+          background: isSelected
+            ? `${COLORS.primary[700]}99`
             : `${COLORS.primary[800]}99`,
-          border: `1px solid ${isSelected ? COLORS.primary[400] : COLORS.primary[600]}60`,
+          border: `1px solid ${
+            isSelected ? COLORS.primary[400] : COLORS.primary[600]
+          }60`,
         }}
       >
         {isMobile ? (
-          // Mobile compact layout
-          <div 
-            className="flex items-center gap-3 p-3 transition-colors active:bg-primary-800/40"
-          >
+          <div className="flex items-center gap-3 p-3 transition-colors active:bg-primary-800/40">
             <img
               src={getPropertyImage(property)}
               alt={property.title}
@@ -293,22 +387,18 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
               >
                 {formatPriceCompact(property.price, property.currency)}
               </p>
-              {property.surface&& (
-                <p
-                  className="text-xs"
-                  style={{ color: COLORS.primary[400] }}
-                >
+              {property.surface && (
+                <p className="text-xs" style={{ color: COLORS.primary[400] }}>
                   {formatArea(property.surface)}
                 </p>
               )}
             </div>
-            <ChevronRight 
+            <ChevronRight
               className="w-4 h-4 flex-shrink-0 opacity-50 group-hover:opacity-100 transition"
               style={{ color: COLORS.primary[300] }}
             />
           </div>
         ) : (
-          // Desktop card layout
           <>
             <div className="relative h-40 overflow-hidden">
               <img
@@ -322,7 +412,10 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
               />
               <div
                 className="absolute inset-0"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)' }}
+                style={{
+                  background:
+                    "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)",
+                }}
               />
               <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
                 <span
@@ -345,7 +438,6 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   {getPropertyStatus(property)}
                 </span>
               </div>
-              {/* Amenity badges */}
               <div className="absolute bottom-3 left-3 flex gap-2">
                 {property.bedrooms && property.bedrooms > 0 && (
                   <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
@@ -410,6 +502,352 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
     );
   };
 
+  // Render Services Menu Content (shared between mobile and desktop)
+  const renderServicesContent = (isMobile: boolean = false) => (
+    <div className={isMobile ? "space-y-2" : "py-2 space-y-1"}>
+      {SERVICES.map((service) => (
+        <Link
+          key={service.id}
+          href={service.href}
+          onClick={() => {
+            setShowServicesMenu(false);
+            if (isMobile) closeMobileMenu();
+          }}
+        >
+          <motion.div
+            whileHover={!isMobile ? { x: 4 } : undefined}
+            className={`group ${
+              isMobile ? "p-3" : "p-4"
+            } rounded-xl transition cursor-pointer ${
+              isMobile ? "active:bg-primary-800/40" : ""
+            }`}
+            style={{
+              background: "rgba(255, 255, 255, 0.05)",
+            }}
+          >
+            <div className="flex items-start gap-3 sm:gap-4">
+              <motion.div
+                whileHover={!isMobile ? { rotate: 360 } : undefined}
+                transition={{ duration: 0.6 }}
+                className={`${
+                  isMobile ? "w-10 h-10" : "w-12 h-12"
+                } rounded-xl bg-gradient-to-br ${
+                  service.id === "real-estate"
+                    ? "from-green-500 to-emerald-500"
+                    : service.id === "land-survey"
+                    ? "from-blue-500 to-cyan-500"
+                    : "from-orange-500 to-red-500"
+                } flex items-center justify-center flex-shrink-0 shadow-lg`}
+              >
+                <service.icon
+                  className={`${isMobile ? "w-5 h-5" : "w-6 h-6"} text-white`}
+                />
+              </motion.div>
+
+              <div className="flex-1 min-w-0">
+                <h4
+                  className={`font-bold ${
+                    isMobile ? "text-sm" : "text-base"
+                  } mb-1 group-hover:text-primary-200 transition-colors`}
+                  style={{ color: COLORS.white }}
+                >
+                  {service.title}
+                </h4>
+                <p
+                  className={`${
+                    isMobile ? "text-xs" : "text-sm"
+                  } mb-2 line-clamp-1`}
+                  style={{ color: COLORS.primary[300] }}
+                >
+                  {service.description}
+                </p>
+                <div
+                  className={`flex ${
+                    isMobile ? "flex-col gap-1" : "flex-row flex-wrap gap-2"
+                  }`}
+                >
+                  {service.features.map((feature, idx) => (
+                    <span
+                      key={idx}
+                      className="text-xs px-2 py-1 rounded-full w-fit"
+                      style={{
+                        background: `${COLORS.primary[400]}30`,
+                        color: COLORS.primary[200],
+                      }}
+                    >
+                      {feature}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <ChevronRight
+                className={`${isMobile ? "w-4 h-4" : "w-5 h-5"} flex-shrink-0 ${
+                  isMobile ? "opacity-50" : "opacity-0 group-hover:opacity-100"
+                } transition-opacity`}
+                style={{ color: COLORS.primary[300] }}
+              />
+            </div>
+          </motion.div>
+        </Link>
+      ))}
+    </div>
+  );
+
+  // Render Account Menu Content (shared between mobile and desktop)
+  const renderAccountMenuContent = (isMobile: boolean = false) => (
+    <>
+      {/* Header */}
+      <div
+        className="px-5 py-4 border-b"
+        style={{ borderColor: `${COLORS.primary[400]}40` }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`${
+              isMobile ? "w-14 h-14" : "w-12 h-12"
+            } rounded-full flex items-center justify-center`}
+            style={{
+              background: `linear-gradient(135deg, ${COLORS.primary[500]} 0%, ${COLORS.emerald[500]} 100%)`,
+            }}
+          >
+            <User
+              className={`${isMobile ? "w-7 h-7" : "w-6 h-6"} text-white`}
+            />
+          </div>
+          <div>
+            <h4
+              className={`font-bold ${isMobile ? "text-lg" : "text-base"}`}
+              style={{ color: COLORS.white }}
+            >
+              Welcome
+            </h4>
+            <p
+              className={`${isMobile ? "text-sm" : "text-sm"}`}
+              style={{ color: COLORS.primary[300] }}
+            >
+              Sign in to your account
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Auth Buttons */}
+      <div className="p-4 space-y-3">
+        <Link href="/login" onClick={closeAccountMenu} className="block">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className={`w-full ${
+              isMobile ? "py-4" : "py-3"
+            } px-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 shadow-lg ${
+              isMobile ? "text-base" : "text-sm"
+            }`}
+            style={{ background: GRADIENTS.button.primary }}
+          >
+            <LogIn className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
+            Sign In
+          </motion.button>
+        </Link>
+
+        <Link href="/register" onClick={closeAccountMenu} className="block">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className={`w-full ${
+              isMobile ? "py-4" : "py-3"
+            } px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+              isMobile ? "text-base" : "text-sm"
+            }`}
+            style={{
+              background: "rgba(255,255,255,0.1)",
+              color: COLORS.white,
+              border: `1px solid ${COLORS.primary[400]}60`,
+            }}
+          >
+            <UserPlus className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
+            Create Account
+          </motion.button>
+        </Link>
+      </div>
+
+      {/* Divider */}
+      <div
+        className="border-t mx-4"
+        style={{ borderColor: `${COLORS.primary[400]}40` }}
+      />
+
+      {/* Quick Links */}
+      <div className={`p-2 ${isMobile ? "max-h-[35vh] overflow-y-auto" : ""}`}>
+        <Link href="/properties" onClick={closeAccountMenu}>
+          <motion.div
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.98 }}
+            className={`flex items-center gap-3 px-4 ${
+              isMobile ? "py-4" : "py-3"
+            } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+          >
+            <div
+              className={`${
+                isMobile ? "w-11 h-11" : "w-9 h-9"
+              } rounded-lg flex items-center justify-center`}
+              style={{ background: `${COLORS.primary[500]}30` }}
+            >
+              <Building2
+                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                style={{ color: COLORS.primary[300] }}
+              />
+            </div>
+            <div className="flex-1">
+              <p
+                className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
+                style={{ color: COLORS.white }}
+              >
+                Browse Properties
+              </p>
+              <p
+                className={`${isMobile ? "text-sm" : "text-xs"}`}
+                style={{ color: COLORS.primary[400] }}
+              >
+                Explore our listings
+              </p>
+            </div>
+            <ChevronRight
+              className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+              style={{ color: COLORS.primary[400] }}
+            />
+          </motion.div>
+        </Link>
+
+        <Link href="/services" onClick={closeAccountMenu}>
+          <motion.div
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.98 }}
+            className={`flex items-center gap-3 px-4 ${
+              isMobile ? "py-4" : "py-3"
+            } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+          >
+            <div
+              className={`${
+                isMobile ? "w-11 h-11" : "w-9 h-9"
+              } rounded-lg flex items-center justify-center`}
+              style={{ background: `${COLORS.emerald[500]}30` }}
+            >
+              <Sparkles
+                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                style={{ color: COLORS.emerald[300] }}
+              />
+            </div>
+            <div className="flex-1">
+              <p
+                className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
+                style={{ color: COLORS.white }}
+              >
+                Our Services
+              </p>
+              <p
+                className={`${isMobile ? "text-sm" : "text-xs"}`}
+                style={{ color: COLORS.primary[400] }}
+              >
+                What we offer
+              </p>
+            </div>
+            <ChevronRight
+              className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+              style={{ color: COLORS.primary[400] }}
+            />
+          </motion.div>
+        </Link>
+
+        <Link href="/contact" onClick={closeAccountMenu}>
+          <motion.div
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.98 }}
+            className={`flex items-center gap-3 px-4 ${
+              isMobile ? "py-4" : "py-3"
+            } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+          >
+            <div
+              className={`${
+                isMobile ? "w-11 h-11" : "w-9 h-9"
+              } rounded-lg flex items-center justify-center`}
+              style={{ background: `${COLORS.teal[500]}30` }}
+            >
+              <Phone
+                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                style={{ color: COLORS.teal[500] }}
+              />
+            </div>
+            <div className="flex-1">
+              <p
+                className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
+                style={{ color: COLORS.white }}
+              >
+                Contact Us
+              </p>
+              <p
+                className={`${isMobile ? "text-sm" : "text-xs"}`}
+                style={{ color: COLORS.primary[400] }}
+              >
+                Get in touch
+              </p>
+            </div>
+            <ChevronRight
+              className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+              style={{ color: COLORS.primary[400] }}
+            />
+          </motion.div>
+        </Link>
+      </div>
+
+      {/* Admin Link */}
+      <div
+        className="p-2 border-t"
+        style={{ borderColor: `${COLORS.primary[400]}40` }}
+      >
+        <Link href="/admin" onClick={closeAccountMenu}>
+          <motion.div
+            whileHover={{ x: 4 }}
+            whileTap={{ scale: 0.98 }}
+            className={`flex items-center gap-3 px-4 ${
+              isMobile ? "py-4" : "py-3"
+            } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+          >
+            <div
+              className={`${
+                isMobile ? "w-11 h-11" : "w-9 h-9"
+              } rounded-lg flex items-center justify-center`}
+              style={{ background: `${COLORS.yellow[500]}30` }}
+            >
+              <Settings
+                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                style={{ color: COLORS.yellow[400] }}
+              />
+            </div>
+            <div className="flex-1">
+              <p
+                className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
+                style={{ color: COLORS.white }}
+              >
+                Admin Dashboard
+              </p>
+              <p
+                className={`${isMobile ? "text-sm" : "text-xs"}`}
+                style={{ color: COLORS.primary[400] }}
+              >
+                Manage properties
+              </p>
+            </div>
+            <ChevronRight
+              className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+              style={{ color: COLORS.primary[400] }}
+            />
+          </motion.div>
+        </Link>
+      </div>
+    </>
+  );
+
   return (
     <>
       <motion.header
@@ -434,48 +872,75 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
             <div className="flex items-center justify-between py-2 text-xs sm:text-sm text-white">
               <div className="hidden sm:flex items-center gap-4 md:gap-8">
                 <div className="flex items-center gap-2">
-                  <Home className="w-4 h-4" style={{ color: COLORS.yellow[400] }} />
+                  <Home
+                    className="w-4 h-4"
+                    style={{ color: COLORS.yellow[400] }}
+                  />
                   <span>
-                    <strong style={{ color: COLORS.yellow[400] }}>{stats.published}</strong> Properties
+                    <strong style={{ color: COLORS.yellow[400] }}>
+                      {stats.published}
+                    </strong>{" "}
+                    Properties
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" style={{ color: '#22c55e' }} />
+                  <Tag className="w-4 h-4" style={{ color: "#22c55e" }} />
                   <span>
-                    <strong style={{ color: '#22c55e' }}>{stats.forSale}</strong> For Sale
+                    <strong style={{ color: "#22c55e" }}>
+                      {stats.forSale}
+                    </strong>{" "}
+                    For Sale
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" style={{ color: '#3b82f6' }} />
+                  <Tag className="w-4 h-4" style={{ color: "#3b82f6" }} />
                   <span>
-                    <strong style={{ color: '#3b82f6' }}>{stats.forRent}</strong> For Rent
+                    <strong style={{ color: "#3b82f6" }}>
+                      {stats.forRent}
+                    </strong>{" "}
+                    For Rent
                   </span>
                 </div>
                 {stats.featured > 0 && (
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" style={{ color: COLORS.yellow[400] }} />
+                    <Sparkles
+                      className="w-4 h-4"
+                      style={{ color: COLORS.yellow[400] }}
+                    />
                     <span>
-                      <strong style={{ color: COLORS.yellow[400] }}>{stats.featured}</strong> Featured
+                      <strong style={{ color: COLORS.yellow[400] }}>
+                        {stats.featured}
+                      </strong>{" "}
+                      Featured
                     </span>
                   </div>
                 )}
               </div>
               <div className="flex sm:hidden items-center gap-3 text-xs">
                 <span>
-                  <strong style={{ color: COLORS.yellow[400] }}>{stats.published}</strong> Properties
+                  <strong style={{ color: COLORS.yellow[400] }}>
+                    {stats.published}
+                  </strong>{" "}
+                  Properties
                 </span>
                 <span>•</span>
                 <span>
-                  <strong style={{ color: '#22c55e' }}>{stats.forSale}</strong> For Sale
+                  <strong style={{ color: "#22c55e" }}>{stats.forSale}</strong>{" "}
+                  Sale
                 </span>
                 <span>•</span>
                 <span>
-                  <strong style={{ color: '#3b82f6' }}>{stats.forRent}</strong> For Rent
+                  <strong style={{ color: "#3b82f6" }}>{stats.forRent}</strong>{" "}
+                  Rent
                 </span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="hidden lg:inline opacity-80">📍 Yaoundé, Cameroon</span>
-                <span className="opacity-80">📞 +237 677 212 279</span>
+                <span className="hidden lg:inline opacity-80">
+                  📍 Yaoundé, Cameroon
+                </span>
+                <span className="opacity-80 hidden sm:inline">
+                  📞 +237 677 212 279
+                </span>
               </div>
             </div>
           </div>
@@ -491,37 +956,29 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 whileTap={{ scale: 0.98 }}
                 className="flex items-center gap-3 flex-shrink-0 cursor-pointer"
               >
-                {/* Logo Container */}
                 <div className="relative flex items-center justify-center">
-                  {/* Glow Effect */}
                   <div
                     className="absolute inset-0 rounded-full blur-md opacity-50"
                     style={{
                       background: `radial-gradient(circle, ${COLORS.primary[400]}40 0%, transparent 70%)`,
                     }}
                   />
-
-                
                 </div>
-                  {/* Logo Image */}
-                  <div
-                    className="relative w-22 h-12 flex items-center justify-center"
-                    style={{ borderColor: `${COLORS.primary[400]}60` }}
-                  >
-                    <img
-                      src="/logo.png"
-                      alt="earthdesign Logo"
-                      className="w-full h-60 object-contain p-1"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                      }}
-                    />
-                  </div>
-
-                {/* Brand Text */}
+                <div
+                  className="relative w-22 h-12 flex items-center justify-center"
+                  style={{ borderColor: `${COLORS.primary[400]}60` }}
+                >
+                  <img
+                    src="/logo.png"
+                    alt="earthdesign Logo"
+                    className="w-full h-60 object-contain p-1"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                    }}
+                  />
+                </div>
                 <div className="hidden sm:flex flex-col">
-                 
                   <span
                     className="text-xs md:text-sm font-medium -mt-1"
                     style={{ color: COLORS.primary[300] }}
@@ -533,11 +990,18 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
             </Link>
 
             {/* Search bar (desktop) */}
-            <div className="flex-1 max-w-2xl mx-4 hidden md:block relative" ref={searchRef}>
+            <div
+              className="flex-1 max-w-2xl mx-4 hidden md:block relative"
+              ref={searchRef}
+            >
               <div className="relative">
                 <Search
                   className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 transition pointer-events-none"
-                  style={{ color: isSearchFocused ? COLORS.primary[500] : COLORS.primary[600] }}
+                  style={{
+                    color: isSearchFocused
+                      ? COLORS.primary[500]
+                      : COLORS.primary[600],
+                  }}
                 />
                 <input
                   ref={inputRef}
@@ -552,7 +1016,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     color: COLORS.gray[900],
                     boxShadow: isSearchFocused
                       ? `0 0 0 4px ${COLORS.primary[500]}40, 0 20px 25px -5px rgba(0, 0, 0, 0.1)`
-                      : '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                      : "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
                   }}
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -566,7 +1030,10 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                         className="p-1.5 rounded-full hover:bg-gray-100 transition"
                         type="button"
                       >
-                        <X className="w-4 h-4" style={{ color: COLORS.gray[400] }} />
+                        <X
+                          className="w-4 h-4"
+                          style={{ color: COLORS.gray[400] }}
+                        />
                       </motion.button>
                     )}
                   </AnimatePresence>
@@ -592,9 +1059,9 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     transition={{ duration: 0.2 }}
                     className="fixed left-0 right-0 mt-2 rounded-none shadow-2xl border-t border-b"
                     style={{
-                      top: '100%',
+                      top: "100%",
                       background: `linear-gradient(135deg, ${COLORS.primary[900]}E6 0%, ${COLORS.emerald[900]}E6 50%, ${COLORS.teal[800]}E6 100%)`,
-                      backdropFilter: 'blur(20px)',
+                      backdropFilter: "blur(20px)",
                       borderColor: `${COLORS.primary[400]}60`,
                     }}
                   >
@@ -605,10 +1072,16 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                             className="w-14 h-14 mx-auto mb-4"
                             style={{ color: COLORS.primary[400] }}
                           />
-                          <p className="font-semibold text-lg mb-2" style={{ color: COLORS.primary[200] }}>
+                          <p
+                            className="font-semibold text-lg mb-2"
+                            style={{ color: COLORS.primary[200] }}
+                          >
                             No properties found
                           </p>
-                          <p className="text-sm" style={{ color: COLORS.primary[300] }}>
+                          <p
+                            className="text-sm"
+                            style={{ color: COLORS.primary[300] }}
+                          >
                             Try a different search term or browse all properties
                           </p>
                           <Link
@@ -626,16 +1099,27 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                             className="px-2 py-4 border-b flex items-center justify-between"
                             style={{ borderColor: `${COLORS.primary[400]}40` }}
                           >
-                            <p className="text-sm font-semibold" style={{ color: COLORS.primary[100] }}>
-                              Found {searchResults.length} {searchResults.length === 1 ? 'property' : 'properties'}
+                            <p
+                              className="text-sm font-semibold"
+                              style={{ color: COLORS.primary[100] }}
+                            >
+                              Found {searchResults.length}{" "}
+                              {searchResults.length === 1
+                                ? "property"
+                                : "properties"}
                             </p>
-                            <p className="text-xs" style={{ color: COLORS.primary[300] }}>
+                            <p
+                              className="text-xs"
+                              style={{ color: COLORS.primary[300] }}
+                            >
                               Use ↑↓ to navigate, Enter to select
                             </p>
                           </div>
                           <div className="max-h-[500px] overflow-y-auto py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {searchResults.map((property, idx) => renderPropertyCard(property, idx, false))}
+                              {searchResults.map((property, idx) =>
+                                renderPropertyCard(property, idx, false)
+                              )}
                             </div>
                           </div>
                           <div
@@ -645,7 +1129,9 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                             }}
                           >
                             <Link
-                              href={`/properties?search=${encodeURIComponent(searchQuery)}`}
+                              href={`/properties?search=${encodeURIComponent(
+                                searchQuery
+                              )}`}
                               className="block text-center py-3 px-6 rounded-xl font-semibold text-white transition-all hover:shadow-lg"
                               style={{ background: GRADIENTS.button.primary }}
                               onClick={handleViewAllResults}
@@ -662,7 +1148,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Search button (mobile) */}
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -673,21 +1159,130 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 <Search className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </motion.button>
 
-              {/* Properties link */}
-              <Link href="/properties">
+              {/* Desktop Services Dropdown */}
+              <div className="relative hidden lg:block" ref={servicesMenuRef}>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full font-medium text-white transition"
-                  style={{ background: 'rgba(255,255,255,0.1)' }}
+                  onClick={() => setShowServicesMenu(!showServicesMenu)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-full font-medium text-white transition"
+                  style={{
+                    background: showServicesMenu
+                      ? GRADIENTS.button.primary
+                      : "rgba(255,255,255,0.1)",
+                  }}
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Services</span>
+                  <motion.div
+                    animate={{ rotate: showServicesMenu ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </motion.div>
+                </motion.button>
+
+                {/* Desktop Services Dropdown Menu */}
+                <AnimatePresence>
+                  {showServicesMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute right-0 mt-3 w-[480px] rounded-2xl shadow-2xl overflow-hidden"
+                      style={{
+                        background: `linear-gradient(135deg, ${COLORS.primary[900]}F5 0%, ${COLORS.emerald[900]}F5 100%)`,
+                        backdropFilter: "blur(20px)",
+                        border: `1px solid ${COLORS.primary[400]}60`,
+                      }}
+                    >
+                      <div className="p-2">
+                        <div
+                          className="px-4 py-3 border-b"
+                          style={{ borderColor: `${COLORS.primary[400]}40` }}
+                        >
+                          <h3
+                            className="font-bold text-lg"
+                            style={{ color: COLORS.white }}
+                          >
+                            Our Services
+                          </h3>
+                          <p
+                            className="text-sm mt-1"
+                            style={{ color: COLORS.primary[200] }}
+                          >
+                            Comprehensive real estate solutions
+                          </p>
+                        </div>
+
+                        {renderServicesContent(false)}
+
+                        <div
+                          className="p-4 border-t"
+                          style={{ borderColor: `${COLORS.primary[400]}40` }}
+                        >
+                          <Link
+                            href="/services"
+                            onClick={() => setShowServicesMenu(false)}
+                          >
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              className="w-full py-3 rounded-xl font-semibold text-white transition text-center"
+                              style={{ background: GRADIENTS.button.primary }}
+                            >
+                              View All Services →
+                            </motion.button>
+                          </Link>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Properties link (desktop) */}
+              <Link href="/properties" className="hidden lg:block">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full font-medium text-white transition"
+                  style={{ background: "rgba(255,255,255,0.1)" }}
                 >
                   <Building2 className="w-4 h-4" />
                   <span>Properties</span>
                 </motion.button>
               </Link>
 
-              {/* Account button */}
-              <div className="relative">
+              {/* Mobile Menu Button */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                ) : (
+                  <Menu className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                )}
+              </motion.button>
+
+              {/* Account button - visible on all screens */}
+              <div className="relative" ref={accountMenuRef}>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -697,53 +1292,181 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </motion.button>
 
-                {/* Account dropdown */}
+                {/* Account dropdown - Responsive */}
                 <AnimatePresence>
                   {showAccountMenu && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-48 rounded-xl shadow-xl overflow-hidden"
-                      style={{
-                        background: COLORS.white,
-                        border: `1px solid ${COLORS.gray[200]}`,
-                      }}
-                    >
-                      <Link
-                        href="/admin"
-                        className="block px-4 py-3 text-sm font-medium hover:bg-gray-50 transition"
-                        style={{ color: COLORS.gray[700] }}
+                    <>
+                      {/* Mobile Overlay Background */}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/50 z-40 sm:hidden"
                         onClick={() => setShowAccountMenu(false)}
-                      >
-                        Admin Dashboard
-                      </Link>
-                      <Link
-                        href="/properties"
-                        className="block px-4 py-3 text-sm font-medium hover:bg-gray-50 transition"
-                        style={{ color: COLORS.gray[700] }}
-                        onClick={() => setShowAccountMenu(false)}
-                      >
-                        All Properties
-                      </Link>
-                      <div
-                        className="border-t"
-                        style={{ borderColor: COLORS.gray[200] }}
                       />
-                      <button
-                        className="block w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 transition"
-                        style={{ color: COLORS.gray[500] }}
-                        onClick={() => setShowAccountMenu(false)}
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed sm:absolute z-50 left-4 right-4 sm:left-auto sm:right-0 top-10 sm:bottom-auto sm:mt-3 sm:w-72 rounded-2xl shadow-2xl overflow-hidden"
+                        style={{
+                          background: `linear-gradient(135deg, ${COLORS.primary[900]}F5 0%, ${COLORS.emerald[900]}F5 100%)`,
+                          backdropFilter: "blur(20px)",
+                          border: `1px solid ${COLORS.primary[400]}60`,
+                        }}
                       >
-                        Sign In
-                      </button>
-                    </motion.div>
+                        {/* Close button for mobile */}
+                        <div className="sm:hidden flex justify-between items-center px-5 pt-4">
+                          <span
+                            className="text-sm font-medium"
+                            style={{ color: COLORS.primary[300] }}
+                          >
+                            Account
+                          </span>
+                          <motion.button
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => setShowAccountMenu(false)}
+                            className="w-8 h-8 rounded-full flex items-center justify-center"
+                            style={{ background: "rgba(255,255,255,0.1)" }}
+                          >
+                            <X className="w-4 h-4 text-white" />
+                          </motion.button>
+                        </div>
+
+                        {/* Desktop content */}
+                        <div className="hidden sm:block">
+                          {renderAccountMenuContent(false)}
+                        </div>
+
+                        {/* Mobile content */}
+                        <div className="sm:hidden">
+                          {renderAccountMenuContent(true)}
+                        </div>
+                      </motion.div>
+                    </>
                   )}
                 </AnimatePresence>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu Overlay */}
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="lg:hidden border-t overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, ${COLORS.primary[900]}F5 0%, ${COLORS.emerald[900]}F5 100%)`,
+                borderColor: `${COLORS.primary[400]}40`,
+              }}
+            >
+              <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
+                {/* Properties Link */}
+                <Link href="/properties" onClick={closeMobileMenu}>
+                  <motion.div
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition active:bg-primary-800/40"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  >
+                    <Building2 className="w-5 h-5 text-white" />
+                    <span className="font-medium text-white">Properties</span>
+                    <ChevronRight
+                      className="w-4 h-4 ml-auto"
+                      style={{ color: COLORS.primary[300] }}
+                    />
+                  </motion.div>
+                </Link>
+
+                {/* Services Accordion */}
+                <div>
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() =>
+                      setShowMobileServicesMenu(!showMobileServicesMenu)
+                    }
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium text-white transition"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="w-5 h-5" />
+                      <span>Services</span>
+                    </div>
+                    <motion.div
+                      animate={{ rotate: showMobileServicesMenu ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </motion.div>
+                  </motion.button>
+
+                  {/* Mobile Services List */}
+                  <AnimatePresence>
+                    {showMobileServicesMenu && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-2">
+                          {renderServicesContent(true)}
+
+                          <div className="pt-3">
+                            <Link href="/services" onClick={closeMobileMenu}>
+                              <motion.button
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full py-3 rounded-xl font-semibold text-white transition text-center"
+                                style={{ background: GRADIENTS.button.primary }}
+                              >
+                                View All Services →
+                              </motion.button>
+                            </Link>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Contact Link */}
+                <Link href="/contact" onClick={closeMobileMenu}>
+                  <motion.div
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition active:bg-primary-800/40"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  >
+                    <Phone className="w-5 h-5 text-white" />
+                    <span className="font-medium text-white">Contact Us</span>
+                    <ChevronRight
+                      className="w-4 h-4 ml-auto"
+                      style={{ color: COLORS.primary[300] }}
+                    />
+                  </motion.div>
+                </Link>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.header>
 
       {/* Mobile Search Overlay */}
@@ -755,7 +1478,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[60] md:hidden"
-            style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+            style={{ background: "rgba(0, 0, 0, 0.5)" }}
           >
             <motion.div
               initial={{ y: -100 }}
@@ -790,20 +1513,23 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-gray-100 transition"
                     type="button"
                   >
-                    <X className="w-5 h-5" style={{ color: COLORS.gray[500] }} />
+                    <X
+                      className="w-5 h-5"
+                      style={{ color: COLORS.gray[500] }}
+                    />
                   </button>
                 </div>
               </div>
 
               {/* Mobile Search Results */}
-              {searchQuery.trim() !== '' && (
+              {searchQuery.trim() !== "" && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="max-h-[70vh] overflow-y-auto"
                   style={{
                     background: `linear-gradient(135deg, ${COLORS.primary[900]}F2 0%, ${COLORS.emerald[900]}F2 50%, ${COLORS.teal[800]}F2 100%)`,
-                    backdropFilter: 'blur(20px)',
+                    backdropFilter: "blur(20px)",
                   }}
                 >
                   {searchResults.length === 0 ? (
@@ -812,10 +1538,16 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                         className="w-12 h-12 mx-auto mb-3"
                         style={{ color: COLORS.primary[400] }}
                       />
-                      <p className="font-semibold" style={{ color: COLORS.primary[200] }}>
+                      <p
+                        className="font-semibold"
+                        style={{ color: COLORS.primary[200] }}
+                      >
                         No properties found
                       </p>
-                      <p className="text-sm mt-1" style={{ color: COLORS.primary[300] }}>
+                      <p
+                        className="text-sm mt-1"
+                        style={{ color: COLORS.primary[300] }}
+                      >
                         Try a different search term
                       </p>
                       <Link
@@ -833,19 +1565,32 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                         className="px-4 py-3 border-b"
                         style={{ borderColor: `${COLORS.primary[400]}40` }}
                       >
-                        <p className="text-sm font-semibold" style={{ color: COLORS.primary[100] }}>
-                          Found {searchResults.length} {searchResults.length === 1 ? 'property' : 'properties'}
+                        <p
+                          className="text-sm font-semibold"
+                          style={{ color: COLORS.primary[100] }}
+                        >
+                          Found {searchResults.length}{" "}
+                          {searchResults.length === 1
+                            ? "property"
+                            : "properties"}
                         </p>
                       </div>
-                      <div className="divide-y" style={{ borderColor: `${COLORS.primary[400]}30` }}>
-                        {searchResults.map((property, idx) => renderPropertyCard(property, idx, true))}
+                      <div
+                        className="divide-y"
+                        style={{ borderColor: `${COLORS.primary[400]}30` }}
+                      >
+                        {searchResults.map((property, idx) =>
+                          renderPropertyCard(property, idx, true)
+                        )}
                       </div>
                       <div
                         className="p-4"
                         style={{ background: `${COLORS.primary[900]}80` }}
                       >
                         <Link
-                          href={`/properties?search=${encodeURIComponent(searchQuery)}`}
+                          href={`/properties?search=${encodeURIComponent(
+                            searchQuery
+                          )}`}
                           className="block w-full text-center py-3 rounded-xl font-semibold text-white transition"
                           style={{ background: GRADIENTS.button.primary }}
                           onClick={handleViewAllResults}

@@ -1046,7 +1046,7 @@ export default function AllPropertiesPage() {
       </section>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-0">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
         {/* Toolbar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
