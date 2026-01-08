@@ -761,7 +761,7 @@ export default function PropertyDetailPage() {
         {formatPrice(property.rentPrice, property.currency)}
       </p>
       <p className="text-sm mt-1" style={{ color: COLORS.gray[400] }}>
-        per month
+        /month
       </p>
     </>
   ) : (
@@ -787,13 +787,13 @@ export default function PropertyDetailPage() {
         Also Available for Rent
       </p>
       <p className="text-xl font-bold" style={{ color: COLORS.primary[400] }}>
-        {formatPrice(property.rentPrice, property.currency)}/month
+        {formatPrice(property.rentPrice, property.currency)} /month
       </p>
     </div>
   )}
 </div>
 
-                {property.surface && (
+                {property.surface && !property.forRent && (
                   <div className="flex items-center gap-2">
                     <Square className="w-5 h-5" style={{ color: COLORS.gray[400] }} />
                     <div>
@@ -823,7 +823,7 @@ export default function PropertyDetailPage() {
                     <div>
                       <p className="text-2xl font-bold text-white">{property.bedrooms}</p>
                       <p className="text-sm" style={{ color: COLORS.gray[400] }}>
-                        Bedrooms
+                        {property.bedrooms > 1 ? "Bedrooms" : "Bedroom"}
                       </p>
                     </div>
                   </div>
@@ -835,7 +835,31 @@ export default function PropertyDetailPage() {
                     <div>
                       <p className="text-2xl font-bold text-white">{property.bathrooms}</p>
                       <p className="text-sm" style={{ color: COLORS.gray[400] }}>
-                        Bathrooms
+                        {property.bathrooms > 1 ? "Bathrooms" : "Bathroom"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {property.kitchens && property.kitchens > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Home className="w-5 h-5" style={{ color: COLORS.gray[400] }} />
+                    <div>
+                      <p className="text-2xl font-bold text-white">{property.kitchens}</p>
+                      <p className="text-sm" style={{ color: COLORS.gray[400] }}>
+                       {property.kitchens > 1 ? "Kitchens" : "Kitchen"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {property.livingRooms && property.livingRooms > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Home className="w-5 h-5" style={{ color: COLORS.gray[400] }} />
+                    <div>
+                      <p className="text-2xl font-bold text-white">{property.livingRooms}</p>
+                      <p className="text-sm" style={{ color: COLORS.gray[400] }}>
+                       {property.livingRooms > 1 ? "Living Rooms" : "Living Room"}
                       </p>
                     </div>
                   </div>

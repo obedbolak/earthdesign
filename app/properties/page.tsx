@@ -841,7 +841,7 @@ export default function AllPropertiesPage() {
 
       {/* Hero section */}
       <section
-        className="py-12 sm:py-16"
+        className="py-10 sm:py-10"
         style={{
           background: `linear-gradient(180deg, ${COLORS.primary[900]} 0%, ${COLORS.gray[900]} 100%)`,
         }}
@@ -860,128 +860,14 @@ export default function AllPropertiesPage() {
             </p>
           </motion.div>
 
-          {/* Stats cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-10"
-          >
-            {[
-              { label: 'Total Properties', value: stats.published, icon: Building2, color: COLORS.yellow[400] },
-              { label: 'For Sale', value: stats.forSale, icon: Tag, color: '#22c55e' },
-              { label: 'For Rent', value: stats.forRent, icon: Home, color: '#3b82f6' },
-              { label: 'Featured', value: stats.featured, icon: Sparkles, color: COLORS.yellow[400] },
-            ].map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index }}
-                className="p-4 sm:p-6 rounded-2xl backdrop-blur-sm border text-center"
-                style={{
-                  background: `${COLORS.primary[800]}60`,
-                  borderColor: `${COLORS.primary[600]}40`,
-                }}
-              >
-                <stat.icon className="w-8 h-8 mx-auto mb-3" style={{ color: stat.color }} />
-                <p className="text-2xl sm:text-3xl font-bold text-white">{stat.value}</p>
-                <p className="text-sm" style={{ color: COLORS.primary[300] }}>
-                  {stat.label}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        {/* Toolbar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6"
-        >
-          <div className="flex items-center gap-4">
-            <p className="text-lg font-semibold text-white">
-              {filteredProperties.length} {filteredProperties.length === 1 ? 'Property' : 'Properties'}
-            </p>
-            {hasActiveFilters && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={clearFilters}
-                className="text-sm font-medium px-3 py-1 rounded-full transition flex items-center gap-1"
-                style={{
-                  color: COLORS.primary[300],
-                  background: `${COLORS.primary[500]}20`,
-                }}
-              >
-                <X className="w-3 h-3" />
-                Clear filters
-              </motion.button>
-            )}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {/* View mode buttons */}
-            {[
-              { mode: 'grid' as const, icon: Grid3x3, label: 'Grid' },
-              { mode: 'list' as const, icon: List, label: 'List' },
-              { mode: 'map' as const, icon: MapIcon, label: 'Map' },
-            ].map(({ mode, icon: Icon, label }) => (
-              <motion.button
-                key={mode}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setViewMode(mode)}
-                className="px-4 py-2 rounded-xl font-medium transition flex items-center gap-2"
-                style={{
-                  background: viewMode === mode ? GRADIENTS.button.primary : `${COLORS.white}10`,
-                  color: COLORS.white,
-                }}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{label}</span>
-              </motion.button>
-            ))}
-
-            {/* Filter button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 border-2 rounded-xl font-medium transition"
-              style={{
-                borderColor: COLORS.primary[500],
-                color: COLORS.white,
-                background: showFilters ? `${COLORS.primary[500]}20` : 'transparent',
-              }}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span>Filters</span>
-              {hasActiveFilters && (
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ background: COLORS.primary[400] }}
-                />
-              )}
-              <motion.div animate={{ rotate: showFilters ? 180 : 0 }}>
-                <ChevronDown className="w-4 h-4" />
-              </motion.div>
-            </motion.button>
-          </div>
-        </motion.div>
-
-        {/* Filters panel */}
+          {/* Filters panel */}
         <AnimatePresence>
-          {showFilters && (
+          {!showFilters && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="rounded-2xl shadow-xl p-6 mb-6 border overflow-hidden"
+              className="rounded-2xl shadow-xl p-6 mb-0 border overflow-hidden"
               style={{
                 background: `${COLORS.primary[800]}80`,
                 borderColor: `${COLORS.primary[600]}40`,
@@ -1156,6 +1042,89 @@ export default function AllPropertiesPage() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
+      </section>
+
+      {/* Main content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-0">
+        {/* Toolbar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6"
+        >
+          <div className="flex items-center gap-4">
+            <p className="text-lg font-semibold text-white">
+              {filteredProperties.length} {filteredProperties.length === 1 ? 'Property' : 'Properties'}
+            </p>
+            {hasActiveFilters && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={clearFilters}
+                className="text-sm font-medium px-3 py-1 rounded-full transition flex items-center gap-1"
+                style={{
+                  color: COLORS.primary[300],
+                  background: `${COLORS.primary[500]}20`,
+                }}
+              >
+                <X className="w-3 h-3" />
+                Clear filters
+              </motion.button>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* View mode buttons */}
+            {[
+              { mode: 'grid' as const, icon: Grid3x3, label: 'Grid' },
+              { mode: 'list' as const, icon: List, label: 'List' },
+              { mode: 'map' as const, icon: MapIcon, label: 'Map' },
+            ].map(({ mode, icon: Icon, label }) => (
+              <motion.button
+                key={mode}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setViewMode(mode)}
+                className="px-4 py-2 rounded-xl font-medium transition flex items-center gap-2"
+                style={{
+                  background: viewMode === mode ? GRADIENTS.button.primary : `${COLORS.white}10`,
+                  color: COLORS.white,
+                }}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{label}</span>
+              </motion.button>
+            ))}
+
+            {/* Filter button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-4 py-2 border-2 rounded-xl font-medium transition"
+              style={{
+                borderColor: COLORS.primary[500],
+                color: COLORS.white,
+                background: showFilters ? `${COLORS.primary[500]}20` : 'transparent',
+              }}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>Filters</span>
+              {hasActiveFilters && (
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: COLORS.primary[400] }}
+                />
+              )}
+              <motion.div animate={{ rotate: showFilters ? 180 : 0 }}>
+                <ChevronDown className="w-4 h-4" />
+              </motion.div>
+            </motion.button>
+          </div>
+        </motion.div>
+
+       
 
         {/* Properties display */}
         {loading ? (
