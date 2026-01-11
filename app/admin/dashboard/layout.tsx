@@ -1,9 +1,16 @@
 // app/admin/dashboard/layout.tsx
 "use client";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Upload, Database, Trash2, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  Upload,
+  Database,
+  Trash2,
+  LogOut,
+  Image as ImageIcon,
+  Video,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function AdminDashboardLayout({
@@ -17,6 +24,16 @@ export default function AdminDashboardLayout({
     { href: "/admin/dashboard", icon: LayoutDashboard, label: "Overview" },
     { href: "/admin/dashboard/data", icon: Database, label: "Manage Data" },
     { href: "/admin/dashboard/upload", icon: Upload, label: "Upload Excel" },
+    {
+      href: "/admin/dashboard/upload/images",
+      icon: ImageIcon,
+      label: "Upload Images",
+    },
+    {
+      href: "/admin/dashboard/upload/video",
+      icon: Video,
+      label: "Upload Video",
+    },
     { href: "/admin/dashboard/clear-data", icon: Trash2, label: "Clear Data" },
   ];
 
