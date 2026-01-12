@@ -1,21 +1,28 @@
-// app/layout.tsx  (Server Component - NO "use client")
+import type { Metadata } from "next";
+import { SessionProvider } from "next-auth/react";
+import { auth } from "@/lib/auth"; // ← Import your auth function
+import ClientProvider from "./ClientProvider";
 import "./globals.css";
-import ClientProvider from "./ClientProvider";  // We'll create this next
 
-export const metadata = {
-  title: "Earth Design - Real Estate Platform",
-  description: "Premium properties in Cameroon",
+export const metadata: Metadata = {
+  title: "Earth Design - Real Estate & Land Surveys in Cameroon",
+  description:
+    "Premium properties, professional land surveys, and quality construction services.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth(); // ← Fetch session on server
+
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <ClientProvider>{children}</ClientProvider>
+        <SessionProvider session={session}>
+          <ClientProvider>{children}</ClientProvider>
+        </SessionProvider>
       </body>
     </html>
   );

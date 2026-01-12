@@ -23,9 +23,15 @@ import {
   UserPlus,
   Phone,
   Settings,
+  LogOut,
+  UserCircle,
+  Heart,
+  Clock,
+  Bell,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import {
   useProperties,
@@ -39,6 +45,7 @@ import {
   getPropertyLocation,
   formatArea,
 } from "@/lib/hooks/useProperties";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 interface HeaderProps {
   stats: PropertyStats;
@@ -134,6 +141,8 @@ const getPropertyImage = (property: Property): string => {
 };
 
 export default function Header({ stats, onSearchClick }: HeaderProps) {
+  // Session management
+
   const { properties } = useProperties();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,6 +153,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
   const [showServicesMenu, setShowServicesMenu] = useState(false);
   const [showMobileServicesMenu, setShowMobileServicesMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const searchRef = useRef<HTMLDivElement>(null);
   const mobileSearchRef = useRef<HTMLDivElement>(null);
@@ -152,6 +162,21 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
   const servicesMenuRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  const { user, isLoading, isAuthenticated, isAdmin, isAgent } = useAuth();
+
+  // Logout handler
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await signOut({ callbackUrl: "/" });
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setIsLoggingOut(false);
+      setShowAccountMenu(false);
+    }
+  };
 
   // Search with debounce
   useEffect(() => {
@@ -304,6 +329,30 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
   const showDropdown = isSearchFocused && searchQuery.trim() !== "";
   const hasResults = searchResults.length > 0;
   const showNoResults = searchQuery.trim() !== "" && !hasResults;
+
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (!user) return "U";
+    const names = user.name.split(" ");
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase();
+    }
+    return user.name[0].toUpperCase();
+  };
+
+  // Get role badge color
+  const getRoleBadgeColor = (role: string | undefined) => {
+    switch (role?.toUpperCase()) {
+      case "ADMIN":
+        return { bg: `${COLORS.yellow[500]}40`, text: COLORS.yellow[300] };
+      case "AGENT":
+        return { bg: `${COLORS.emerald[500]}40`, text: COLORS.emerald[300] };
+      case "OWNER":
+        return { bg: `${COLORS.primary[500]}40`, text: COLORS.primary[300] };
+      default:
+        return { bg: `${COLORS.gray[500]}40`, text: COLORS.gray[300] };
+    }
+  };
 
   // Render property card for search results
   const renderPropertyCard = (
@@ -594,259 +643,633 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
     </div>
   );
 
-  // Render Account Menu Content (shared between mobile and desktop)
-  const renderAccountMenuContent = (isMobile: boolean = false) => (
-    <>
-      {/* Header */}
-      <div
-        className="px-5 py-4 border-b"
-        style={{ borderColor: `${COLORS.primary[400]}40` }}
-      >
-        <div className="flex items-center gap-3">
+  // Render Account Menu Content - Dynamic based on auth state
+  const renderAccountMenuContent = (isMobile: boolean = false) => {
+    // Loading state
+    if (isLoading) {
+      return (
+        <div className="p-8 flex flex-col items-center justify-center">
+          <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
+          <p style={{ color: COLORS.primary[300] }}>Loading...</p>
+        </div>
+      );
+    }
+
+    // Not logged in
+    if (!isAuthenticated) {
+      return (
+        <>
+          {/* Header */}
           <div
-            className={`${
-              isMobile ? "w-14 h-14" : "w-12 h-12"
-            } rounded-full flex items-center justify-center`}
-            style={{
-              background: `linear-gradient(135deg, ${COLORS.primary[500]} 0%, ${COLORS.emerald[500]} 100%)`,
-            }}
+            className="px-5 py-4 border-b"
+            style={{ borderColor: `${COLORS.primary[400]}40` }}
           >
-            <User
-              className={`${isMobile ? "w-7 h-7" : "w-6 h-6"} text-white`}
-            />
+            <div className="flex items-center gap-3">
+              <div
+                className={`${
+                  isMobile ? "w-14 h-14" : "w-12 h-12"
+                } rounded-full flex items-center justify-center`}
+                style={{
+                  background: `linear-gradient(135deg, ${COLORS.primary[500]} 0%, ${COLORS.emerald[500]} 100%)`,
+                }}
+              >
+                <User
+                  className={`${isMobile ? "w-7 h-7" : "w-6 h-6"} text-white`}
+                />
+              </div>
+              <div>
+                <h4
+                  className={`font-bold ${isMobile ? "text-lg" : "text-base"}`}
+                  style={{ color: COLORS.white }}
+                >
+                  Welcome
+                </h4>
+                <p
+                  className={`${isMobile ? "text-sm" : "text-sm"}`}
+                  style={{ color: COLORS.primary[300] }}
+                >
+                  Sign in to your account
+                </p>
+              </div>
+            </div>
           </div>
-          <div>
-            <h4
-              className={`font-bold ${isMobile ? "text-lg" : "text-base"}`}
-              style={{ color: COLORS.white }}
+
+          {/* Auth Buttons */}
+          <div className="p-4 space-y-3">
+            <Link
+              href="/auth/signin"
+              onClick={closeAccountMenu}
+              className="block"
             >
-              Welcome
-            </h4>
-            <p
-              className={`${isMobile ? "text-sm" : "text-sm"}`}
-              style={{ color: COLORS.primary[300] }}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`w-full ${
+                  isMobile ? "py-4" : "py-3"
+                } px-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 shadow-lg ${
+                  isMobile ? "text-base" : "text-sm"
+                }`}
+                style={{ background: GRADIENTS.button.primary }}
+              >
+                <LogIn className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
+                Sign In
+              </motion.button>
+            </Link>
+
+            <Link
+              href="/auth/register"
+              onClick={closeAccountMenu}
+              className="block"
             >
-              Sign in to your account
-            </p>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className={`w-full ${
+                  isMobile ? "py-4" : "py-3"
+                } px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                  isMobile ? "text-base" : "text-sm"
+                }`}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  color: COLORS.white,
+                  border: `1px solid ${COLORS.primary[400]}60`,
+                }}
+              >
+                <UserPlus className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
+                Create Account
+              </motion.button>
+            </Link>
+          </div>
+
+          {/* Divider */}
+          <div
+            className="border-t mx-4"
+            style={{ borderColor: `${COLORS.primary[400]}40` }}
+          />
+
+          {/* Quick Links for guests */}
+          <div
+            className={`p-2 ${isMobile ? "max-h-[35vh] overflow-y-auto" : ""}`}
+          >
+            <Link href="/properties" onClick={closeAccountMenu}>
+              <motion.div
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                className={`flex items-center gap-3 px-4 ${
+                  isMobile ? "py-4" : "py-3"
+                } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+              >
+                <div
+                  className={`${
+                    isMobile ? "w-11 h-11" : "w-9 h-9"
+                  } rounded-lg flex items-center justify-center`}
+                  style={{ background: `${COLORS.primary[500]}30` }}
+                >
+                  <Building2
+                    className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                    style={{ color: COLORS.primary[300] }}
+                  />
+                </div>
+                <div className="flex-1">
+                  <p
+                    className={`font-medium ${
+                      isMobile ? "text-base" : "text-sm"
+                    }`}
+                    style={{ color: COLORS.white }}
+                  >
+                    Browse Properties
+                  </p>
+                  <p
+                    className={`${isMobile ? "text-sm" : "text-xs"}`}
+                    style={{ color: COLORS.primary[400] }}
+                  >
+                    Explore our listings
+                  </p>
+                </div>
+                <ChevronRight
+                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                  style={{ color: COLORS.primary[400] }}
+                />
+              </motion.div>
+            </Link>
+
+            <Link href="/contact" onClick={closeAccountMenu}>
+              <motion.div
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                className={`flex items-center gap-3 px-4 ${
+                  isMobile ? "py-4" : "py-3"
+                } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+              >
+                <div
+                  className={`${
+                    isMobile ? "w-11 h-11" : "w-9 h-9"
+                  } rounded-lg flex items-center justify-center`}
+                  style={{ background: `${COLORS.teal[500]}30` }}
+                >
+                  <Phone
+                    className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                    style={{ color: COLORS.teal[500] }}
+                  />
+                </div>
+                <div className="flex-1">
+                  <p
+                    className={`font-medium ${
+                      isMobile ? "text-base" : "text-sm"
+                    }`}
+                    style={{ color: COLORS.white }}
+                  >
+                    Contact Us
+                  </p>
+                  <p
+                    className={`${isMobile ? "text-sm" : "text-xs"}`}
+                    style={{ color: COLORS.primary[400] }}
+                  >
+                    Get in touch
+                  </p>
+                </div>
+                <ChevronRight
+                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                  style={{ color: COLORS.primary[400] }}
+                />
+              </motion.div>
+            </Link>
+          </div>
+        </>
+      );
+    }
+
+    // Logged in
+    const roleBadgeColors = getRoleBadgeColor(user?.role);
+
+    return (
+      <>
+        {/* User Info Header */}
+        <div
+          className="px-5 py-4 border-b"
+          style={{ borderColor: `${COLORS.primary[400]}40` }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`${
+                isMobile ? "w-14 h-14" : "w-12 h-12"
+              } rounded-full flex items-center justify-center overflow-hidden flex-shrink-0`}
+              style={{
+                background: user?.image
+                  ? "transparent"
+                  : `linear-gradient(135deg, ${COLORS.primary[500]} 0%, ${COLORS.emerald[500]} 100%)`,
+                border: `2px solid ${COLORS.primary[400]}60`,
+              }}
+            >
+              {user?.image ? (
+                <img
+                  src={user?.image}
+                  alt={user?.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                  }}
+                />
+              ) : (
+                <span
+                  className={`font-bold ${
+                    isMobile ? "text-lg" : "text-base"
+                  } text-white`}
+                >
+                  {getUserInitials()}
+                </span>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4
+                className={`font-bold ${
+                  isMobile ? "text-lg" : "text-base"
+                } truncate`}
+                style={{ color: COLORS.white }}
+              >
+                {user?.name}
+              </h4>
+              <p
+                className={`${isMobile ? "text-sm" : "text-xs"} truncate mb-1`}
+                style={{ color: COLORS.primary[300] }}
+              >
+                {user?.email}
+              </p>
+              {user?.role && (
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-medium inline-block"
+                  style={{
+                    background: roleBadgeColors.bg,
+                    color: roleBadgeColors.text,
+                  }}
+                >
+                  {user?.role}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Auth Buttons */}
-      <div className="p-4 space-y-3">
-        <Link href="/login" onClick={closeAccountMenu} className="block">
+        {/* Navigation Links */}
+        <div
+          className={`p-2 ${isMobile ? "max-h-[40vh] overflow-y-auto" : ""}`}
+        >
+          {/* Dashboard */}
+          <Link href="/dashboard" onClick={closeAccountMenu}>
+            <motion.div
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              className={`flex items-center gap-3 px-4 ${
+                isMobile ? "py-4" : "py-3"
+              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+            >
+              <div
+                className={`${
+                  isMobile ? "w-11 h-11" : "w-9 h-9"
+                } rounded-lg flex items-center justify-center`}
+                style={{ background: `${COLORS.primary[500]}30` }}
+              >
+                <UserCircle
+                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                  style={{ color: COLORS.primary[300] }}
+                />
+              </div>
+              <div className="flex-1">
+                <p
+                  className={`font-medium ${
+                    isMobile ? "text-base" : "text-sm"
+                  }`}
+                  style={{ color: COLORS.white }}
+                >
+                  Dashboard
+                </p>
+                <p
+                  className={`${isMobile ? "text-sm" : "text-xs"}`}
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  Manage your account
+                </p>
+              </div>
+              <ChevronRight
+                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                style={{ color: COLORS.primary[400] }}
+              />
+            </motion.div>
+          </Link>
+
+          {/* My Favorites */}
+          <Link href="/dashboard/favorites" onClick={closeAccountMenu}>
+            <motion.div
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              className={`flex items-center gap-3 px-4 ${
+                isMobile ? "py-4" : "py-3"
+              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+            >
+              <div
+                className={`${
+                  isMobile ? "w-11 h-11" : "w-9 h-9"
+                } rounded-lg flex items-center justify-center`}
+                style={{ background: `${COLORS.yellow[300]}30` }}
+              >
+                <Heart
+                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                  style={{ color: COLORS.yellow[400] }}
+                />
+              </div>
+              <div className="flex-1">
+                <p
+                  className={`font-medium ${
+                    isMobile ? "text-base" : "text-sm"
+                  }`}
+                  style={{ color: COLORS.white }}
+                >
+                  My Favorites
+                </p>
+                <p
+                  className={`${isMobile ? "text-sm" : "text-xs"}`}
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  Saved properties
+                </p>
+              </div>
+              <ChevronRight
+                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                style={{ color: COLORS.primary[400] }}
+              />
+            </motion.div>
+          </Link>
+
+          {/* Recent Views */}
+          <Link href="/dashboard/history" onClick={closeAccountMenu}>
+            <motion.div
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              className={`flex items-center gap-3 px-4 ${
+                isMobile ? "py-4" : "py-3"
+              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+            >
+              <div
+                className={`${
+                  isMobile ? "w-11 h-11" : "w-9 h-9"
+                } rounded-lg flex items-center justify-center`}
+                style={{ background: `${COLORS.yellow[500]}30` }}
+              >
+                <Clock
+                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                  style={{ color: COLORS.yellow[400] }}
+                />
+              </div>
+              <div className="flex-1">
+                <p
+                  className={`font-medium ${
+                    isMobile ? "text-base" : "text-sm"
+                  }`}
+                  style={{ color: COLORS.white }}
+                >
+                  Recent Views
+                </p>
+                <p
+                  className={`${isMobile ? "text-sm" : "text-xs"}`}
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  Browsing history
+                </p>
+              </div>
+              <ChevronRight
+                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                style={{ color: COLORS.primary[400] }}
+              />
+            </motion.div>
+          </Link>
+
+          {/* Notifications */}
+          <Link href="/dashboard/notifications" onClick={closeAccountMenu}>
+            <motion.div
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              className={`flex items-center gap-3 px-4 ${
+                isMobile ? "py-4" : "py-3"
+              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+            >
+              <div
+                className={`${
+                  isMobile ? "w-11 h-11" : "w-9 h-9"
+                } rounded-lg flex items-center justify-center`}
+                style={{ background: `${COLORS.emerald[500]}30` }}
+              >
+                <Bell
+                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                  style={{ color: COLORS.emerald[400] }}
+                />
+              </div>
+              <div className="flex-1">
+                <p
+                  className={`font-medium ${
+                    isMobile ? "text-base" : "text-sm"
+                  }`}
+                  style={{ color: COLORS.white }}
+                >
+                  Notifications
+                </p>
+                <p
+                  className={`${isMobile ? "text-sm" : "text-xs"}`}
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  Alerts & updates
+                </p>
+              </div>
+              <ChevronRight
+                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                style={{ color: COLORS.primary[400] }}
+              />
+            </motion.div>
+          </Link>
+
+          {/* Settings */}
+          <Link href="/dashboard/settings" onClick={closeAccountMenu}>
+            <motion.div
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              className={`flex items-center gap-3 px-4 ${
+                isMobile ? "py-4" : "py-3"
+              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+            >
+              <div
+                className={`${
+                  isMobile ? "w-11 h-11" : "w-9 h-9"
+                } rounded-lg flex items-center justify-center`}
+                style={{ background: `${COLORS.gray[500]}30` }}
+              >
+                <Settings
+                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                  style={{ color: COLORS.gray[400] }}
+                />
+              </div>
+              <div className="flex-1">
+                <p
+                  className={`font-medium ${
+                    isMobile ? "text-base" : "text-sm"
+                  }`}
+                  style={{ color: COLORS.white }}
+                >
+                  Settings
+                </p>
+                <p
+                  className={`${isMobile ? "text-sm" : "text-xs"}`}
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  Account preferences
+                </p>
+              </div>
+              <ChevronRight
+                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                style={{ color: COLORS.primary[400] }}
+              />
+            </motion.div>
+          </Link>
+
+          {/* Admin Panel - Only for ADMIN role */}
+          {user?.role?.toUpperCase() === "ADMIN" && (
+            <>
+              <div
+                className="border-t mx-4 my-2"
+                style={{ borderColor: `${COLORS.primary[400]}40` }}
+              />
+              <Link href="/admin" onClick={closeAccountMenu}>
+                <motion.div
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`flex items-center gap-3 px-4 ${
+                    isMobile ? "py-4" : "py-3"
+                  } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+                >
+                  <div
+                    className={`${
+                      isMobile ? "w-11 h-11" : "w-9 h-9"
+                    } rounded-lg flex items-center justify-center`}
+                    style={{ background: `${COLORS.yellow[500]}30` }}
+                  >
+                    <Settings
+                      className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                      style={{ color: COLORS.yellow[400] }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p
+                      className={`font-medium ${
+                        isMobile ? "text-base" : "text-sm"
+                      }`}
+                      style={{ color: COLORS.white }}
+                    >
+                      Admin Panel
+                    </p>
+                    <p
+                      className={`${isMobile ? "text-sm" : "text-xs"}`}
+                      style={{ color: COLORS.primary[400] }}
+                    >
+                      Manage properties & users
+                    </p>
+                  </div>
+                  <ChevronRight
+                    className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                    style={{ color: COLORS.primary[400] }}
+                  />
+                </motion.div>
+              </Link>
+            </>
+          )}
+
+          {/* Agent Panel - Only for AGENT role */}
+          {user?.role?.toUpperCase() === "AGENT" && (
+            <>
+              <div
+                className="border-t mx-4 my-2"
+                style={{ borderColor: `${COLORS.primary[400]}40` }}
+              />
+              <Link href="/agent" onClick={closeAccountMenu}>
+                <motion.div
+                  whileHover={{ x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`flex items-center gap-3 px-4 ${
+                    isMobile ? "py-4" : "py-3"
+                  } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+                >
+                  <div
+                    className={`${
+                      isMobile ? "w-11 h-11" : "w-9 h-9"
+                    } rounded-lg flex items-center justify-center`}
+                    style={{ background: `${COLORS.emerald[500]}30` }}
+                  >
+                    <Building2
+                      className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                      style={{ color: COLORS.emerald[400] }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p
+                      className={`font-medium ${
+                        isMobile ? "text-base" : "text-sm"
+                      }`}
+                      style={{ color: COLORS.white }}
+                    >
+                      Agent Dashboard
+                    </p>
+                    <p
+                      className={`${isMobile ? "text-sm" : "text-xs"}`}
+                      style={{ color: COLORS.primary[400] }}
+                    >
+                      Manage listings
+                    </p>
+                  </div>
+                  <ChevronRight
+                    className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                    style={{ color: COLORS.primary[400] }}
+                  />
+                </motion.div>
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* Logout Button */}
+        <div
+          className="p-4 border-t"
+          style={{ borderColor: `${COLORS.primary[400]}40` }}
+        >
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className={`w-full ${
-              isMobile ? "py-4" : "py-3"
-            } px-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 shadow-lg ${
-              isMobile ? "text-base" : "text-sm"
-            }`}
-            style={{ background: GRADIENTS.button.primary }}
-          >
-            <LogIn className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
-            Sign In
-          </motion.button>
-        </Link>
-
-        <Link href="/register" onClick={closeAccountMenu} className="block">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            onClick={handleLogout}
+            disabled={isLoggingOut}
             className={`w-full ${
               isMobile ? "py-4" : "py-3"
             } px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
               isMobile ? "text-base" : "text-sm"
             }`}
             style={{
-              background: "rgba(255,255,255,0.1)",
-              color: COLORS.white,
-              border: `1px solid ${COLORS.primary[400]}60`,
+              background: "rgba(239, 68, 68, 0.2)",
+              color: "#f87171",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
             }}
           >
-            <UserPlus className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
-            Create Account
+            {isLoggingOut ? (
+              <>
+                <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                Signing out...
+              </>
+            ) : (
+              <>
+                <LogOut className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
+                Sign Out
+              </>
+            )}
           </motion.button>
-        </Link>
-      </div>
-
-      {/* Divider */}
-      <div
-        className="border-t mx-4"
-        style={{ borderColor: `${COLORS.primary[400]}40` }}
-      />
-
-      {/* Quick Links */}
-      <div className={`p-2 ${isMobile ? "max-h-[35vh] overflow-y-auto" : ""}`}>
-        <Link href="/properties" onClick={closeAccountMenu}>
-          <motion.div
-            whileHover={{ x: 4 }}
-            whileTap={{ scale: 0.98 }}
-            className={`flex items-center gap-3 px-4 ${
-              isMobile ? "py-4" : "py-3"
-            } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-          >
-            <div
-              className={`${
-                isMobile ? "w-11 h-11" : "w-9 h-9"
-              } rounded-lg flex items-center justify-center`}
-              style={{ background: `${COLORS.primary[500]}30` }}
-            >
-              <Building2
-                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                style={{ color: COLORS.primary[300] }}
-              />
-            </div>
-            <div className="flex-1">
-              <p
-                className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
-                style={{ color: COLORS.white }}
-              >
-                Browse Properties
-              </p>
-              <p
-                className={`${isMobile ? "text-sm" : "text-xs"}`}
-                style={{ color: COLORS.primary[400] }}
-              >
-                Explore our listings
-              </p>
-            </div>
-            <ChevronRight
-              className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-              style={{ color: COLORS.primary[400] }}
-            />
-          </motion.div>
-        </Link>
-
-        <Link href="/services" onClick={closeAccountMenu}>
-          <motion.div
-            whileHover={{ x: 4 }}
-            whileTap={{ scale: 0.98 }}
-            className={`flex items-center gap-3 px-4 ${
-              isMobile ? "py-4" : "py-3"
-            } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-          >
-            <div
-              className={`${
-                isMobile ? "w-11 h-11" : "w-9 h-9"
-              } rounded-lg flex items-center justify-center`}
-              style={{ background: `${COLORS.emerald[500]}30` }}
-            >
-              <Sparkles
-                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                style={{ color: COLORS.emerald[300] }}
-              />
-            </div>
-            <div className="flex-1">
-              <p
-                className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
-                style={{ color: COLORS.white }}
-              >
-                Our Services
-              </p>
-              <p
-                className={`${isMobile ? "text-sm" : "text-xs"}`}
-                style={{ color: COLORS.primary[400] }}
-              >
-                What we offer
-              </p>
-            </div>
-            <ChevronRight
-              className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-              style={{ color: COLORS.primary[400] }}
-            />
-          </motion.div>
-        </Link>
-
-        <Link href="/contact" onClick={closeAccountMenu}>
-          <motion.div
-            whileHover={{ x: 4 }}
-            whileTap={{ scale: 0.98 }}
-            className={`flex items-center gap-3 px-4 ${
-              isMobile ? "py-4" : "py-3"
-            } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-          >
-            <div
-              className={`${
-                isMobile ? "w-11 h-11" : "w-9 h-9"
-              } rounded-lg flex items-center justify-center`}
-              style={{ background: `${COLORS.teal[500]}30` }}
-            >
-              <Phone
-                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                style={{ color: COLORS.teal[500] }}
-              />
-            </div>
-            <div className="flex-1">
-              <p
-                className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
-                style={{ color: COLORS.white }}
-              >
-                Contact Us
-              </p>
-              <p
-                className={`${isMobile ? "text-sm" : "text-xs"}`}
-                style={{ color: COLORS.primary[400] }}
-              >
-                Get in touch
-              </p>
-            </div>
-            <ChevronRight
-              className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-              style={{ color: COLORS.primary[400] }}
-            />
-          </motion.div>
-        </Link>
-      </div>
-
-      {/* Admin Link */}
-      <div
-        className="p-2 border-t"
-        style={{ borderColor: `${COLORS.primary[400]}40` }}
-      >
-        <Link href="/admin" onClick={closeAccountMenu}>
-          <motion.div
-            whileHover={{ x: 4 }}
-            whileTap={{ scale: 0.98 }}
-            className={`flex items-center gap-3 px-4 ${
-              isMobile ? "py-4" : "py-3"
-            } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-          >
-            <div
-              className={`${
-                isMobile ? "w-11 h-11" : "w-9 h-9"
-              } rounded-lg flex items-center justify-center`}
-              style={{ background: `${COLORS.yellow[500]}30` }}
-            >
-              <Settings
-                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                style={{ color: COLORS.yellow[400] }}
-              />
-            </div>
-            <div className="flex-1">
-              <p
-                className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
-                style={{ color: COLORS.white }}
-              >
-                Admin Dashboard
-              </p>
-              <p
-                className={`${isMobile ? "text-sm" : "text-xs"}`}
-                style={{ color: COLORS.primary[400] }}
-              >
-                Manage properties
-              </p>
-            </div>
-            <ChevronRight
-              className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-              style={{ color: COLORS.primary[400] }}
-            />
-          </motion.div>
-        </Link>
-      </div>
-    </>
-  );
+        </div>
+      </>
+    );
+  };
 
   return (
     <>
@@ -1287,9 +1710,32 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setShowAccountMenu(!showAccountMenu)}
-                  className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-full hover:bg-white/20 transition"
+                  className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full hover:bg-white/20 transition overflow-hidden"
+                  style={{
+                    background: user?.image
+                      ? "transparent"
+                      : "rgba(255,255,255,0.1)",
+                    border:
+                      isAuthenticated && user?.image
+                        ? `2px solid ${COLORS.primary[400]}60`
+                        : "none",
+                  }}
                 >
-                  <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : isAuthenticated && user?.image ? (
+                    <img
+                      src={user?.image}
+                      alt={user?.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : isAuthenticated ? (
+                    <span className="font-bold text-white text-sm">
+                      {getUserInitials()}
+                    </span>
+                  ) : (
+                    <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  )}
                 </motion.button>
 
                 {/* Account dropdown - Responsive */}
@@ -1301,7 +1747,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/50 z-40 sm:hidden"
+                        className="fixed inset-0 bg-black/50 z-40 lg:hidden"
                         onClick={() => setShowAccountMenu(false)}
                       />
 
@@ -1310,7 +1756,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         transition={{ duration: 0.2 }}
-                        className="fixed sm:absolute z-50 left-4 right-4 sm:left-auto sm:right-0 top-10 sm:bottom-auto sm:mt-3 sm:w-72 rounded-2xl shadow-2xl overflow-hidden"
+                        className="fixed lg:absolute z-50 left-4 right-4 lg:left-auto lg:right-0 top-16 lg:top-auto lg:mt-3 w-auto lg:w-80 rounded-2xl shadow-2xl overflow-hidden"
                         style={{
                           background: `linear-gradient(135deg, ${COLORS.primary[900]}F5 0%, ${COLORS.emerald[900]}F5 100%)`,
                           backdropFilter: "blur(20px)",
@@ -1318,12 +1764,12 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                         }}
                       >
                         {/* Close button for mobile */}
-                        <div className="sm:hidden flex justify-between items-center px-5 pt-4">
+                        <div className="lg:hidden flex justify-between items-center px-5 pt-4">
                           <span
                             className="text-sm font-medium"
                             style={{ color: COLORS.primary[300] }}
                           >
-                            Account
+                            {isAuthenticated ? "My Account" : "Account"}
                           </span>
                           <motion.button
                             whileTap={{ scale: 0.9 }}
@@ -1336,12 +1782,12 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                         </div>
 
                         {/* Desktop content */}
-                        <div className="hidden sm:block">
+                        <div className="hidden lg:block">
                           {renderAccountMenuContent(false)}
                         </div>
 
                         {/* Mobile content */}
-                        <div className="sm:hidden">
+                        <div className="lg:hidden">
                           {renderAccountMenuContent(true)}
                         </div>
                       </motion.div>
@@ -1463,6 +1909,35 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     />
                   </motion.div>
                 </Link>
+
+                {/* Quick Auth Buttons for Mobile Menu (only when not logged in) */}
+                {!isAuthenticated && (
+                  <div className="pt-2 space-y-2">
+                    <Link href="/auth/signin" onClick={closeMobileMenu}>
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full py-3 rounded-xl font-semibold text-white transition flex items-center justify-center gap-2"
+                        style={{ background: GRADIENTS.button.primary }}
+                      >
+                        <LogIn className="w-5 h-5" />
+                        Sign In
+                      </motion.button>
+                    </Link>
+                    <Link href="/auth/register" onClick={closeMobileMenu}>
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        className="w-full py-3 rounded-xl font-semibold text-white transition flex items-center justify-center gap-2"
+                        style={{
+                          background: "rgba(255,255,255,0.1)",
+                          border: `1px solid ${COLORS.primary[400]}60`,
+                        }}
+                      >
+                        <UserPlus className="w-5 h-5" />
+                        Create Account
+                      </motion.button>
+                    </Link>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
