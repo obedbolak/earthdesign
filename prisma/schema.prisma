@@ -28,6 +28,27 @@ enum UserRole {
 // NextAuth.js Required Models
 // ============================================
 
+
+model OTPToken {
+  id         String   @id @default(uuid())
+  email      String
+  token      String   // 6-digit OTP code
+  type       OTPType
+  expires    DateTime
+  createdAt  DateTime @default(now())
+  
+  @@unique([email, token])
+  @@index([email])
+  @@index([expires])
+}
+
+enum OTPType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  LOGIN_VERIFICATION
+}
+
+
 model User {
   id            String    @id @default(uuid())
   email         String    @unique

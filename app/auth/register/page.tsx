@@ -45,7 +45,7 @@ export default function RegisterPage() {
         setError("Account created but sign-in failed. Please log in manually.");
         setTimeout(() => router.push("/auth/signin"), 2000);
       } else if (result?.ok) {
-        router.push("/dashboard");
+        router.push("/");
         router.refresh();
       }
     } catch {
