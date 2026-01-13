@@ -1,31 +1,35 @@
-// hooks/useAuth.ts
-"use client";
-
+// lib/hooks/useAuth.ts
 import { useSession } from "next-auth/react";
 import { useMemo } from "react";
 
 export function useAuth() {
   const { data: session, status } = useSession();
-  console.log("Session data:", session);
 
-  const user = useMemo(() => {
-    if (!session?.user) return null;
+  const authState = useMemo(() => {
+    const isLoading = status === "loading";
+    const isAuthenticated = status === "authenticated" && !!session?.user;
+
+    // Get user from session
+    const user = session?.user || null;
+
+    // Role checks
+    const isAdmin = user?.role?.toUpperCase() === "ADMIN";
+    const isAgent = user?.role?.toUpperCase() === "AGENT";
+    const isUser = user?.role?.toUpperCase() === "USER";
 
     return {
-      id: session.user.id as string,
-      email: session.user.email || "",
-      name: session.user.name || "User",
-      image: session.user.image || null,
-      role: (session.user as any).role as "USER" | "AGENT" | "ADMIN",
+      user,
+      session,
+      isLoading,
+      isAuthenticated,
+      isAdmin,
+      isAgent,
+      isUser,
+      status,
     };
-  }, [session]);
+  }, [session, status]);
 
-  return {
-    user,
-    isLoading: status === "loading",
-    isAuthenticated: status === "authenticated",
-    isAdmin: user?.role === "ADMIN",
-    isAgent: user?.role === "AGENT",
-    status,
-  };
+  return authState;
 }
+
+export type AuthState = ReturnType<typeof useAuth>;

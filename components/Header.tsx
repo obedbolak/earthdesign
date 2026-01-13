@@ -31,8 +31,11 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
+
+// ✅ Keep only this
+import { signOut } from "next-auth/react";
+import { useAuth } from "@/lib/hooks/useAuth"; //
 import {
   useProperties,
   searchProperties as searchPropertiesHelper,
@@ -45,7 +48,6 @@ import {
   getPropertyLocation,
   formatArea,
 } from "@/lib/hooks/useProperties";
-import { useAuth } from "@/lib/hooks/useAuth";
 
 interface HeaderProps {
   stats: PropertyStats;
@@ -331,13 +333,21 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
   const showNoResults = searchQuery.trim() !== "" && !hasResults;
 
   // Get user initials for avatar fallback
+  // Get user initials for avatar fallback
   const getUserInitials = () => {
-    if (!user) return "U";
-    const names = user.name.split(" ");
+    // If no user or no name, return default
+    if (!user || !user.name) return "U";
+
+    // Split the name into parts
+    const names = user.name.trim().split(" ");
+
+    // If multiple names, use first letter of first two
     if (names.length >= 2) {
       return `${names[0][0]}${names[1][0]}`.toUpperCase();
     }
-    return user.name[0].toUpperCase();
+
+    // If single name, use first letter
+    return names[0][0].toUpperCase();
   };
 
   // Get role badge color
@@ -864,7 +874,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
               {user?.image ? (
                 <img
                   src={user?.image}
-                  alt={user?.name}
+                  alt={user?.name || "User Avatar"}
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -1726,7 +1736,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   ) : isAuthenticated && user?.image ? (
                     <img
                       src={user?.image}
-                      alt={user?.name}
+                      alt={user?.name || "User Avatar"}
                       className="w-full h-full object-cover"
                     />
                   ) : isAuthenticated ? (

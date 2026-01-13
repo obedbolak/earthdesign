@@ -1,5 +1,4 @@
 // lib/emailjs.ts
-
 interface SendOTPEmailOptions {
   to: string;
   name?: string;
@@ -12,7 +11,6 @@ export function generateOTP(): string {
 
 export function formatExpiryTime(minutes: number = 10): string {
   const expiryDate = new Date(Date.now() + minutes * 60 * 1000);
-
   return expiryDate.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
@@ -32,31 +30,31 @@ export async function sendOTPEmail({
     const publicKey = process.env.EMAILJS_PUBLIC_KEY;
     const privateKey = process.env.EMAILJS_PRIVATE_KEY;
 
-    if (!serviceId || !templateId || !publicKey) {
-      console.error("EmailJS configuration missing");
+    if (!serviceId || !templateId || !publicKey || !privateKey) {
+      console.error("EmailJS configuration missing:", {
+        hasServiceId: !!serviceId,
+        hasTemplateId: !!templateId,
+        hasPublicKey: !!publicKey,
+        hasPrivateKey: !!privateKey,
+      });
       return { success: false, error: "Email service not configured" };
     }
 
-    const expiryTime = formatExpiryTime(10); // 10 minutes
+    const expiryTime = formatExpiryTime(10);
 
+    // Ensure all template params have valid values
     const templateParams = {
-      to_email: to,
-      to_name: name || "User",
+      to_email: to.trim(),
+      to_name: name && name.trim() ? name.trim() : "User",
       passcode: otp,
       expiry_time: expiryTime,
     };
 
-    const requestBody: Record<string, unknown> = {
-      service_id: serviceId,
-      template_id: templateId,
-      user_id: publicKey,
-      template_params: templateParams,
-    };
-
-    // Add private key if available (for server-side sending)
-    if (privateKey) {
-      requestBody.accessToken = privateKey;
-    }
+    console.log("Sending email with params:", {
+      to: templateParams.to_email,
+      name: templateParams.to_name,
+      hasOtp: !!otp,
+    });
 
     const response = await fetch(
       "https://api.emailjs.com/api/v1.0/email/send",
@@ -65,34 +63,37 @@ export async function sendOTPEmail({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          service_id: serviceId,
+          template_id: templateId,
+          user_id: publicKey,
+          accessToken: privateKey,
+          template_params: templateParams,
+        }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("EmailJS error:", errorText);
-      return { success: false, error: `Email failed: ${errorText}` };
+      console.error("EmailJS API error:", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+      });
+      return {
+        success: false,
+        error: `Email service error: ${response.status} - ${errorText}`,
+      };
     }
 
-    console.log(`OTP email sent to ${to}`);
+    const responseData = await response.text();
+    console.log(`✅ OTP sent successfully to ${to}`, responseData); // ✅ Fixed syntax error
     return { success: true };
   } catch (error) {
-    console.error("Email send error:", error);
+    console.error("Email sending error:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to send email",
     };
   }
-}
-
-// For password reset emails
-export async function sendPasswordResetEmail({
-  to,
-  name,
-  otp,
-}: SendOTPEmailOptions): Promise<{ success: boolean; error?: string }> {
-  // You can create a different template for password reset
-  // or use the same one
-  return sendOTPEmail({ to, name, otp });
 }

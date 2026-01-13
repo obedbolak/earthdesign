@@ -15,17 +15,24 @@ export async function createAndSendOTP(
   name?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log(
+      `Creating OTP for ${email}, type: ${type}, name: ${name || "User"}`
+    );
+
     // Delete any existing OTPs for this email and type
-    await prisma.oTPToken.deleteMany({
+    const deleted = await prisma.oTPToken.deleteMany({
       where: { email, type },
     });
+    console.log(`Deleted ${deleted.count} existing OTP(s)`);
 
     // Generate new OTP
     const otp = generateOTP();
     const expires = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
+    console.log(`Generated OTP: ${otp}, expires: ${expires.toISOString()}`);
+
     // Save OTP to database
-    await prisma.oTPToken.create({
+    const otpRecord = await prisma.oTPToken.create({
       data: {
         email,
         token: otp,
@@ -33,30 +40,42 @@ export async function createAndSendOTP(
         expires,
       },
     });
+    console.log(`OTP saved to database with ID: ${otpRecord.id}`);
 
     // Send email via EmailJS
+    // Ensure name is never undefined/empty
+    const displayName = name && name.trim() ? name.trim() : "User";
+    console.log(`Sending email to ${email} with name: ${displayName}`);
+
     const emailResult = await sendOTPEmail({
       to: email,
-      name,
+      name: displayName,
       otp,
     });
 
     if (!emailResult.success) {
-      // Delete OTP if email failed
+      console.error("Email sending failed:", emailResult.error);
+      // Clean up the OTP record if email fails
       await prisma.oTPToken.deleteMany({
         where: { email, type },
       });
-      console.error("Failed to send OTP email:", emailResult.error);
       return {
         success: false,
         error: emailResult.error || "Failed to send verification code",
       };
     }
 
+    console.log(`✅ OTP created and sent successfully to ${email}`);
     return { success: true };
   } catch (error) {
     console.error("OTP creation error:", error);
-    return { success: false, error: "Failed to send verification code" };
+    if (error instanceof Error) {
+      console.error("Error stack:", error.stack);
+    }
+    return {
+      success: false,
+      error: "Failed to send verification code. Please try again.",
+    };
   }
 }
 
@@ -66,6 +85,8 @@ export async function verifyOTP(
   type: OTPType
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log(`Verifying OTP for ${email}, type: ${type}`);
+
     const otpRecord = await prisma.oTPToken.findFirst({
       where: {
         email,
@@ -76,32 +97,46 @@ export async function verifyOTP(
     });
 
     if (!otpRecord) {
+      console.log(`No valid OTP found for ${email}`);
       return { success: false, error: "Invalid or expired verification code" };
     }
+
+    console.log(`Valid OTP found, deleting token ID: ${otpRecord.id}`);
 
     // Delete the used OTP
     await prisma.oTPToken.delete({
       where: { id: otpRecord.id },
     });
 
-    // If email verification, update user
+    // Update user email verification if this is email verification
     if (type === "EMAIL_VERIFICATION") {
+      console.log(`Updating emailVerified for ${email}`);
       await prisma.user.update({
         where: { email },
         data: { emailVerified: new Date() },
       });
+      console.log(`✅ Email verified for ${email}`);
     }
 
     return { success: true };
   } catch (error) {
     console.error("OTP verification error:", error);
-    return { success: false, error: "Verification failed" };
+    if (error instanceof Error) {
+      console.error("Error stack:", error.stack);
+    }
+    return { success: false, error: "Verification failed. Please try again." };
   }
 }
 
 export async function cleanupExpiredOTPs(): Promise<number> {
-  const result = await prisma.oTPToken.deleteMany({
-    where: { expires: { lt: new Date() } },
-  });
-  return result.count;
+  try {
+    const result = await prisma.oTPToken.deleteMany({
+      where: { expires: { lt: new Date() } },
+    });
+    console.log(`Cleaned up ${result.count} expired OTP(s)`);
+    return result.count;
+  } catch (error) {
+    console.error("Error cleaning up expired OTPs:", error);
+    return 0;
+  }
 }
