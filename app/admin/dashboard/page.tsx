@@ -2,6 +2,7 @@
 import { Database, MapPin, Building2, DollarSign } from "lucide-react";
 import prisma from "@/lib/prisma";
 import QuickActions from "./QuickActions"; // ← New client component
+import { useAuth } from "@/lib/hooks/useAuth";
 
 async function getStats() {
   const [
@@ -50,7 +51,7 @@ async function getStats() {
 
 export default async function AdminDashboardPage() {
   const stats = await getStats();
-
+  const { user, session } = useAuth();
   const statCards = [
     {
       label: "Total Records",
@@ -93,7 +94,9 @@ export default async function AdminDashboardPage() {
     <div className="p-8 space-y-10">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-teal-800">Welcome back!</h1>
+        <h1 className="text-4xl font-bold text-teal-800">
+          Welcome {user?.name}
+        </h1>
         <p className="text-gray-600 mt-2 text-lg">
           Here's what's happening with your GIS data today.
         </p>
@@ -112,7 +115,9 @@ export default async function AdminDashboardPage() {
               </div>
             </div>
             <p className="text-gray-600 text-sm">{card.label}</p>
-            <p className="text-3xl font-bold text-gray-800 mt-1">{card.value}</p>
+            <p className="text-3xl font-bold text-gray-800 mt-1">
+              {card.value}
+            </p>
           </div>
         ))}
       </div>

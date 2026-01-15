@@ -1192,7 +1192,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
           )}
 
           {/* Agent Panel - Only for AGENT role */}
-          {user?.role?.toUpperCase() === "AGENT" && (
+          {/* {user?.role?.toUpperCase() === "AGENT" && (
             <>
               <div
                 className="border-t mx-4 my-2"
@@ -1240,7 +1240,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 </motion.div>
               </Link>
             </>
-          )}
+          )} */}
         </div>
 
         {/* Logout Button */}
