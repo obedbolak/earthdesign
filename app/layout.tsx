@@ -1,6 +1,7 @@
+// app/layout.tsx
 import type { Metadata } from "next";
-import { SessionProvider } from "next-auth/react";
-import { auth } from "@/lib/auth"; // ← Import your auth function
+import { auth } from "@/lib/auth";
+import AuthProvider from "./AuthProvider";
 import ClientProvider from "./ClientProvider";
 import "./globals.css";
 
@@ -15,14 +16,14 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth(); // ← Fetch session on server
+  const session = await auth();
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <SessionProvider session={session}>
+        <AuthProvider session={session}>
           <ClientProvider>{children}</ClientProvider>
-        </SessionProvider>
+        </AuthProvider>
       </body>
     </html>
   );
