@@ -114,11 +114,5 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Configure for larger file uploads
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "100mb",
-    },
-  },
-};
+// For App Router, use route segment config instead
+export const maxDuration = 60; // Maximum execution time in seconds (for Vercel Pro)

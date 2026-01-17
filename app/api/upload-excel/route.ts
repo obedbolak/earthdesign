@@ -1,16 +1,22 @@
 // app/api/upload-excel/route.ts
-import { NextResponse } from 'next/server';
-import ExcelJS from 'exceljs';
-import prisma from '@/lib/prisma';
-import { processExcelWorkbook } from '@/lib/utils/processExcelUpload';
-import { Readable } from 'stream';
+import { NextResponse } from "next/server";
+import ExcelJS from "exceljs";
+import prisma from "@/lib/prisma";
+import { processExcelWorkbook } from "@/lib/utils/processExcelUpload";
+import { Readable } from "stream";
 
 /* -------------------------------------------------
  * 1. Optional sheets – same list you already use
  * ------------------------------------------------- */
 const OPTIONAL_SHEETS = [
-  'Payer', 'Limitrophe', 'Alimenter', 'Contenir',
-  'Trouver', 'Eclairer', 'Desservir', 'Approvisionner'
+  "Payer",
+  "Limitrophe",
+  "Alimenter",
+  "Contenir",
+  "Trouver",
+  "Eclairer",
+  "Desservir",
+  "Approvisionner",
 ];
 
 /* -------------------------------------------------
@@ -26,22 +32,22 @@ function bufferToStream(buffer: ArrayBuffer): Readable {
 export async function POST(request: Request) {
   /* ---------- 3. Body size guard (adjust as needed) ---------- */
   const maxBytes = 10 * 1024 * 1024; // 10 MB
-  const contentLength = request.headers.get('content-length');
-  
+  const contentLength = request.headers.get("content-length");
+
   if (contentLength && Number(contentLength) > maxBytes) {
     return NextResponse.json(
-      { error: 'File too large. Max 10 MB allowed.' },
+      { error: "File too large. Max 10 MB allowed." },
       { status: 413 }
     );
   }
 
   try {
     const formData = await request.formData();
-    const file = formData.get('excelFile');
+    const file = formData.get("excelFile");
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json(
-        { error: 'No valid Excel file uploaded' },
+        { error: "No valid Excel file uploaded" },
         { status: 400 }
       );
     }
@@ -51,9 +57,13 @@ export async function POST(request: Request) {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.read(bufferToStream(arrayBuffer)); // streaming read
 
-    /* ---------- 5. Transaction logic ---------- */
-    const result = await prisma.$transaction(async (tx) =>
-      processExcelWorkbook(workbook, tx)
+    /* ---------- 5. Transaction logic with INCREASED TIMEOUT ---------- */
+    const result = await prisma.$transaction(
+      async (tx) => processExcelWorkbook(workbook, tx),
+      {
+        maxWait: 30000, // Wait up to 30 seconds to start the transaction
+        timeout: 60000, // Allow transaction to run for 60 seconds
+      }
     );
 
     // Filter out errors about optional missing sheets
@@ -64,7 +74,7 @@ export async function POST(request: Request) {
     if (criticalErrors.length === 0) {
       return NextResponse.json({
         success: true,
-        message: 'All data imported successfully!',
+        message: "All data imported successfully!",
         details: result.results,
       });
     }
@@ -72,17 +82,18 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        message: 'Import completed with errors',
+        message: "Import completed with errors",
         imported: result.results,
         errors: criticalErrors,
       },
       { status: 422 }
     );
   } catch (error) {
-    console.error('Excel upload error:', error);
-    const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+    console.error("Excel upload error:", error);
+    const message =
+      error instanceof Error ? error.message : "An unexpected error occurred";
     return NextResponse.json(
-      { error: 'Import failed', details: message },
+      { error: "Import failed", details: message },
       { status: 500 }
     );
   }

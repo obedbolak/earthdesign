@@ -1,21 +1,28 @@
 // lib/utils/processExcelUpload.ts
+import { Workbook } from "exceljs";
+import { PrismaClient } from "@prisma/client";
+import prisma from "@/lib/prisma";
+import { excelImportConfig } from "@/lib/config/excel-import-config";
 
-import { Workbook } from 'exceljs';
-import { PrismaClient } from '@prisma/client';
-import prisma from '@/lib/prisma';
-import { excelImportConfig } from '@/lib/config/excel-import-config';
-
-// Exact type of the client passed to $transaction callbacks
+// Exact type of the client passed to $transaction callbacks lets use the omit trick
 type PrismaTransactionClient = Omit<
   PrismaClient,
-  '$connect' | '$disconnect' | '$on' | '$transaction' | '$extends'
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
 >;
 
 // Define optional sheets that won't generate errors if missing
 const OPTIONAL_SHEETS = [
-  'Payer', 'Limitrophe', 'Alimenter', 'Contenir',
-  'Trouver', 'Eclairer', 'Desservir', 'Approvisionner'
+  "Payer",
+  "Limitrophe",
+  "Alimenter",
+  "Contenir",
+  "Trouver",
+  "Eclairer",
+  "Desservir",
+  "Approvisionner",
 ];
+
+const BATCH_SIZE = 100; // Process 100 records at a time
 
 export async function processExcelWorkbook(
   workbook: Workbook,
@@ -40,7 +47,6 @@ export async function processExcelWorkbook(
 
     sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       if (rowNumber === 1) return; // Skip header
-
       processedRows++;
 
       const values = row.values as unknown[];
@@ -58,14 +64,15 @@ export async function processExcelWorkbook(
       );
 
       const item = config.transform(mappedValues);
-
       if (item) {
         data.push(item);
       }
     });
 
     if (data.length === 0) {
-      results.push(`"${config.sheetName}": no valid data found (${processedRows} rows processed)`);
+      results.push(
+        `"${config.sheetName}": no valid data found (${processedRows} rows processed)`
+      );
       continue;
     }
 
@@ -76,19 +83,27 @@ export async function processExcelWorkbook(
       if (!model?.createMany) {
         throw new Error(`Model "${config}" not found on Prisma client`);
       }
-      if (!data.length) {
-  results.push(`"${config.sheetName}": no valid rows after transform`);
-  continue;
-}
 
-      await model.createMany({
-        data,
-        skipDuplicates: true,
-      });
+      // **BATCH PROCESSING** - Split data into chunks
+      let totalImported = 0;
 
-      results.push(`"${config.sheetName}": ${data.length} records imported successfully`);
+      for (let i = 0; i < data.length; i += BATCH_SIZE) {
+        const batch = data.slice(i, i + BATCH_SIZE);
+
+        const result = await model.createMany({
+          data: batch,
+          skipDuplicates: true,
+        });
+
+        totalImported += result.count || batch.length;
+      }
+
+      results.push(
+        `"${config.sheetName}": ${totalImported} records imported successfully`
+      );
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown database error';
+      const message =
+        err instanceof Error ? err.message : "Unknown database error";
       errors.push(`Failed to import "${config.sheetName}": ${message}`);
     }
   }
