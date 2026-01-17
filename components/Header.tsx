@@ -1147,7 +1147,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 className="border-t mx-4 my-2"
                 style={{ borderColor: `${COLORS.primary[400]}40` }}
               />
-              <Link href="/admin" onClick={closeAccountMenu}>
+              <Link href="/admin/dashboard" onClick={closeAccountMenu}>
                 <motion.div
                   whileHover={{ x: 4 }}
                   whileTap={{ scale: 0.98 }}

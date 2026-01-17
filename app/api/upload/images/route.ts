@@ -145,3 +145,38 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// DELETE - Delete image by public ID
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const publicId = searchParams.get("publicId");
+
+    if (!publicId) {
+      return NextResponse.json(
+        { error: "publicId query parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    // This requires API Key + Secret
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: "image",
+    });
+
+    if (result.result !== "ok") {
+      return NextResponse.json(
+        { error: `Failed to delete image: ${result.result}` },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, message: "Image deleted" });
+  } catch (error) {
+    console.error("Image deletion error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete image" },
+      { status: 500 }
+    );
+  }
+}

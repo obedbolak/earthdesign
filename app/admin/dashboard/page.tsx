@@ -1,129 +1,192 @@
 // app/admin/dashboard/page.tsx
-import { Database, MapPin, Building2, DollarSign } from "lucide-react";
-import prisma from "@/lib/prisma";
-import QuickActions from "./QuickActions"; // ← New client component
+"use client";
+import { useState } from "react";
+import {
+  LayoutDashboard,
+  Upload,
+  Database,
+  Trash2,
+  Image as ImageIcon,
+  Video,
+  Menu,
+  X,
+  LogOut,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// Component imports
+import Overview from "./components/Overview";
+import DataManagement from "./components/DataManagement";
+import UploadExcel from "./components/UploadExcel";
+import UploadImages from "./components/UploadImages";
+import UploadVideo from "./components/UploadVideo";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 
-async function getStats() {
-  const [
-    regions,
-    departements,
-    arrondissements,
-    lotissements,
-    parcelles,
-    batiments,
-    routes,
-    rivieres,
-    taxes,
-  ] = await Promise.all([
-    prisma.region.count(),
-    prisma.departement.count(),
-    prisma.arrondissement.count(),
-    prisma.lotissement.count(),
-    prisma.parcelle.count(),
-    prisma.batiment.count(),
-    prisma.route.count(),
-    prisma.riviere.count(),
-    prisma.taxe_immobiliere.count(),
-  ]);
+type TabKey = "overview" | "data" | "upload" | "images" | "video" | "clear";
 
-  const totalRecords =
-    regions +
-    departements +
-    arrondissements +
-    lotissements +
-    parcelles +
-    batiments +
-    routes +
-    rivieres +
-    taxes;
+const tabs = [
+  { key: "overview" as TabKey, icon: LayoutDashboard, label: "Overview" },
+  { key: "data" as TabKey, icon: Database, label: "Manage Data" },
+  { key: "upload" as TabKey, icon: Upload, label: "Upload Excel" },
+  { key: "images" as TabKey, icon: ImageIcon, label: "Upload Images" },
+  { key: "video" as TabKey, icon: Video, label: "Upload Video" },
+  { key: "clear" as TabKey, icon: Trash2, label: "Clear Data" },
+];
 
-  return {
-    totalRecords,
-    activeTables: 14,
-    regions,
-    departements,
-    parcelles,
-    batiments,
-    taxes,
+export default function AdminDashboardPage() {
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user } = useAuth();
+
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab);
+    setIsMobileMenuOpen(false); // Close mobile menu after selection
   };
-}
 
-export default async function AdminDashboardPage() {
-  const stats = await getStats();
-  const { user, session } = useAuth();
-  const statCards = [
-    {
-      label: "Total Records",
-      value: stats.totalRecords.toLocaleString(),
-      icon: Database,
-      color: "text-teal-600",
-      bg: "bg-teal-100",
-    },
-    {
-      label: "Régions",
-      value: stats.regions,
-      icon: MapPin,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-    },
-    {
-      label: "Parcelles",
-      value: stats.parcelles.toLocaleString(),
-      icon: MapPin,
-      color: "text-orange-600",
-      bg: "bg-orange-100",
-    },
-    {
-      label: "Bâtiments",
-      value: stats.batiments.toLocaleString(),
-      icon: Building2,
-      color: "text-red-600",
-      bg: "bg-red-100",
-    },
-    {
-      label: "Taxes",
-      value: stats.taxes.toLocaleString(),
-      icon: DollarSign,
-      color: "text-green-600",
-      bg: "bg-green-100",
-    },
-  ];
+  const renderContent = () => {
+    switch (activeTab) {
+      case "overview":
+        return <Overview onTabChange={setActiveTab} />;
+      case "data":
+        return <DataManagement />;
+      case "upload":
+        return <UploadExcel onTabChange={setActiveTab} />;
+      case "images":
+        return <UploadImages />;
+      case "video":
+        return <UploadVideo />;
+      default:
+        return <Overview onTabChange={setActiveTab} />;
+    }
+  };
+  const getUserInitials = () => {
+    // If no user or no name, return default
+    if (!user || !user.name) return "U";
+
+    // Split the name into parts
+    const names = user.name.trim().split(" ");
+
+    // If multiple names, use first letter of first two
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase();
+    }
+
+    // If single name, use first letter
+    return names[0][0].toUpperCase();
+  };
 
   return (
-    <div className="p-8 space-y-10">
-      {/* Header */}
-      <div>
-        <h1 className="text-4xl font-bold text-teal-800">
-          Welcome {user?.name}
-        </h1>
-        <p className="text-gray-600 mt-2 text-lg">
-          Here's what's happening with your GIS data today.
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Mobile Menu Button - Fixed top-left */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition"
+        aria-label="Toggle menu"
+      >
+        {isMobileMenuOpen ? (
+          <X className="w-6 h-6 text-gray-700" />
+        ) : (
+          <Menu className="w-6 h-6 text-gray-700" />
+        )}
+      </button>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {statCards.map((card) => (
-          <div
-            key={card.label}
-            className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className={`${card.bg} p-4 rounded-xl`}>
-                <card.icon className={`w-8 h-8 ${card.color}`} />
-              </div>
+      {/* Mobile Overlay - Dark backdrop when menu is open */}
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white shadow-lg flex flex-col",
+          "transform transition-transform duration-300 ease-in-out",
+          isMobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0"
+        )}
+      >
+        {/* Header */}
+        <div className="p-6 border-b">
+          <div className="flex items-center justify-between">
+            <div
+              className={`${"w-12 h-12"} rounded-full flex items-center justify-center overflow-hidden flex-shrink-0`}
+              style={{
+                background: user?.image
+                  ? "transparent"
+                  : `linear-gradient(135deg, ${COLORS.primary[500]} 0%, ${COLORS.emerald[500]} 100%)`,
+                border: `2px solid ${COLORS.primary[400]}60`,
+              }}
+            >
+              {user?.image ? (
+                <img
+                  src={user?.image}
+                  alt={user?.name || "User Avatar"}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = "none";
+                  }}
+                />
+              ) : (
+                <span className={`font-bold ${"text-base"} text-white`}>
+                  {getUserInitials()}
+                </span>
+              )}
             </div>
-            <p className="text-gray-600 text-sm">{card.label}</p>
-            <p className="text-3xl font-bold text-gray-800 mt-1">
-              {card.value}
-            </p>
+            <div>
+              <h1 className="text-2xl font-bold text-teal-800">Earth Design</h1>
+              <p className="text-sm text-gray-500">Panel CMS</p>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* Interactive Quick Actions - moved to Client Component */}
-      <QuickActions />
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-lg transition w-full text-left",
+                activeTab === tab.key
+                  ? "bg-teal-100 text-teal-800 font-semibold"
+                  : "text-gray-700 hover:bg-gray-100"
+              )}
+            >
+              <tab.icon className="w-5 h-5 flex-shrink-0" />
+              <span className="truncate">{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        {/* redirect back to home*/}
+        <div className="p-4 border-t">
+          <a
+            href="/"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition"
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            <span className="truncate">Back to Home</span>
+          </a>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 w-full lg:w-auto overflow-auto pt-16 lg:pt-0">
+        {/* Mobile Header - Shows current tab name */}
+        <div className="lg:hidden sticky top-0 bg-white border-b border-gray-200 px-4 py-4 shadow-sm z-20">
+          <h2 className="text-lg font-semibold text-gray-900 ml-12">
+            {tabs.find((tab) => tab.key === activeTab)?.label}
+          </h2>
+        </div>
+
+        {/* Content Area */}
+        <div className="min-h-screen">{renderContent()}</div>
+      </main>
     </div>
   );
 }
