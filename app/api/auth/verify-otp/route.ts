@@ -1,7 +1,9 @@
 // app/api/auth/verify-otp/route.ts
 import { NextResponse } from "next/server";
 import { verifyOTP } from "@/lib/otp";
-import { OTPType } from "@prisma/client";
+
+// Define locally instead of importing from Prisma
+type OTPType = "EMAIL_VERIFICATION" | "PASSWORD_RESET" | "LOGIN_VERIFICATION";
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +12,7 @@ export async function POST(request: Request) {
     if (!email || !otp) {
       return NextResponse.json(
         { error: "Email and verification code are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
