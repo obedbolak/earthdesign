@@ -1,6 +1,7 @@
 // app/api/upload-excel/route.ts
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
+import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { processExcelWorkbook } from "@/lib/utils/processExcelUpload";
 import { Readable } from "stream";
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
   if (contentLength && Number(contentLength) > maxBytes) {
     return NextResponse.json(
       { error: "File too large. Max 10 MB allowed." },
-      { status: 413 }
+      { status: 413 },
     );
   }
 
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
     if (!file || !(file instanceof File)) {
       return NextResponse.json(
         { error: "No valid Excel file uploaded" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -59,16 +60,17 @@ export async function POST(request: Request) {
 
     /* ---------- 5. Transaction logic with INCREASED TIMEOUT ---------- */
     const result = await prisma.$transaction(
-      async (tx) => processExcelWorkbook(workbook, tx),
+      async (tx: Prisma.TransactionClient) =>
+        processExcelWorkbook(workbook, tx),
       {
         maxWait: 30000, // Wait up to 30 seconds to start the transaction
         timeout: 60000, // Allow transaction to run for 60 seconds
-      }
+      },
     );
 
     // Filter out errors about optional missing sheets
     const criticalErrors = result.errors.filter(
-      (e) => !OPTIONAL_SHEETS.some((s) => e.includes(`Sheet "${s}" not found`))
+      (e) => !OPTIONAL_SHEETS.some((s) => e.includes(`Sheet "${s}" not found`)),
     );
 
     if (criticalErrors.length === 0) {
@@ -86,7 +88,7 @@ export async function POST(request: Request) {
         imported: result.results,
         errors: criticalErrors,
       },
-      { status: 422 }
+      { status: 422 },
     );
   } catch (error) {
     console.error("Excel upload error:", error);
@@ -94,7 +96,7 @@ export async function POST(request: Request) {
       error instanceof Error ? error.message : "An unexpected error occurred";
     return NextResponse.json(
       { error: "Import failed", details: message },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
