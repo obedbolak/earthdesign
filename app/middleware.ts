@@ -1,44 +1,47 @@
+// middleware.ts (in project ROOT)
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export default auth((req) => {
-  const { nextUrl } = req;
-  const isLoggedIn = !!req.auth;
-  const role = req.auth?.user?.role;
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
 
-  // 1. Define Route Constants
-  const isAdminRoute = nextUrl.pathname.startsWith("/admin");
-  const isAuthRoute = nextUrl.pathname.startsWith("/auth");
-  const isApiRoute = nextUrl.pathname.startsWith("/api");
+  // Get the token
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
 
-  // 2. Allow API routes to handle their own auth (usually via decorators or wrappers)
-  if (isApiRoute) return NextResponse.next();
+  const isLoggedIn = !!token;
+  const role = token?.role as string | undefined;
 
-  // 3. Handle Auth Pages (Login/Register)
+  // Define route types
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isAuthRoute = pathname.startsWith("/auth");
+
+  // Handle Auth Pages (Login/Register)
   if (isAuthRoute) {
     if (isLoggedIn) {
-      return NextResponse.redirect(new URL("/admin/dashboard", nextUrl));
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
     }
     return NextResponse.next();
   }
 
-  // 4. Protect Admin Routes
+  // Protect Admin Routes
   if (isAdminRoute) {
     if (!isLoggedIn) {
-      // Redirect to login and save the destination for a callback
-      const signInUrl = new URL("/auth/signin", nextUrl);
-      signInUrl.searchParams.set("callbackUrl", nextUrl.pathname);
+      const signInUrl = new URL("/auth/signin", request.url);
+      signInUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(signInUrl);
     }
 
     if (role !== "ADMIN") {
-      // Logged in but not an admin
-      return NextResponse.redirect(new URL("/unauthorized", nextUrl));
+      return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],

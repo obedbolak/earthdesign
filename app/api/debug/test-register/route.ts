@@ -1,4 +1,4 @@
-// app/api/test-register/route.ts
+// app/api/debug/test-register/route.ts
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     console.error("Error:", error);
     console.error(
       "Message:",
-      error instanceof Error ? error.message : String(error)
+      error instanceof Error ? error.message : String(error),
     );
     console.error("Stack:", error instanceof Error ? error.stack : "No stack");
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
