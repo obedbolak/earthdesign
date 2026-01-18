@@ -625,12 +625,22 @@ export default function HomePage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p
-                        className="font-bold text-lg"
-                        style={{ color: COLORS.primary[600] }}
-                      >
-                        {formatPrice(property.price, property.currency)}
-                      </p>
+                      {property.price !== null && property.price > 0 ? (
+                        <p
+                          className="font-bold text-lg"
+                          style={{ color: COLORS.primary[600] }}
+                        >
+                          {formatPrice(property.price, property.currency)}
+                        </p>
+                      ) : property.rentPrice && property.rentPrice > 0 ? (
+                        <p
+                          className="font-bold text-lg"
+                          style={{ color: COLORS.primary[600] }}
+                        >
+                          {formatPrice(property.rentPrice, property.currency)}
+                          /mo
+                        </p>
+                      ) : null}
                       <p
                         className="text-sm"
                         style={{ color: COLORS.gray[500] }}
@@ -778,17 +788,18 @@ export default function HomePage() {
                     >
                       {getPropertyStatus(currentHeroProperty)}
                     </span>
-                    {currentHeroProperty.price > 0 && (
-                      <span
-                        className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl text-center"
-                        style={{ background: "rgba(0,0,0,0.6)" }}
-                      >
-                        {formatPriceCompact(
-                          currentHeroProperty.price,
-                          currentHeroProperty.currency,
-                        )}
-                      </span>
-                    )}
+                    {currentHeroProperty.price !== null &&
+                      currentHeroProperty.price > 0 && (
+                        <span
+                          className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl text-center"
+                          style={{ background: "rgba(0,0,0,0.6)" }}
+                        >
+                          {formatPriceCompact(
+                            currentHeroProperty.price,
+                            currentHeroProperty.currency,
+                          )}
+                        </span>
+                      )}
                     {currentHeroProperty.rentPrice &&
                       currentHeroProperty.rentPrice > 0 && (
                         <span
@@ -1431,26 +1442,61 @@ export default function HomePage() {
                     </p>
 
                     <div className="mb-4">
-                      {property.price > 0 && (
-                        <p
-                          className="text-2xl font-extrabold"
-                          style={{ color: COLORS.primary[400] }}
-                        >
-                          {formatPrice(property.price, property.currency)}
-                        </p>
-                      )}
+                      {/* Sale Price - Only show if property is for sale and has price */}
+                      {property.forSale &&
+                        property.price != null &&
+                        property.price > 0 && (
+                          <p
+                            className="text-2xl font-extrabold"
+                            style={{ color: COLORS.primary[400] }}
+                          >
+                            {formatPrice(property.price, property.currency)}
+                          </p>
+                        )}
+
+                      {/* Rent Price - Show as main price if rent-only, or as secondary if also for sale */}
                       {property.forRent &&
                         property.rentPrice &&
                         property.rentPrice > 0 && (
                           <p
-                            className="text-sm mt-1"
-                            style={{ color: COLORS.gray[400] }}
+                            className={
+                              property.forSale &&
+                              property.price != null &&
+                              property.price > 0
+                                ? "text-sm mt-1"
+                                : "text-2xl font-extrabold"
+                            }
+                            style={{
+                              color:
+                                property.forSale &&
+                                property.price != null &&
+                                property.price > 0
+                                  ? COLORS.gray[400]
+                                  : COLORS.primary[400],
+                            }}
                           >
-                            Rent:{" "}
+                            {property.forSale &&
+                            property.price != null &&
+                            property.price > 0
+                              ? "Rent: "
+                              : ""}
                             {formatPrice(property.rentPrice, property.currency)}
                             /month
                           </p>
                         )}
+
+                      {/* Show "Price on Request" if no prices are available */}
+                      {(!property.price || property.price === 0) &&
+                        (!property.rentPrice || property.rentPrice === 0) && (
+                          <p
+                            className="text-lg font-bold"
+                            style={{ color: COLORS.primary[400] }}
+                          >
+                            Price on Request
+                          </p>
+                        )}
+
+                      {/* Price per sqm */}
                       {property.pricePerSqM && property.pricePerSqM > 0 && (
                         <p
                           className="text-xs mt-1"

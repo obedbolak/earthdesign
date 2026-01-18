@@ -518,7 +518,7 @@ model Property {
   title                 String
   shortDescription      String?      @db.VarChar(255)
   description           String?      @db.Text
-  price                 Decimal      @db.Decimal(15, 2)
+  price                 Decimal?     @db.Decimal(15, 2)
   currency              String       @default("XAF")
 
   // Property type
