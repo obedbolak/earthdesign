@@ -380,6 +380,10 @@ export function formatPrice(
     return "Prix sur demande";
   }
   if (typeof price === "number" && price > 0) {
+    // Use abbreviations for large numbers
+    if (price >= 1e9) return `${(price / 1e9).toFixed(1)}B ${currency}`;
+    if (price >= 1e6) return `${(price / 1e6).toFixed(0)}M ${currency}`;
+    if (price >= 1e3) return `${(price / 1e3).toFixed(0)}K ${currency}`;
     return new Intl.NumberFormat("fr-CM", {
       style: "currency",
       currency,

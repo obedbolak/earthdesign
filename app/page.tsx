@@ -1463,7 +1463,7 @@ export default function HomePage() {
                               property.forSale &&
                               property.price != null &&
                               property.price > 0
-                                ? "text-sm mt-1"
+                                ? "text-sm mt-1 font-bold"
                                 : "text-2xl font-extrabold"
                             }
                             style={{
@@ -1471,7 +1471,7 @@ export default function HomePage() {
                                 property.forSale &&
                                 property.price != null &&
                                 property.price > 0
-                                  ? COLORS.gray[400]
+                                  ? COLORS.primary[400]
                                   : COLORS.primary[400],
                             }}
                           >
