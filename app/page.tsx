@@ -216,7 +216,7 @@ export default function HomePage() {
       Array.from({ length: 20 }, () => ({
         left: `${Math.random() * 100}%`,
         top: `${Math.random() * 100}%`,
-      }))
+      })),
     );
   }, []);
 
@@ -248,7 +248,7 @@ export default function HomePage() {
   // Get featured properties for hero carousel
   const featuredProperties = useMemo(
     () => getFeaturedProperties(properties, 10),
-    [properties]
+    [properties],
   );
 
   // Filter and sort properties
@@ -290,7 +290,7 @@ export default function HomePage() {
     if (featuredProperties.length === 0) return;
     heroIntervalRef.current = setInterval(() => {
       setCurrentHeroIndex((prev) =>
-        prev === featuredProperties.length - 1 ? 0 : prev + 1
+        prev === featuredProperties.length - 1 ? 0 : prev + 1,
       );
     }, 5000);
     return () => {
@@ -342,6 +342,7 @@ export default function HomePage() {
   // Services section data
   const services = [
     {
+      id: "land-survey",
       icon: MapPin,
       title: "Land Surveys",
       description:
@@ -355,6 +356,7 @@ export default function HomePage() {
       gradient: "from-blue-500 to-cyan-500",
     },
     {
+      id: "construction",
       icon: Building2,
       title: "Construction",
       description:
@@ -368,6 +370,7 @@ export default function HomePage() {
       gradient: "from-orange-500 to-red-500",
     },
     {
+      id: "real-estate",
       icon: Home,
       title: "Real Estate",
       description:
@@ -415,7 +418,7 @@ export default function HomePage() {
   const getCircularPosition = (
     index: number,
     total: number,
-    activeIndex: number
+    activeIndex: number,
   ) => {
     const angleStep = (2 * Math.PI) / total;
     const offsetIndex = (index - activeIndex + total) % total;
@@ -689,7 +692,7 @@ export default function HomePage() {
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       target.src = getPlaceholderImage(
-                        currentHeroProperty.type
+                        currentHeroProperty.type,
                       );
                     }}
                   />
@@ -782,7 +785,7 @@ export default function HomePage() {
                       >
                         {formatPriceCompact(
                           currentHeroProperty.price,
-                          currentHeroProperty.currency
+                          currentHeroProperty.currency,
                         )}
                       </span>
                     )}
@@ -794,7 +797,7 @@ export default function HomePage() {
                         >
                           {formatPriceCompact(
                             currentHeroProperty.rentPrice,
-                            currentHeroProperty.currency
+                            currentHeroProperty.currency,
                           )}
                           /mo
                         </span>
@@ -863,12 +866,12 @@ export default function HomePage() {
                     {currentHeroProperty?.type === "Land"
                       ? "Perfect Land"
                       : currentHeroProperty?.type === "Building"
-                      ? "Dream Building"
-                      : currentHeroProperty?.type === "Commercial"
-                      ? "Business Space"
-                      : currentHeroProperty?.type === "Apartment"
-                      ? "Ideal Apartment"
-                      : "Dream Home"}
+                        ? "Dream Building"
+                        : currentHeroProperty?.type === "Commercial"
+                          ? "Business Space"
+                          : currentHeroProperty?.type === "Apartment"
+                            ? "Ideal Apartment"
+                            : "Dream Home"}
                   </span>{" "}
                   in Cameroon
                 </h1>
@@ -1007,7 +1010,7 @@ export default function HomePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {services.map((service, index) => (
-              <Link href={`/services/${service.title}`} key={index}>
+              <Link href={`/services/${service.id}`} key={index}>
                 <motion.div
                   key={service.title}
                   initial={{ opacity: 0, y: 30 }}
@@ -1900,7 +1903,7 @@ export default function HomePage() {
                 getCircularPosition(
                   idx,
                   testimonials.length,
-                  currentTestimonialIndex
+                  currentTestimonialIndex,
                 );
 
               return (
