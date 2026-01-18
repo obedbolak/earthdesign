@@ -165,7 +165,7 @@ export default function PropertyDetailPage() {
   const prevImage = () => {
     if (images.length > 0) {
       setCurrentImageIndex(
-        (prev) => (prev - 1 + images.length) % images.length
+        (prev) => (prev - 1 + images.length) % images.length,
       );
     }
   };
@@ -202,34 +202,34 @@ export default function PropertyDetailPage() {
     if (Math.abs(diffInMilliseconds) < MS_PER_MINUTE) {
       return formatter.format(
         Math.round(diffInMilliseconds / MS_PER_SECOND),
-        "second"
+        "second",
       );
     } else if (Math.abs(diffInMilliseconds) < MS_PER_HOUR) {
       return formatter.format(
         Math.round(diffInMilliseconds / MS_PER_MINUTE),
-        "minute"
+        "minute",
       );
     } else if (Math.abs(diffInMilliseconds) < MS_PER_DAY) {
       return formatter.format(
         Math.round(diffInMilliseconds / MS_PER_HOUR),
-        "hour"
+        "hour",
       );
     } else if (Math.abs(diffInMilliseconds) < 30 * MS_PER_DAY) {
       // Less than approx 30 days
       return formatter.format(
         Math.round(diffInMilliseconds / MS_PER_DAY),
-        "day"
+        "day",
       );
     } else if (Math.abs(diffInMilliseconds) < 365 * MS_PER_DAY) {
       // Less than approx 1 year
       return formatter.format(
         Math.round(diffInMilliseconds / (30 * MS_PER_DAY)),
-        "month"
+        "month",
       );
     } else {
       return formatter.format(
         Math.round(diffInMilliseconds / (365 * MS_PER_DAY)),
-        "year"
+        "year",
       );
     }
   }
@@ -598,7 +598,7 @@ export default function PropertyDetailPage() {
                     className="w-full h-full object-contain rounded-2xl"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = getPlaceholderImage(
-                        property.type
+                        property.type,
                       );
                     }}
                   />
@@ -624,7 +624,7 @@ export default function PropertyDetailPage() {
                 className="max-w-full max-h-[90vh] object-contain rounded-2xl"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = getPlaceholderImage(
-                    property.type
+                    property.type,
                   );
                 }}
               />
@@ -667,8 +667,10 @@ export default function PropertyDetailPage() {
           </Link>
 
           {/*lets make the title of the property at the top bar*/}
-          <div className="flex items-center gap-2">
-            <h1 className="text-white font-bold text-lg">{property.title}</h1>
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <h1 className="text-white font-bold text-sm sm:text-base md:text-lg truncate">
+              {property.title}
+            </h1>
           </div>
 
           <div className="flex items-center gap-4">
@@ -727,7 +729,7 @@ export default function PropertyDetailPage() {
                         <img
                           src={getVideoThumbnail(
                             property.videoUrl!,
-                            property.type
+                            property.type,
                           )}
                           alt="Video thumbnail"
                           className="w-full h-full object-cover"
@@ -865,7 +867,7 @@ export default function PropertyDetailPage() {
                       <img
                         src={getVideoThumbnail(
                           property.videoUrl!,
-                          property.type
+                          property.type,
                         )}
                         alt="Video"
                         className="w-full h-full object-cover"
@@ -898,7 +900,7 @@ export default function PropertyDetailPage() {
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 <span
                   className={`px-3 py-1 bg-gradient-to-r ${getStatusBgColor(
-                    property
+                    property,
                   )} text-white rounded-full text-sm font-medium`}
                 >
                   {getPropertyStatus(property)}
@@ -1508,7 +1510,7 @@ export default function PropertyDetailPage() {
                         <div className="absolute top-3 left-3 flex gap-2">
                           <span
                             className={`bg-gradient-to-r ${getStatusBgColor(
-                              related
+                              related,
                             )} text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg`}
                           >
                             {getPropertyStatus(related)}
@@ -1560,16 +1562,16 @@ export default function PropertyDetailPage() {
                             related.price > 0
                               ? formatPriceCompact(
                                   related.price,
-                                  related.currency
+                                  related.currency,
                                 )
                               : related.forRent &&
-                                related.rentPrice &&
-                                related.rentPrice > 0
-                              ? `${formatPriceCompact(
-                                  related.rentPrice,
-                                  related.currency
-                                )}/mo`
-                              : "Prix sur demande"}
+                                  related.rentPrice &&
+                                  related.rentPrice > 0
+                                ? `${formatPriceCompact(
+                                    related.rentPrice,
+                                    related.currency,
+                                  )}/mo`
+                                : "Prix sur demande"}
                           </p>
                           {related.surface && (
                             <span
