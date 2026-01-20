@@ -57,12 +57,12 @@ export default function Overview({
 
   const handleClearDatabase = async () => {
     const firstConfirm = confirm(
-      "⚠️ DANGER: This will PERMANENTLY DELETE ALL records in the database!\n\nAre you absolutely sure?"
+      "⚠️ DANGER: This will PERMANENTLY DELETE ALL records in the database!\n\nAre you absolutely sure?",
     );
     if (!firstConfirm) return;
 
     const secondConfirm = confirm(
-      "FINAL WARNING: This action CANNOT be undone. Proceed?"
+      "FINAL WARNING: This action CANNOT be undone. Proceed?",
     );
     if (!secondConfirm) return;
 
@@ -133,67 +133,86 @@ export default function Overview({
   }
 
   return (
-    <div className="p-8 space-y-10 width-full">
+    <div className="p-4 md:p-8 space-y-6 md:space-y-10 w-full">
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-bold text-teal-800">
+        <h1 className="text-2xl md:text-4xl font-bold text-teal-800">
           Welcome {user?.name || "Admin"}
         </h1>
-        <p className="text-gray-600 mt-2 text-lg">
-          Here's what's happening with your GIS data today.
+        <p className="text-gray-600 mt-2 text-base md:text-lg">
+          Here's what's happening with your data today.
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-        {statCards.map((card) => (
-          <div
-            key={card.label}
-            className="bg-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className={`${card.bg} p-4 rounded-xl`}>
-                <card.icon className={`w-8 h-8 ${card.color}`} />
+      {/* Stats Grid - Single Card on Mobile */}
+      <div className="bg-white rounded-2xl shadow-lg p-4 md:p-6">
+        <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4">
+          Database Statistics
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+          {statCards.map((card) => (
+            <div
+              key={card.label}
+              className="flex flex-col items-center text-center p-3 md:p-4 rounded-xl border border-gray-100 hover:border-teal-200 transition-colors"
+            >
+              <div className={`${card.bg} p-2 md:p-3 rounded-lg mb-2`}>
+                <card.icon className={`w-5 h-5 md:w-6 md:h-6 ${card.color}`} />
               </div>
+              <p className="text-xs md:text-sm text-gray-600 mb-1">
+                {card.label}
+              </p>
+              <p className="text-lg md:text-2xl font-bold text-gray-800">
+                {card.value}
+              </p>
             </div>
-            <p className="text-gray-600 text-sm">{card.label}</p>
-            <p className="text-3xl font-bold text-gray-800 mt-1">
-              {card.value}
-            </p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-2xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="space-y-3 md:space-y-0">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6">
+          Quick Actions
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
           <button
             onClick={() => onTabChange?.("upload")}
-            className="border border-gray-200 rounded-xl p-6 hover:border-teal-500 hover:shadow-md transition text-center"
+            className="bg-white border border-gray-200 rounded-xl p-5 md:p-6 hover:border-teal-500 hover:shadow-md transition text-center w-full"
           >
-            <Upload className="w-12 h-12 text-teal-600 mx-auto mb-4" />
-            <h3 className="font-semibold text-lg">Upload New Data</h3>
-            <p className="text-gray-600 text-sm mt-2">Import Excel file</p>
+            <Upload className="w-10 h-10 md:w-12 md:h-12 text-teal-600 mx-auto mb-3 md:mb-4" />
+            <h3 className="font-semibold text-base md:text-lg">
+              Upload New Data
+            </h3>
+            <p className="text-gray-600 text-xs md:text-sm mt-2">
+              Import Excel file
+            </p>
           </button>
+
           <button
             onClick={() => onTabChange?.("data")}
-            className="border border-gray-200 rounded-xl p-6 hover:border-blue-500 hover:shadow-md transition text-center w-full hover:bg-blue-50 cursor-pointer"
+            className="bg-white border border-gray-200 rounded-xl p-5 md:p-6 hover:border-blue-500 hover:shadow-md transition text-center w-full hover:bg-blue-50"
           >
-            <Database className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-            <h3 className="font-semibold text-lg">Manage Records</h3>
-            <p className="text-gray-600 text-sm mt-2">
+            <Database className="w-10 h-10 md:w-12 md:h-12 text-blue-600 mx-auto mb-3 md:mb-4" />
+            <h3 className="font-semibold text-base md:text-lg">
+              Manage Records
+            </h3>
+            <p className="text-gray-600 text-xs md:text-sm mt-2">
               View, edit & delete data
             </p>
           </button>
 
           <button
             onClick={handleClearDatabase}
-            className="border border-red-200 rounded-xl p-6 hover:border-red-500 hover:shadow-md transition text-center w-full"
+            className="bg-white border border-red-200 rounded-xl p-5 md:p-6 hover:border-red-500 hover:shadow-md transition text-center w-full hover:bg-red-50"
           >
-            <Trash2 className="w-12 h-12 text-red-600 mx-auto mb-4" />
-            <h3 className="font-semibold text-lg">Clear Database</h3>
-            <p className="text-gray-600 text-sm mt-2">Remove all records</p>
+            <Trash2 className="w-10 h-10 md:w-12 md:h-12 text-red-600 mx-auto mb-3 md:mb-4" />
+            <h3 className="font-semibold text-base md:text-lg">
+              Clear Database
+            </h3>
+            <p className="text-gray-600 text-xs md:text-sm mt-2">
+              Remove all records
+            </p>
           </button>
         </div>
       </div>

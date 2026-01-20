@@ -461,36 +461,34 @@ export default function DataManagement() {
   }, [selectedTable]);
 
   const fetchAllTableCounts = async () => {
-    const counts: Record<TableName, number> = {
-      Region: 0,
-      Departement: 0,
-      Arrondissement: 0,
-      Lotissement: 0,
-      Parcelle: 0,
-      Batiment: 0,
-      Route: 0,
-      Riviere: 0,
-      Taxe_immobiliere: 0,
-      Equipement: 0,
-      Reseau_energetique: 0,
-      Reseau_en_eau: 0,
-      Infrastructure: 0,
-      Borne: 0,
-    };
     const tables = Object.keys(tableConfigs) as TableName[];
 
-    for (const table of tables) {
-      try {
-        const res = await fetch(`/api/data/${table}`);
-        if (res.ok) {
-          const json = await res.json();
-          counts[table] = (json.data || []).length;
+    // Fetch ALL tables in parallel
+    const results = await Promise.all(
+      tables.map(async (table) => {
+        try {
+          const res = await fetch(`/api/data/${table}`);
+          if (res.ok) {
+            const json = await res.json();
+            return { table, count: (json.data || []).length };
+          }
+          return { table, count: 0 };
+        } catch (err) {
+          console.error(`Failed to fetch count for ${table}:`, err);
+          return { table, count: 0 };
         }
-      } catch (err) {
-        console.error(`Failed to fetch count for ${table}:`, err);
-        counts[table] = 0;
-      }
-    }
+      }),
+    );
+
+    // Convert results array back to object
+    const counts: Record<TableName, number> = results.reduce(
+      (acc, { table, count }) => {
+        acc[table] = count;
+        return acc;
+      },
+      {} as Record<TableName, number>,
+    );
+
     setTableCounts(counts);
   };
 
@@ -691,7 +689,7 @@ export default function DataManagement() {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return Object.values(item).some(
-      (val) => val && String(val).toLowerCase().includes(query)
+      (val) => val && String(val).toLowerCase().includes(query),
     );
   });
 
@@ -908,8 +906,8 @@ export default function DataManagement() {
                 typeof window !== "undefined" && window.innerWidth >= 1280
                   ? 6
                   : typeof window !== "undefined" && window.innerWidth >= 768
-                  ? 5
-                  : 3;
+                    ? 5
+                    : 3;
               const summaryFields = config.fields.slice(0, summaryFieldsCount);
 
               return (
@@ -937,8 +935,8 @@ export default function DataManagement() {
                                   fIndex >= 4
                                     ? "hidden xl:block"
                                     : fIndex >= 3
-                                    ? "hidden lg:block"
-                                    : ""
+                                      ? "hidden lg:block"
+                                      : ""
                                 }`}
                               >
                                 <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium truncate">
