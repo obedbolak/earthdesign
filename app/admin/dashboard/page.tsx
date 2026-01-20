@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   LogOut,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,10 +21,18 @@ import DataManagement from "./components/DataManagement";
 import UploadExcel from "./components/UploadExcel";
 import UploadImages from "./components/UploadImages";
 import UploadVideo from "./components/UploadVideo";
+import UserManagement from "./components/UserManagement";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 
-type TabKey = "overview" | "data" | "upload" | "images" | "video" | "clear";
+type TabKey =
+  | "overview"
+  | "data"
+  | "upload"
+  | "images"
+  | "video"
+  | "users"
+  | "clear";
 
 const tabs = [
   { key: "overview" as TabKey, icon: LayoutDashboard, label: "Overview" },
@@ -31,6 +40,7 @@ const tabs = [
   { key: "upload" as TabKey, icon: Upload, label: "Upload Excel" },
   { key: "images" as TabKey, icon: ImageIcon, label: "Upload Images" },
   { key: "video" as TabKey, icon: Video, label: "Upload Video" },
+  { key: "users" as TabKey, icon: Users, label: "Manage Users" },
   { key: "clear" as TabKey, icon: Trash2, label: "Clear Data" },
 ];
 
@@ -47,17 +57,31 @@ export default function AdminDashboardPage() {
   const renderContent = () => {
     switch (activeTab) {
       case "overview":
-        return <Overview onTabChange={setActiveTab} />;
+        return (
+          <Overview
+            onTabChange={(tab: unknown) => setActiveTab(tab as TabKey)}
+          />
+        );
       case "data":
         return <DataManagement />;
       case "upload":
-        return <UploadExcel onTabChange={setActiveTab} />;
+        return (
+          <UploadExcel
+            onTabChange={(tab: unknown) => setActiveTab(tab as TabKey)}
+          />
+        );
       case "images":
         return <UploadImages />;
       case "video":
         return <UploadVideo />;
+      case "users":
+        return <UserManagement />;
       default:
-        return <Overview onTabChange={setActiveTab} />;
+        return (
+          <Overview
+            onTabChange={(tab: unknown) => setActiveTab(tab as TabKey)}
+          />
+        );
     }
   };
 
