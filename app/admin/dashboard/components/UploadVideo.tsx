@@ -31,7 +31,7 @@ export default function VideoUploadPage() {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedVideo, setUploadedVideo] = useState<UploadedVideo | null>(
-    null
+    null,
   );
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -167,7 +167,7 @@ export default function VideoUploadPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 mb-20 p-4">
+    <div className="max-w-4xl mx-auto mt-0 mb-20 p-4">
       {/* Header */}
 
       <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
@@ -348,8 +348,8 @@ export default function VideoUploadPage() {
                   {uploadProgress < 50
                     ? "Preparing your video..."
                     : uploadProgress < 90
-                    ? "Processing video content..."
-                    : "Almost done..."}
+                      ? "Processing video content..."
+                      : "Almost done..."}
                 </p>
               </div>
             </div>

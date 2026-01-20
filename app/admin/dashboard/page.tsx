@@ -41,7 +41,7 @@ export default function AdminDashboardPage() {
 
   const handleTabChange = (tab: TabKey) => {
     setActiveTab(tab);
-    setIsMobileMenuOpen(false); // Close mobile menu after selection
+    setIsMobileMenuOpen(false);
   };
 
   const renderContent = () => {
@@ -60,24 +60,18 @@ export default function AdminDashboardPage() {
         return <Overview onTabChange={setActiveTab} />;
     }
   };
+
   const getUserInitials = () => {
-    // If no user or no name, return default
     if (!user || !user.name) return "U";
-
-    // Split the name into parts
     const names = user.name.trim().split(" ");
-
-    // If multiple names, use first letter of first two
     if (names.length >= 2) {
       return `${names[0][0]}${names[1][0]}`.toUpperCase();
     }
-
-    // If single name, use first letter
     return names[0][0].toUpperCase();
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50">
       {/* Mobile Menu Button - Fixed top-left */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -91,7 +85,7 @@ export default function AdminDashboardPage() {
         )}
       </button>
 
-      {/* Mobile Overlay - Dark backdrop when menu is open */}
+      {/* Mobile Overlay */}
       {isMobileMenuOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
@@ -99,21 +93,21 @@ export default function AdminDashboardPage() {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Always Fixed */}
       <aside
         className={cn(
-          "fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white shadow-lg flex flex-col",
+          "fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg flex flex-col",
           "transform transition-transform duration-300 ease-in-out",
           isMobileMenuOpen
             ? "translate-x-0"
-            : "-translate-x-full lg:translate-x-0"
+            : "-translate-x-full lg:translate-x-0",
         )}
       >
         {/* Header */}
         <div className="p-6 border-b">
           <div className="flex items-center justify-between">
             <div
-              className={`${"w-12 h-12"} rounded-full flex items-center justify-center overflow-hidden flex-shrink-0`}
+              className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
               style={{
                 background: user?.image
                   ? "transparent"
@@ -132,7 +126,7 @@ export default function AdminDashboardPage() {
                   }}
                 />
               ) : (
-                <span className={`font-bold ${"text-base"} text-white`}>
+                <span className="font-bold text-base text-white">
                   {getUserInitials()}
                 </span>
               )}
@@ -154,7 +148,7 @@ export default function AdminDashboardPage() {
                 "flex items-center gap-3 px-4 py-3 rounded-lg transition w-full text-left",
                 activeTab === tab.key
                   ? "bg-teal-100 text-teal-800 font-semibold"
-                  : "text-gray-700 hover:bg-gray-100"
+                  : "text-gray-700 hover:bg-gray-100",
               )}
             >
               <tab.icon className="w-5 h-5 flex-shrink-0" />
@@ -163,7 +157,7 @@ export default function AdminDashboardPage() {
           ))}
         </nav>
 
-        {/* redirect back to home*/}
+        {/* Back to Home */}
         <div className="p-4 border-t">
           <a
             href="/"
@@ -175,9 +169,9 @@ export default function AdminDashboardPage() {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 w-full lg:w-auto overflow-auto pt-16 lg:pt-0">
-        {/* Mobile Header - Shows current tab name */}
+      {/* Main Content - With left margin on desktop to account for fixed sidebar */}
+      <main className="min-h-screen lg:ml-64 pt-16 lg:pt-0">
+        {/* Mobile Header */}
         <div className="lg:hidden sticky top-0 bg-white border-b border-gray-200 px-4 py-4 shadow-sm z-20">
           <h2 className="text-lg font-semibold text-gray-900 ml-12">
             {tabs.find((tab) => tab.key === activeTab)?.label}
