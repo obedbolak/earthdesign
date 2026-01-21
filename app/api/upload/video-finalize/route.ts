@@ -79,7 +79,6 @@ export async function POST(request: NextRequest) {
       {
         method: "POST",
         body: uploadFormData,
-        timeout: 55000,
       },
     );
 
