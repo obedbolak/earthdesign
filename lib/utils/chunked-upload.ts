@@ -56,17 +56,3 @@ export async function uploadFileInChunks(
     throw error;
   }
 }
-      url: finalData.secure_url || "",
-      publicId: finalData.public_id || "",
-      duration: finalData.duration || 0,
-      width: finalData.width || 0,
-      height: finalData.height || 0,
-      format: finalData.format || "",
-      bytes: finalData.bytes || 0,
-    };
-
-    return result;
-  } catch (error) {
-    throw error;
-  }
-}
