@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Sparkles,
 } from "lucide-react";
+import { uploadFileInChunks } from "@/lib/utils/chunked-upload";
 
 interface UploadedVideo {
   url: string;
@@ -96,41 +97,21 @@ export default function VideoUploadPage() {
     setError("");
     setUploadProgress(0);
 
-    // Simulate progress
-    const progressInterval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + Math.random() * 15;
-      });
-    }, 500);
-
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-
     try {
-      const response = await fetch("/api/upload/video", {
-        method: "POST",
-        body: formData,
+      const videoData = await uploadFileInChunks({
+        file: selectedFile,
+        onProgress: (progress) => {
+          setUploadProgress(Math.round(progress));
+        },
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Upload failed");
-      }
-
-      clearInterval(progressInterval);
       setUploadProgress(100);
 
       setTimeout(() => {
-        setUploadedVideo(data.video);
+        setUploadedVideo(videoData);
         setSelectedFile(null);
       }, 500);
     } catch (err) {
-      clearInterval(progressInterval);
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);

@@ -21,6 +21,17 @@ interface UploadedVideoData {
   bytes: number;
 }
 
+// Configuration for Vercel - handle large uploads
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "100mb",
+    },
+  },
+};
+
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -29,7 +40,7 @@ export async function POST(request: NextRequest) {
     if (!file) {
       return NextResponse.json(
         { error: "No video file provided" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -45,7 +56,7 @@ export async function POST(request: NextRequest) {
     if (!validVideoTypes.includes(file.type)) {
       return NextResponse.json(
         { error: "Only video files (MP4, MOV, AVI, WebM) are allowed" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,11 +65,11 @@ export async function POST(request: NextRequest) {
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: "Video file size must be less than 100MB" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // Convert file to buffer
+    // Stream file directly to Cloudinary instead of buffering
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -67,7 +78,7 @@ export async function POST(request: NextRequest) {
     uploadFormData.append("file", new Blob([buffer]), file.name);
     uploadFormData.append(
       "upload_preset",
-      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!
+      process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!,
     );
     uploadFormData.append("folder", "earthdesign");
     uploadFormData.append("resource_type", "video");
@@ -77,7 +88,9 @@ export async function POST(request: NextRequest) {
       {
         method: "POST",
         body: uploadFormData,
-      }
+        // Set timeout for Vercel
+        ...(process.env.NODE_ENV === "production" && { timeout: 55000 }),
+      },
     );
 
     if (!response.ok) {
@@ -109,10 +122,7 @@ export async function POST(request: NextRequest) {
         error: "Failed to upload video",
         details: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
-// For App Router, use route segment config instead
-export const maxDuration = 60; // Maximum execution time in seconds (for Vercel Pro)
