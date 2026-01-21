@@ -144,7 +144,7 @@ export default function AllPropertiesPage() {
 
   // View states
   const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid");
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(false); // Hidden by default
   const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   // Calculate stats
@@ -167,6 +167,17 @@ export default function AllPropertiesPage() {
       setSelectedType(type as PropertyType);
     }
   }, []);
+
+  // Handle search input change - hide filters when typing
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+
+    // Hide filters when user starts typing
+    if (value.length > 0 && showFilters) {
+      setShowFilters(false);
+    }
+  };
 
   // Filter and sort properties
   const filteredProperties = useMemo(() => {
@@ -241,9 +252,10 @@ export default function AllPropertiesPage() {
     setHasGenerator(undefined);
     setSearchQuery("");
     setSortBy("newest");
+    setShowFilters(false);
   }, []);
 
-  // Check if any filters are active
+  // Check if any filters are active (excluding search)
   const hasActiveFilters = useMemo(() => {
     return (
       selectedType !== "All" ||
@@ -252,8 +264,7 @@ export default function AllPropertiesPage() {
       maxPrice !== "" ||
       minBedrooms !== "" ||
       hasParking !== undefined ||
-      hasGenerator !== undefined ||
-      searchQuery !== ""
+      hasGenerator !== undefined
     );
   }, [
     selectedType,
@@ -263,8 +274,10 @@ export default function AllPropertiesPage() {
     minBedrooms,
     hasParking,
     hasGenerator,
-    searchQuery,
   ]);
+
+  // Check if search is active
+  const hasSearchQuery = searchQuery.trim() !== "";
 
   // Error state
   if (error) {
@@ -936,7 +949,7 @@ export default function AllPropertiesPage() {
                   type="text"
                   placeholder="Search properties..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={handleSearchChange}
                   className="w-full pl-9 sm:pl-10 md:pl-12 lg:pl-14 pr-10 py-2 sm:py-2.5 md:py-3 lg:py-3.5 rounded-full text-sm md:text-base shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-green-500"
                   style={{
                     background: COLORS.white,
@@ -963,10 +976,12 @@ export default function AllPropertiesPage() {
                 onClick={() => setShowFilters(!showFilters)}
                 className="hidden md:flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-2 md:py-2.5 lg:py-3 border-2 rounded-xl font-medium transition text-sm lg:text-base"
                 style={{
-                  borderColor: COLORS.primary[500],
+                  borderColor: showFilters
+                    ? COLORS.primary[400]
+                    : COLORS.primary[500],
                   color: COLORS.white,
                   background: showFilters
-                    ? `${COLORS.primary[500]}20`
+                    ? `${COLORS.primary[500]}30`
                     : "transparent",
                 }}
               >
@@ -1001,7 +1016,12 @@ export default function AllPropertiesPage() {
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setShowFilters(!showFilters)}
-                className="md:hidden flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-white/10 rounded-full hover:bg-white/20 transition relative"
+                className="md:hidden flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full hover:bg-white/20 transition relative"
+                style={{
+                  background: showFilters
+                    ? `${COLORS.primary[500]}30`
+                    : `${COLORS.white}10`,
+                }}
               >
                 <SlidersHorizontal className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 {hasActiveFilters && (
@@ -1045,7 +1065,7 @@ export default function AllPropertiesPage() {
                     type="text"
                     placeholder="Search properties, locations..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={handleSearchChange}
                     autoFocus
                     className="w-full pl-10 pr-10 py-2.5 rounded-full text-sm shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-green-500"
                     style={{
@@ -1102,32 +1122,46 @@ export default function AllPropertiesPage() {
         </div>
       </motion.header>
 
-      {/* Hero section - Reduced spacing */}
-      <section
-        className="py-4 sm:py-6 md:py-8"
-        style={{
-          background: `linear-gradient(180deg, ${COLORS.primary[900]} 0%, ${COLORS.gray[900]} 100%)`,
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-          {/* Filters panel */}
-          <AnimatePresence>
-            {!showFilters && (
+      {/* Filters Section - Now only shows when showFilters is true */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+            style={{
+              background: `linear-gradient(180deg, ${COLORS.primary[900]} 0%, ${COLORS.gray[900]} 100%)`,
+            }}
+          >
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6">
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="rounded-xl sm:rounded-2xl shadow-xl p-3 sm:p-4 md:p-5 lg:p-6 border overflow-hidden"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="rounded-xl sm:rounded-2xl shadow-xl p-3 sm:p-4 md:p-5 lg:p-6 border"
                 style={{
                   background: `${COLORS.primary[800]}80`,
                   borderColor: `${COLORS.primary[600]}40`,
                   backdropFilter: "blur(20px)",
                 }}
               >
-                <h3 className="text-sm sm:text-base md:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
-                  <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
-                  Filter Properties
-                </h3>
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
+                  <h3 className="text-sm sm:text-base md:text-lg font-bold text-white flex items-center gap-2">
+                    <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
+                    Filter Properties
+                  </h3>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowFilters(false)}
+                    className="p-1.5 sm:p-2 rounded-lg hover:bg-white/10 transition"
+                  >
+                    <X className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                  </motion.button>
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
                   {/* Property Type */}
                   <div>
@@ -1397,27 +1431,41 @@ export default function AllPropertiesPage() {
                         <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
                         Generator
                       </button>
-                      {hasActiveFilters && (
+
+                      {/* Apply & Clear buttons */}
+                      <div className="flex gap-1.5 sm:gap-2 ml-auto">
+                        {hasActiveFilters && (
+                          <button
+                            onClick={clearFilters}
+                            className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-medium transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                            style={{
+                              background: `${COLORS.primary[500]}30`,
+                              color: COLORS.primary[300],
+                            }}
+                          >
+                            <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                            Clear All
+                          </button>
+                        )}
                         <button
-                          onClick={clearFilters}
-                          className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-medium transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ml-auto"
+                          onClick={() => setShowFilters(false)}
+                          className="px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-medium transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
                           style={{
-                            background: `${COLORS.primary[500]}30`,
-                            color: COLORS.primary[300],
+                            background: GRADIENTS.button.primary,
+                            color: COLORS.white,
                           }}
                         >
-                          <X className="w-3 h-3 sm:w-4 sm:h-4" />
-                          Clear
+                          Apply Filters
                         </button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </section>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 lg:py-10">
@@ -1427,13 +1475,39 @@ export default function AllPropertiesPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6"
         >
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
             <p className="text-sm sm:text-base md:text-lg font-semibold text-white">
               {filteredProperties.length}{" "}
               {filteredProperties.length === 1 ? "Property" : "Properties"}
             </p>
+
+            {/* Show active search query */}
+            {hasSearchQuery && (
+              <motion.span
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-[10px] sm:text-xs md:text-sm font-medium px-2 sm:px-3 py-0.5 sm:py-1 rounded-full flex items-center gap-1"
+                style={{
+                  color: COLORS.primary[200],
+                  background: `${COLORS.primary[500]}20`,
+                  border: `1px solid ${COLORS.primary[500]}40`,
+                }}
+              >
+                <Search className="w-2.5 h-2.5 sm:w-3 sm:h-3" />"{searchQuery}"
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="ml-1 hover:bg-white/10 rounded-full p-0.5"
+                >
+                  <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                </button>
+              </motion.span>
+            )}
+
+            {/* Show active filters indicator */}
             {hasActiveFilters && (
               <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={clearFilters}
@@ -1443,8 +1517,9 @@ export default function AllPropertiesPage() {
                   background: `${COLORS.primary[500]}20`,
                 }}
               >
+                <Filter className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                Filters active
                 <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                Clear
               </motion.button>
             )}
           </div>
