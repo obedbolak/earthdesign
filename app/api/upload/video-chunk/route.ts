@@ -1,20 +1,8 @@
 // app/api/upload/video-chunk/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "50mb",
-    },
-  },
-};
+import { chunkStorage } from "@/lib/chunk-storage";
 
 export const maxDuration = 60;
-
-const UPLOADS_DIR = join(process.cwd(), "tmp", "video-chunks");
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +11,6 @@ export async function POST(request: NextRequest) {
     const chunkIndex = formData.get("chunkIndex") as string;
     const totalChunks = formData.get("totalChunks") as string;
     const sessionId = formData.get("sessionId") as string;
-    const fileName = formData.get("fileName") as string;
 
     if (!chunk || !chunkIndex || !totalChunks || !sessionId) {
       return NextResponse.json(
@@ -32,18 +19,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create directory for this session's chunks
-    const sessionDir = join(UPLOADS_DIR, sessionId);
-    if (!existsSync(sessionDir)) {
-      await mkdir(sessionDir, { recursive: true });
+    // Initialize session storage if needed
+    if (!chunkStorage[sessionId]) {
+      chunkStorage[sessionId] = {};
     }
 
-    // Save chunk to temporary storage
-    const chunkPath = join(sessionDir, `chunk-${chunkIndex}`);
+    // Convert chunk to buffer and store
     const arrayBuffer = await chunk.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    await writeFile(chunkPath, buffer);
+    const buffer = new Uint8Array(arrayBuffer);
+    chunkStorage[sessionId][parseInt(chunkIndex)] = buffer;
 
     return NextResponse.json({
       success: true,

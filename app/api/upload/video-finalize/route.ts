@@ -1,8 +1,6 @@
 // app/api/upload/video-finalize/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { readFile, rm } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
+import { chunkStorage } from "@/lib/chunk-storage";
 
 export const maxDuration = 60;
 
@@ -26,8 +24,6 @@ interface UploadedVideoData {
   bytes: number;
 }
 
-const UPLOADS_DIR = join(process.cwd(), "tmp", "video-chunks");
-
 export async function POST(request: NextRequest) {
   try {
     const { sessionId, fileName, totalChunks } = await request.json();
@@ -39,30 +35,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const sessionDir = join(UPLOADS_DIR, sessionId);
-
-    // Check if session directory exists
-    if (!existsSync(sessionDir)) {
+    // Check if session exists in storage
+    if (!chunkStorage[sessionId]) {
       return NextResponse.json(
         { error: "Upload session not found" },
         { status: 400 },
       );
     }
 
-    // Reassemble chunks into single buffer
-    const chunks: Buffer[] = [];
+    const sessionChunks = chunkStorage[sessionId];
+
+    // Verify all chunks are present
     for (let i = 0; i < totalChunks; i++) {
-      const chunkPath = join(sessionDir, `chunk-${i}`);
-
-      if (!existsSync(chunkPath)) {
-        throw new Error(`Missing chunk ${i}`);
+      if (!sessionChunks[i]) {
+        return NextResponse.json(
+          { error: `Missing chunk ${i}` },
+          { status: 400 },
+        );
       }
-
-      const chunkBuffer = await readFile(chunkPath);
-      chunks.push(chunkBuffer);
     }
 
-    const fileBuffer = Buffer.concat(chunks);
+    // Reassemble chunks into single buffer
+    const chunks: Uint8Array[] = [];
+    for (let i = 0; i < totalChunks; i++) {
+      chunks.push(sessionChunks[i]);
+    }
+
+    const fileBuffer = Buffer.concat(chunks.map((c) => Buffer.from(c)));
 
     // Upload to Cloudinary
     const uploadFormData = new FormData();
@@ -90,12 +89,8 @@ export async function POST(request: NextRequest) {
     const result: CloudinaryVideoUploadResponse =
       await cloudinaryResponse.json();
 
-    // Clean up temporary files
-    try {
-      await rm(sessionDir, { recursive: true, force: true });
-    } catch (cleanupError) {
-      console.warn("Failed to cleanup temporary files:", cleanupError);
-    }
+    // Clean up temporary storage
+    delete chunkStorage[sessionId];
 
     // Return video data
     const videoData: UploadedVideoData = {
@@ -120,3 +115,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export { chunkStorage };
