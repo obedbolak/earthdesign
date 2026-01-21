@@ -15,6 +15,10 @@ import {
   CheckCircle,
   AlertCircle,
   Sparkles,
+  Trash2,
+  Loader2,
+  RefreshCw,
+  ExternalLink,
 } from "lucide-react";
 
 interface UploadedVideo {
@@ -27,6 +31,18 @@ interface UploadedVideo {
   bytes: number;
 }
 
+interface VideoRecord {
+  id: string;
+  url: string;
+  publicId: string;
+  duration: number;
+  width: number;
+  height: number;
+  format: string;
+  createdAt: string;
+  bytes: number;
+}
+
 declare global {
   interface Window {
     cloudinary?: any;
@@ -34,6 +50,7 @@ declare global {
 }
 
 export default function VideoUploadPage() {
+  // Upload states
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedVideo, setUploadedVideo] = useState<UploadedVideo | null>(
@@ -43,11 +60,17 @@ export default function VideoUploadPage() {
   const [copied, setCopied] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Video list states
+  const [videos, setVideos] = useState<VideoRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [copiedVideoId, setCopiedVideoId] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load Cloudinary SDK on mount
   useEffect(() => {
-    // Check if already loaded
     if (window.cloudinary) {
       return;
     }
@@ -61,6 +84,29 @@ export default function VideoUploadPage() {
     script.onload = () => {
       console.log("Cloudinary widget loaded");
     };
+  }, []);
+
+  // Fetch videos
+  const fetchVideos = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/upload/videos");
+      const data = await response.json();
+
+      if (response.ok) {
+        setVideos(data.videos);
+      } else {
+        setError(data.error || "Failed to fetch videos");
+      }
+    } catch (err) {
+      setError("Failed to fetch videos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVideos();
   }, []);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -121,7 +167,6 @@ export default function VideoUploadPage() {
     setUploadProgress(0);
 
     try {
-      // Upload directly to Cloudinary using FormData
       const formData = new FormData();
       formData.append("file", selectedFile);
       formData.append(
@@ -131,7 +176,6 @@ export default function VideoUploadPage() {
       formData.append("folder", "earthdesign");
       formData.append("resource_type", "video");
 
-      // Use XMLHttpRequest to track upload progress
       const xhr = new XMLHttpRequest();
 
       xhr.upload.addEventListener("progress", (e) => {
@@ -141,7 +185,6 @@ export default function VideoUploadPage() {
         }
       });
 
-      // Return a promise that resolves when upload completes
       const uploadPromise = new Promise<void>((resolve, reject) => {
         xhr.addEventListener("load", () => {
           if (xhr.status === 200) {
@@ -161,6 +204,7 @@ export default function VideoUploadPage() {
             setTimeout(() => {
               setUploadedVideo(videoData);
               setSelectedFile(null);
+              fetchVideos(); // Refresh video list
             }, 500);
 
             resolve();
@@ -189,6 +233,41 @@ export default function VideoUploadPage() {
     }
   };
 
+  const deleteVideo = async (publicId: string) => {
+    if (!confirm("Are you sure you want to delete this video?")) {
+      return;
+    }
+
+    try {
+      setDeleting(publicId);
+      const response = await fetch(
+        `/api/upload/videos?publicId=${encodeURIComponent(publicId)}`,
+        { method: "DELETE" },
+      );
+
+      if (response.ok) {
+        setVideos(videos.filter((v) => v.publicId !== publicId));
+      } else {
+        const data = await response.json();
+        setError(data.error || "Failed to delete video");
+      }
+    } catch (err) {
+      setError("Failed to delete video");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const copyVideoLink = async (url: string, videoId: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedVideoId(videoId);
+      setTimeout(() => setCopiedVideoId(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes >= 1024 * 1024 * 1024) {
       return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
@@ -206,16 +285,6 @@ export default function VideoUploadPage() {
         .padStart(2, "0")}`;
     }
     return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
   };
 
   return (
@@ -548,14 +617,14 @@ export default function VideoUploadPage() {
                     />
                   </div>
                   <button
-                    onClick={() => copyToClipboard(uploadedVideo.url)}
+                    onClick={() => copyVideoLink(uploadedVideo.url, "uploaded")}
                     className={`flex-shrink-0 px-5 py-3 font-semibold rounded-lg transition-all duration-300 flex items-center gap-2 ${
-                      copied
+                      copiedVideoId === "uploaded"
                         ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
                         : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:shadow-lg hover:shadow-purple-500/25"
                     }`}
                   >
-                    {copied ? (
+                    {copiedVideoId === "uploaded" ? (
                       <>
                         <Check className="w-4 h-4" />
                         Copied!
@@ -601,6 +670,152 @@ export default function VideoUploadPage() {
           animation: shimmer 2s infinite;
         }
       `}</style>
+
+      {/* Videos List Section */}
+      <div className="mt-8 bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+        <div className="p-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                <VideoIcon className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Uploaded Videos
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {videos.length} video{videos.length !== 1 ? "s" : ""} uploaded
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={fetchVideos}
+              disabled={loading}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`w-5 h-5 text-gray-600 ${loading ? "animate-spin" : ""}`}
+              />
+            </button>
+          </div>
+
+          {/* Videos Grid */}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            </div>
+          ) : videos.length === 0 ? (
+            <div className="text-center py-12">
+              <VideoIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No videos uploaded yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {videos.map((video) => (
+                <div
+                  key={video.id}
+                  className="relative group bg-gray-50 rounded-xl overflow-hidden border border-gray-100 hover:border-purple-200 hover:shadow-lg transition-all duration-300"
+                >
+                  {/* Thumbnail */}
+                  <div className="relative h-32 bg-black flex items-center justify-center overflow-hidden">
+                    <video
+                      src={video.url}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors flex items-center justify-center">
+                      <Play className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800 truncate">
+                          {video.format.toUpperCase()} Video
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatDuration(video.duration)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-2 mb-3 text-xs text-gray-600">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {video.width}×{video.height}
+                        </p>
+                        <p className="text-gray-500">Resolution</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {formatFileSize(video.bytes)}
+                        </p>
+                        <p className="text-gray-500">Size</p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 truncate">
+                          {new Date(video.createdAt).toLocaleDateString()}
+                        </p>
+                        <p className="text-gray-500">Date</p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => copyVideoLink(video.url, video.id)}
+                        className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center justify-center gap-1 ${
+                          copiedVideoId === video.id
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-purple-100 text-purple-600 hover:bg-purple-200"
+                        }`}
+                      >
+                        {copiedVideoId === video.id ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            Copy
+                          </>
+                        )}
+                      </button>
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Open
+                      </a>
+                      <button
+                        onClick={() => deleteVideo(video.publicId)}
+                        disabled={deleting === video.publicId}
+                        className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-red-100 text-red-600 hover:bg-red-200 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                      >
+                        {deleting === video.publicId ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Trash2 className="w-3 h-3" />
+                            Delete
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
