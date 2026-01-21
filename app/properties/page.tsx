@@ -1,10 +1,10 @@
 // File: app/properties/page.tsx
-'use client';
+"use client";
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   Grid3x3,
@@ -33,7 +33,8 @@ import {
   Sparkles,
   DollarSign,
   Filter,
-} from 'lucide-react';
+  Menu,
+} from "lucide-react";
 import {
   useProperties,
   searchProperties,
@@ -51,22 +52,31 @@ import {
   PropertyFilters,
   SortOption,
   PropertyStats,
-} from '@/lib/hooks/useProperties';
-import Footer from '@/components/Footer';
-import { COLORS, GRADIENTS } from '@/lib/constants/colors';
+} from "@/lib/hooks/useProperties";
+import Footer from "@/components/Footer";
+import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 
 // Placeholder images by property type
-const PLACEHOLDER_IMAGES: Record<PropertyType | 'default', string> = {
-  Villa: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop&q=80',
-  Apartment: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&h=600&fit=crop&q=80',
-  Land: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&h=600&fit=crop&q=80',
-  Commercial: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop&q=80',
-  Building: 'https://images.unsplash.com/photo-1565008576549-57569a49371d?w=800&h=600&fit=crop&q=80',
-  House: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&h=600&fit=crop&q=80',
-  Office: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop&q=80',
-  Studio: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop&q=80',
-  Duplex: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop&q=80',
-  default: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&h=600&fit=crop&q=80',
+const PLACEHOLDER_IMAGES: Record<PropertyType | "default", string> = {
+  Villa:
+    "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop&q=80",
+  Apartment:
+    "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&h=600&fit=crop&q=80",
+  Land: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&h=600&fit=crop&q=80",
+  Commercial:
+    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&h=600&fit=crop&q=80",
+  Building:
+    "https://images.unsplash.com/photo-1565008576549-57569a49371d?w=800&h=600&fit=crop&q=80",
+  House:
+    "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=800&h=600&fit=crop&q=80",
+  Office:
+    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop&q=80",
+  Studio:
+    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&h=600&fit=crop&q=80",
+  Duplex:
+    "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&h=600&fit=crop&q=80",
+  default:
+    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&h=600&fit=crop&q=80",
 };
 
 // Property type icons
@@ -84,24 +94,26 @@ const TYPE_ICONS: Record<PropertyType, React.ComponentType<any>> = {
 
 // Get property status
 const getPropertyStatus = (property: Property): string => {
-  if (property.forSale && property.forRent) return 'Sale / Rent';
-  if (property.forSale) return 'For Sale';
-  if (property.forRent) return 'For Rent';
-  return 'Available';
+  if (property.forSale && property.forRent) return "Sale / Rent";
+  if (property.forSale) return "For Sale";
+  if (property.forRent) return "For Rent";
+  return "Available";
 };
 
 // Get status color
 const getStatusColor = (property: Property): string => {
   if (property.forSale && property.forRent) return COLORS.primary[500];
-  if (property.forSale) return '#22c55e';
-  if (property.forRent) return '#3b82f6';
+  if (property.forSale) return "#22c55e";
+  if (property.forRent) return "#3b82f6";
   return COLORS.gray[500];
 };
 
 // Get first available image
 const getPropertyImage = (property: Property): string => {
   const images = getPropertyImages(property);
-  return images.length > 0 ? images[0] : PLACEHOLDER_IMAGES[property.type] || PLACEHOLDER_IMAGES.default;
+  return images.length > 0
+    ? images[0]
+    : PLACEHOLDER_IMAGES[property.type] || PLACEHOLDER_IMAGES.default;
 };
 
 // Get placeholder image by type
@@ -111,45 +123,50 @@ const getPlaceholderImage = (type: PropertyType): string => {
 
 export default function AllPropertiesPage() {
   const searchParams = useSearchParams();
-  const initialSearch = searchParams.get('search') || '';
+  const initialSearch = searchParams?.get("search") || "";
 
   const { properties, loading, error } = useProperties();
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState(initialSearch);
-  const [selectedType, setSelectedType] = useState<PropertyType | 'All'>('All');
-  const [selectedStatus, setSelectedStatus] = useState<'All' | 'For Sale' | 'For Rent'>('All');
-  const [minPrice, setMinPrice] = useState<string>('');
-  const [maxPrice, setMaxPrice] = useState<string>('');
-  const [minBedrooms, setMinBedrooms] = useState<string>('');
+  const [selectedType, setSelectedType] = useState<PropertyType | "All">("All");
+  const [selectedStatus, setSelectedStatus] = useState<
+    "All" | "For Sale" | "For Rent"
+  >("All");
+  const [minPrice, setMinPrice] = useState<string>("");
+  const [maxPrice, setMaxPrice] = useState<string>("");
+  const [minBedrooms, setMinBedrooms] = useState<string>("");
   const [hasParking, setHasParking] = useState<boolean | undefined>(undefined);
-  const [hasGenerator, setHasGenerator] = useState<boolean | undefined>(undefined);
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
-  
+  const [hasGenerator, setHasGenerator] = useState<boolean | undefined>(
+    undefined,
+  );
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
+
   // View states
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
+  const [viewMode, setViewMode] = useState<"grid" | "list" | "map">("grid");
   const [showFilters, setShowFilters] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   // Calculate stats
   const stats = useMemo(() => calculateStats(properties), [properties]);
 
   useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  
-  // Handle status parameter
-  const status = params.get('status');
-  if (status === 'sale') {
-    setSelectedStatus('For Sale');
-  } else if (status === 'rent') {
-    setSelectedStatus('For Rent');
-  }
-  
-  // Handle type parameter
-  const type = params.get('type');
-  if (type && PropertyTypes.includes(type as PropertyType)) {
-    setSelectedType(type as PropertyType);
-  }
-}, []);
+    const params = new URLSearchParams(window.location.search);
+
+    // Handle status parameter
+    const status = params.get("status");
+    if (status === "sale") {
+      setSelectedStatus("For Sale");
+    } else if (status === "rent") {
+      setSelectedStatus("For Rent");
+    }
+
+    // Handle type parameter
+    const type = params.get("type");
+    if (type && PropertyTypes.includes(type as PropertyType)) {
+      setSelectedType(type as PropertyType);
+    }
+  }, []);
 
   // Filter and sort properties
   const filteredProperties = useMemo(() => {
@@ -158,13 +175,13 @@ export default function AllPropertiesPage() {
       published: true,
     };
 
-    if (selectedType !== 'All') {
+    if (selectedType !== "All") {
       filters.type = selectedType;
     }
 
-    if (selectedStatus === 'For Sale') {
+    if (selectedStatus === "For Sale") {
       filters.forSale = true;
-    } else if (selectedStatus === 'For Rent') {
+    } else if (selectedStatus === "For Rent") {
       filters.forRent = true;
     }
 
@@ -197,44 +214,70 @@ export default function AllPropertiesPage() {
     result = sortProperties(result, sortBy);
 
     return result;
-  }, [properties, searchQuery, selectedType, selectedStatus, minPrice, maxPrice, minBedrooms, hasParking, hasGenerator, sortBy]);
+  }, [
+    properties,
+    searchQuery,
+    selectedType,
+    selectedStatus,
+    minPrice,
+    maxPrice,
+    minBedrooms,
+    hasParking,
+    hasGenerator,
+    sortBy,
+  ]);
 
   // Property types for filter
-  const propertyTypes: (PropertyType | 'All')[] = ['All', ...PropertyTypes];
+  const propertyTypes: (PropertyType | "All")[] = ["All", ...PropertyTypes];
 
   // Clear all filters
   const clearFilters = useCallback(() => {
-    setSelectedType('All');
-    setSelectedStatus('All');
-    setMinPrice('');
-    setMaxPrice('');
-    setMinBedrooms('');
+    setSelectedType("All");
+    setSelectedStatus("All");
+    setMinPrice("");
+    setMaxPrice("");
+    setMinBedrooms("");
     setHasParking(undefined);
     setHasGenerator(undefined);
-    setSearchQuery('');
-    setSortBy('newest');
+    setSearchQuery("");
+    setSortBy("newest");
   }, []);
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
     return (
-      selectedType !== 'All' ||
-      selectedStatus !== 'All' ||
-      minPrice !== '' ||
-      maxPrice !== '' ||
-      minBedrooms !== '' ||
+      selectedType !== "All" ||
+      selectedStatus !== "All" ||
+      minPrice !== "" ||
+      maxPrice !== "" ||
+      minBedrooms !== "" ||
       hasParking !== undefined ||
       hasGenerator !== undefined ||
-      searchQuery !== ''
+      searchQuery !== ""
     );
-  }, [selectedType, selectedStatus, minPrice, maxPrice, minBedrooms, hasParking, hasGenerator, searchQuery]);
+  }, [
+    selectedType,
+    selectedStatus,
+    minPrice,
+    maxPrice,
+    minBedrooms,
+    hasParking,
+    hasGenerator,
+    searchQuery,
+  ]);
 
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: COLORS.gray[900] }}>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: COLORS.gray[900] }}
+      >
         <div className="text-center">
-          <Home className="w-16 h-16 mx-auto mb-4" style={{ color: COLORS.primary[600] }} />
+          <Home
+            className="w-16 h-16 mx-auto mb-4"
+            style={{ color: COLORS.primary[600] }}
+          />
           <p className="text-xl text-white mb-2">Error loading properties</p>
           <p style={{ color: COLORS.primary[400] }}>{error}</p>
           <Link
@@ -269,7 +312,7 @@ export default function AllPropertiesPage() {
             borderColor: `${COLORS.primary[600]}40`,
           }}
         >
-          <div className="relative h-64 overflow-hidden">
+          <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden">
             <img
               src={getPropertyImage(property)}
               alt={property.title}
@@ -280,11 +323,11 @@ export default function AllPropertiesPage() {
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-            
+
             {/* Status badge */}
-            <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
+            <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex gap-1.5 sm:gap-2 flex-wrap">
               <span
-                className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm"
+                className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold backdrop-blur-sm"
                 style={{
                   background: getStatusColor(property),
                   color: COLORS.white,
@@ -294,80 +337,86 @@ export default function AllPropertiesPage() {
               </span>
               {property.featured && (
                 <span
-                  className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1"
+                  className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold backdrop-blur-sm flex items-center gap-1"
                   style={{
                     background: COLORS.yellow[500],
                     color: COLORS.gray[900],
                   }}
                 >
-                  <Sparkles className="w-3 h-3" />
-                  Featured
+                  <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                  <span className="hidden xs:inline">Featured</span>
                 </span>
               )}
             </div>
 
             {/* Action buttons */}
-            <div className="absolute top-3 right-3 flex gap-2">
+            <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex gap-1.5 sm:gap-2">
               <motion.button
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={(e) => {
                   e.preventDefault();
-                  // TODO: Add to favorites
                 }}
-                className="w-8 h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
+                className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
               >
-                <Heart className="w-4 h-4" style={{ color: COLORS.gray[700] }} />
+                <Heart
+                  className="w-3.5 h-3.5 sm:w-4 sm:h-4"
+                  style={{ color: COLORS.gray[700] }}
+                />
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.2 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={(e) => {
                   e.preventDefault();
-                  // TODO: Share property
                 }}
-                className="w-8 h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
+                className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
               >
-                <Share2 className="w-4 h-4" style={{ color: COLORS.gray[700] }} />
+                <Share2
+                  className="w-3.5 h-3.5 sm:w-4 sm:h-4"
+                  style={{ color: COLORS.gray[700] }}
+                />
               </motion.button>
             </div>
 
             {/* Amenity badges */}
-            <div className="absolute bottom-3 left-3 flex gap-2">
+            <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 flex gap-1.5 sm:gap-2">
               {property.bedrooms !== null && property.bedrooms > 0 && (
-                <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                  <Bed className="w-3 h-3" /> {property.bedrooms}
+                <span className="bg-black/50 backdrop-blur text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs flex items-center gap-1">
+                  <Bed className="w-2.5 h-2.5 sm:w-3 sm:h-3" />{" "}
+                  {property.bedrooms}
                 </span>
               )}
               {property.bathrooms !== null && property.bathrooms > 0 && (
-                <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                  <Bath className="w-3 h-3" /> {property.bathrooms}
+                <span className="bg-black/50 backdrop-blur text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs flex items-center gap-1">
+                  <Bath className="w-2.5 h-2.5 sm:w-3 sm:h-3" />{" "}
+                  {property.bathrooms}
                 </span>
               )}
               {property.hasParking && (
-                <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                  <Car className="w-3 h-3" />
+                <span className="bg-black/50 backdrop-blur text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs flex items-center gap-1">
+                  <Car className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 </span>
               )}
             </div>
           </div>
 
-          <div className="p-5">
+          <div className="p-3 sm:p-4 md:p-5">
             {/* Type badge */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
               <span
-                className="px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1"
+                className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-medium flex items-center gap-1"
                 style={{
                   background: `${COLORS.primary[500]}30`,
                   color: COLORS.primary[200],
                 }}
               >
-                <TypeIcon className="w-3 h-3" />
+                <TypeIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 {property.type}
               </span>
               {property.isLandForDevelopment && (
                 <span
-                  className="px-2 py-1 rounded-lg text-xs font-medium"
+                  className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-medium"
                   style={{
                     background: `${COLORS.emerald[500]}30`,
                     color: COLORS.emerald[300],
@@ -379,47 +428,63 @@ export default function AllPropertiesPage() {
             </div>
 
             {/* Title */}
-            <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-green-300 transition">
+            <h3 className="text-sm sm:text-base md:text-lg font-bold text-white mb-1.5 sm:mb-2 line-clamp-2 group-hover:text-green-300 transition">
               {property.title}
             </h3>
 
             {/* Location */}
-            <div className="flex items-center gap-2 text-sm mb-4" style={{ color: COLORS.primary[300] }}>
-              <MapPin className="w-4 h-4 flex-shrink-0" style={{ color: COLORS.primary[400] }} />
+            <div
+              className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm mb-3 sm:mb-4"
+              style={{ color: COLORS.primary[300] }}
+            >
+              <MapPin
+                className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0"
+                style={{ color: COLORS.primary[400] }}
+              />
               <span className="truncate">{getPropertyLocation(property)}</span>
             </div>
 
             {/* Price and area */}
             <div
-              className="flex items-center justify-between pt-4 border-t"
+              className="flex items-center justify-between pt-3 sm:pt-4 border-t"
               style={{ borderColor: `${COLORS.primary[600]}40` }}
             >
-              <div className="flex items-center gap-2">
-                <Square className="w-4 h-4" style={{ color: COLORS.primary[400] }} />
-                <span className="font-semibold text-sm text-white">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Square
+                  className="w-3 h-3 sm:w-4 sm:h-4"
+                  style={{ color: COLORS.primary[400] }}
+                />
+                <span className="font-semibold text-xs sm:text-sm text-white">
                   {formatArea(property.surface)}
                 </span>
               </div>
-             <div className="text-right">
-  {property.forSale && property.price && property.price > 0 ? (
-    <p className="text-lg font-bold" style={{ color: COLORS.primary[300] }}>
-      {formatPriceCompact(property.price, property.currency)}
-    </p>
-  ) : property.forRent && property.rentPrice && property.rentPrice > 0 ? (
-    <p className="text-lg font-bold" style={{ color: COLORS.primary[300] }}>
-      {formatPriceCompact(property.rentPrice, property.currency)}/mo
-    </p>
-  ) : (
-    <p className="text-sm font-semibold" style={{ color: COLORS.primary[400] }}>
-      Prix sur demande
-    </p>
-  )}
-  {property.forRent && property.rentPrice && property.rentPrice > 0 && property.forSale && property.price && property.price > 0 && (
-    <p className="text-xs" style={{ color: COLORS.primary[400] }}>
-      Rent: {formatPriceCompact(property.rentPrice, property.currency)}/mo
-    </p>
-  )}
-</div>
+              <div className="text-right">
+                {property.forSale && property.price && property.price > 0 ? (
+                  <p
+                    className="text-sm sm:text-base md:text-lg font-bold"
+                    style={{ color: COLORS.primary[300] }}
+                  >
+                    {formatPriceCompact(property.price, property.currency)}
+                  </p>
+                ) : property.forRent &&
+                  property.rentPrice &&
+                  property.rentPrice > 0 ? (
+                  <p
+                    className="text-sm sm:text-base md:text-lg font-bold"
+                    style={{ color: COLORS.primary[300] }}
+                  >
+                    {formatPriceCompact(property.rentPrice, property.currency)}
+                    /mo
+                  </p>
+                ) : (
+                  <p
+                    className="text-xs sm:text-sm font-semibold"
+                    style={{ color: COLORS.primary[400] }}
+                  >
+                    Prix sur demande
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </Link>
@@ -448,7 +513,7 @@ export default function AllPropertiesPage() {
           }}
         >
           {/* Image */}
-          <div className="relative w-full sm:w-72 lg:w-80 h-64 sm:h-auto flex-shrink-0">
+          <div className="relative w-full sm:w-48 md:w-64 lg:w-72 xl:w-80 h-48 sm:h-auto flex-shrink-0">
             <img
               src={getPropertyImage(property)}
               alt={property.title}
@@ -458,9 +523,9 @@ export default function AllPropertiesPage() {
                 target.src = getPlaceholderImage(property.type);
               }}
             />
-            <div className="absolute top-3 left-3 flex gap-2">
+            <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex gap-1.5 sm:gap-2">
               <span
-                className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm"
+                className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold backdrop-blur-sm"
                 style={{
                   background: getStatusColor(property),
                   color: COLORS.white,
@@ -470,35 +535,35 @@ export default function AllPropertiesPage() {
               </span>
               {property.featured && (
                 <span
-                  className="px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm flex items-center gap-1"
+                  className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold backdrop-blur-sm flex items-center gap-1"
                   style={{
                     background: COLORS.yellow[500],
                     color: COLORS.gray[900],
                   }}
                 >
-                  <Sparkles className="w-3 h-3" />
+                  <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 </span>
               )}
             </div>
           </div>
 
           {/* Content */}
-          <div className="flex-1 p-6">
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex-1 p-4 sm:p-5 md:p-6">
+            <div className="flex items-start justify-between mb-2 sm:mb-3">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 <span
-                  className="px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-1"
+                  className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1"
                   style={{
                     background: `${COLORS.primary[500]}30`,
                     color: COLORS.primary[200],
                   }}
                 >
-                  <TypeIcon className="w-3 h-3" />
+                  <TypeIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                   {property.type}
                 </span>
                 {property.isLandForDevelopment && (
                   <span
-                    className="px-3 py-1 rounded-lg text-sm font-medium"
+                    className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-lg text-xs sm:text-sm font-medium"
                     style={{
                       background: `${COLORS.emerald[500]}30`,
                       color: COLORS.emerald[300],
@@ -508,17 +573,17 @@ export default function AllPropertiesPage() {
                   </span>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 sm:gap-2">
                 <motion.button
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={(e) => {
                     e.preventDefault();
                   }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition"
                   style={{ background: `${COLORS.white}10` }}
                 >
-                  <Heart className="w-5 h-5 text-white" />
+                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.2 }}
@@ -526,105 +591,158 @@ export default function AllPropertiesPage() {
                   onClick={(e) => {
                     e.preventDefault();
                   }}
-                  className="w-8 h-8 rounded-full flex items-center justify-center transition"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition"
                   style={{ background: `${COLORS.white}10` }}
                 >
-                  <Share2 className="w-5 h-5 text-white" />
+                  <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </motion.button>
               </div>
             </div>
 
             {/* Title */}
-            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-300 transition">
+            <h3 className="text-base sm:text-lg md:text-xl font-bold text-white mb-1.5 sm:mb-2 group-hover:text-green-300 transition line-clamp-1 sm:line-clamp-none">
               {property.title}
             </h3>
 
             {/* Short description */}
             {property.shortDescription && (
-              <p className="text-sm mb-3 line-clamp-2" style={{ color: COLORS.primary[300] }}>
+              <p
+                className="text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2"
+                style={{ color: COLORS.primary[300] }}
+              >
                 {property.shortDescription}
               </p>
             )}
 
             {/* Location */}
-            <div className="flex items-center gap-2 mb-4" style={{ color: COLORS.primary[300] }}>
-              <MapPin className="w-5 h-5 flex-shrink-0" style={{ color: COLORS.primary[400] }} />
-              <span>{getPropertyLocation(property)}</span>
+            <div
+              className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4"
+              style={{ color: COLORS.primary[300] }}
+            >
+              <MapPin
+                className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
+                style={{ color: COLORS.primary[400] }}
+              />
+              <span className="text-xs sm:text-sm truncate">
+                {getPropertyLocation(property)}
+              </span>
             </div>
 
             {/* Stats row */}
             <div
-              className="flex items-center gap-6 pt-4 border-t flex-wrap"
+              className="flex items-center gap-3 sm:gap-4 md:gap-6 pt-3 sm:pt-4 border-t flex-wrap"
               style={{ borderColor: `${COLORS.primary[600]}40` }}
             >
               {property.surface && (
-                <div className="flex items-center gap-2">
-                  <Square className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Square
+                    className="w-4 h-4 sm:w-5 sm:h-5"
+                    style={{ color: COLORS.primary[400] }}
+                  />
                   <div>
-                    <p className="text-xs" style={{ color: COLORS.primary[400] }}>
+                    <p
+                      className="text-[10px] sm:text-xs"
+                      style={{ color: COLORS.primary[400] }}
+                    >
                       Area
                     </p>
-                    <p className="font-semibold text-white">{formatArea(property.surface)}</p>
+                    <p className="font-semibold text-xs sm:text-sm text-white">
+                      {formatArea(property.surface)}
+                    </p>
                   </div>
                 </div>
               )}
               {property.bedrooms !== null && property.bedrooms > 0 && (
-                <div className="flex items-center gap-2">
-                  <Bed className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Bed
+                    className="w-4 h-4 sm:w-5 sm:h-5"
+                    style={{ color: COLORS.primary[400] }}
+                  />
                   <div>
-                    <p className="text-xs" style={{ color: COLORS.primary[400] }}>
-                      Bedrooms
+                    <p
+                      className="text-[10px] sm:text-xs"
+                      style={{ color: COLORS.primary[400] }}
+                    >
+                      Beds
                     </p>
-                    <p className="font-semibold text-white">{property.bedrooms}</p>
+                    <p className="font-semibold text-xs sm:text-sm text-white">
+                      {property.bedrooms}
+                    </p>
                   </div>
                 </div>
               )}
               {property.bathrooms !== null && property.bathrooms > 0 && (
-                <div className="flex items-center gap-2">
-                  <Bath className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Bath
+                    className="w-4 h-4 sm:w-5 sm:h-5"
+                    style={{ color: COLORS.primary[400] }}
+                  />
                   <div>
-                    <p className="text-xs" style={{ color: COLORS.primary[400] }}>
-                      Bathrooms
+                    <p
+                      className="text-[10px] sm:text-xs"
+                      style={{ color: COLORS.primary[400] }}
+                    >
+                      Baths
                     </p>
-                    <p className="font-semibold text-white">{property.bathrooms}</p>
+                    <p className="font-semibold text-xs sm:text-sm text-white">
+                      {property.bathrooms}
+                    </p>
                   </div>
                 </div>
               )}
-              {property.hasParking && (
-                <div className="flex items-center gap-2">
-                  <Car className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                  <span className="text-sm text-white">Parking</span>
-                </div>
-              )}
-              {property.hasGenerator && (
-                <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5" style={{ color: COLORS.primary[400] }} />
-                  <span className="text-sm text-white">Generator</span>
-                </div>
-              )}
+              <div className="hidden sm:flex items-center gap-2">
+                {property.hasParking && (
+                  <div className="flex items-center gap-1">
+                    <Car
+                      className="w-4 h-4"
+                      style={{ color: COLORS.primary[400] }}
+                    />
+                    <span className="text-xs text-white">P</span>
+                  </div>
+                )}
+                {property.hasGenerator && (
+                  <div className="flex items-center gap-1">
+                    <Zap
+                      className="w-4 h-4"
+                      style={{ color: COLORS.primary[400] }}
+                    />
+                    <span className="text-xs text-white">G</span>
+                  </div>
+                )}
+              </div>
               <div className="ml-auto text-right">
-  <p className="text-xs" style={{ color: COLORS.primary[400] }}>
-    {property.forSale ? 'Sale Price' : 'Rent Price'}
-  </p>
-  {property.forSale && property.price && property.price > 0 ? (
-    <p className="text-2xl font-bold" style={{ color: COLORS.primary[300] }}>
-      {formatPrice(property.price, property.currency)}
-    </p>
-  ) : property.forRent && property.rentPrice && property.rentPrice > 0 ? (
-    <p className="text-2xl font-bold" style={{ color: COLORS.primary[300] }}>
-      {formatPrice(property.rentPrice, property.currency)}/mo
-    </p>
-  ) : (
-    <p className="text-lg font-semibold" style={{ color: COLORS.primary[400] }}>
-      Prix sur demande
-    </p>
-  )}
-  {property.forSale && property.forRent && property.price && property.price > 0 && property.rentPrice && property.rentPrice > 0 && (
-    <p className="text-xs mt-1" style={{ color: COLORS.primary[400] }}>
-      Rent: {formatPrice(property.rentPrice, property.currency)}/mo
-    </p>
-  )}
-</div>
+                <p
+                  className="text-[10px] sm:text-xs"
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  {property.forSale ? "Sale" : "Rent"}
+                </p>
+                {property.forSale && property.price && property.price > 0 ? (
+                  <p
+                    className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold"
+                    style={{ color: COLORS.primary[300] }}
+                  >
+                    {formatPriceCompact(property.price, property.currency)}
+                  </p>
+                ) : property.forRent &&
+                  property.rentPrice &&
+                  property.rentPrice > 0 ? (
+                  <p
+                    className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold"
+                    style={{ color: COLORS.primary[300] }}
+                  >
+                    {formatPriceCompact(property.rentPrice, property.currency)}
+                    /mo
+                  </p>
+                ) : (
+                  <p
+                    className="text-sm sm:text-base md:text-lg font-semibold"
+                    style={{ color: COLORS.primary[400] }}
+                  >
+                    Prix sur demande
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </Link>
@@ -637,22 +755,22 @@ export default function AllPropertiesPage() {
     <Link
       key={property.id}
       href={`/property/${property.id}`}
-      className="block p-4 transition hover:bg-white/5"
+      className="block p-3 sm:p-4 transition hover:bg-white/5"
     >
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <img
           src={getPropertyImage(property)}
           alt={property.title}
-          className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+          className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg flex-shrink-0"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = getPlaceholderImage(property.type);
           }}
         />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
             <span
-              className="text-xs px-2 py-0.5 rounded font-medium"
+              className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded font-medium"
               style={{
                 background: getStatusColor(property),
                 color: COLORS.white,
@@ -661,13 +779,18 @@ export default function AllPropertiesPage() {
               {getPropertyStatus(property)}
             </span>
           </div>
-          <p className="font-semibold text-sm text-white truncate mb-1">{property.title}</p>
-          <p className="text-xs truncate mb-2" style={{ color: COLORS.primary[300] }}>
+          <p className="font-semibold text-xs sm:text-sm text-white truncate mb-1">
+            {property.title}
+          </p>
+          <p
+            className="text-[10px] sm:text-xs truncate mb-1 sm:mb-2"
+            style={{ color: COLORS.primary[300] }}
+          >
             {getPropertyLocation(property)}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <span
-              className="text-xs px-2 py-0.5 rounded font-medium"
+              className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded font-medium"
               style={{
                 background: `${COLORS.primary[500]}30`,
                 color: COLORS.primary[200],
@@ -676,7 +799,10 @@ export default function AllPropertiesPage() {
               {property.type}
             </span>
             {property.surface && (
-              <span className="text-xs" style={{ color: COLORS.primary[400] }}>
+              <span
+                className="text-[10px] sm:text-xs"
+                style={{ color: COLORS.primary[400] }}
+              >
                 {formatArea(property.surface)}
               </span>
             )}
@@ -699,105 +825,119 @@ export default function AllPropertiesPage() {
           borderColor: `${COLORS.primary[700]}4D`,
         }}
       >
-        {/* Top stats bar */}
+        {/* Top stats bar - Hidden on xs, compact on sm, full on md+ */}
         <div
-          className="border-b"
+          className="hidden sm:block border-b"
           style={{
             background: `${COLORS.primary[950]}80`,
             borderColor: `${COLORS.primary[700]}80`,
           }}
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="flex items-center justify-between py-2 text-xs sm:text-sm text-white">
-              <div className="hidden sm:flex items-center gap-4 md:gap-8">
-                <div className="flex items-center gap-2">
-                  <Home className="w-4 h-4" style={{ color: COLORS.yellow[400] }} />
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-1.5 sm:py-2 text-[10px] sm:text-xs md:text-sm text-white">
+              {/* Stats - Progressive disclosure */}
+              <div className="flex items-center gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  <Home
+                    className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
+                    style={{ color: COLORS.yellow[400] }}
+                  />
                   <span>
-                    <strong style={{ color: COLORS.yellow[400] }}>{stats.published}</strong> Properties
+                    <strong style={{ color: COLORS.yellow[400] }}>
+                      {stats.published}
+                    </strong>{" "}
+                    <span className="hidden md:inline">Properties</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" style={{ color: '#22c55e' }} />
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  <Tag
+                    className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
+                    style={{ color: "#22c55e" }}
+                  />
                   <span>
-                    <strong style={{ color: '#22c55e' }}>{stats.forSale}</strong> For Sale
+                    <strong style={{ color: "#22c55e" }}>
+                      {stats.forSale}
+                    </strong>{" "}
+                    <span className="hidden lg:inline">For</span> Sale
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" style={{ color: '#3b82f6' }} />
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  <Tag
+                    className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
+                    style={{ color: "#3b82f6" }}
+                  />
                   <span>
-                    <strong style={{ color: '#3b82f6' }}>{stats.forRent}</strong> For Rent
+                    <strong style={{ color: "#3b82f6" }}>
+                      {stats.forRent}
+                    </strong>{" "}
+                    <span className="hidden lg:inline">For</span> Rent
                   </span>
                 </div>
                 {stats.featured > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" style={{ color: COLORS.yellow[400] }} />
+                  <div className="hidden lg:flex items-center gap-1.5">
+                    <Sparkles
+                      className="w-4 h-4"
+                      style={{ color: COLORS.yellow[400] }}
+                    />
                     <span>
-                      <strong style={{ color: COLORS.yellow[400] }}>{stats.featured}</strong> Featured
+                      <strong style={{ color: COLORS.yellow[400] }}>
+                        {stats.featured}
+                      </strong>{" "}
+                      Featured
                     </span>
                   </div>
                 )}
               </div>
-              <div className="flex sm:hidden items-center gap-3 text-xs">
-                <span>
-                  <strong style={{ color: COLORS.yellow[400] }}>{stats.published}</strong> Properties
+
+              {/* Contact info */}
+              <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+                <span className="hidden xl:inline opacity-80">
+                  📍 Yaoundé, Cameroon
                 </span>
-                <span>•</span>
-                <span>
-                  <strong style={{ color: '#22c55e' }}>{stats.forSale}</strong> Sale
+                <span className="opacity-80 whitespace-nowrap">
+                  📞 +237 677 212 279
                 </span>
-                <span>•</span>
-                <span>
-                  <strong style={{ color: '#3b82f6' }}>{stats.forRent}</strong> Rent
-                </span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="hidden lg:inline opacity-80">📍 Yaoundé, Cameroon</span>
-                <span className="opacity-80">📞 +237 677 212 279</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Main header */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4 py-2 sm:py-3 md:py-4">
             {/* Logo */}
-            <Link href="/">
+            <Link href="/" className="flex-shrink-0">
               <motion.div
                 whileHover={{ scale: 1.05 }}
-                className="flex items-center gap-3 sm:gap-4 flex-shrink-0 cursor-pointer"
+                className="flex items-center cursor-pointer"
               >
-               
-                 <div
-                    className="relative w-22 h-12 flex items-center justify-center"
-                    style={{ borderColor: `${COLORS.primary[400]}60` }}
-                  >
-                    <img
-                      src="/logo.png"
-                      alt="earth design Logo"
-                      className="w-full h-60 object-contain p-1"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                      }}
-                    />
-                  </div>
+                <div className="relative w-16 h-10 sm:w-20 sm:h-12 md:w-24 md:h-14 lg:w-28 lg:h-14 flex items-center justify-center">
+                  <img
+                    src="/logo.png"
+                    alt="Earth Design Logo"
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                    }}
+                  />
+                </div>
               </motion.div>
             </Link>
 
-            {/* Search bar */}
-            <div className="flex-1 max-w-2xl mx-4">
-              <div className="relative">
+            {/* Search bar - Hidden on mobile, shown from sm */}
+            <div className="hidden sm:flex flex-1 max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl mx-2 md:mx-4 items-center gap-2">
+              <div className="relative flex-1">
                 <Search
-                  className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5"
+                  className="absolute left-3 sm:left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5"
                   style={{ color: COLORS.primary[600] }}
                 />
                 <input
                   type="text"
-                  placeholder="Search properties, locations, types..."
+                  placeholder="Search properties..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-14 pr-12 py-3 sm:py-4 rounded-full text-base shadow-xl transition-all focus:outline-none focus:ring-4"
+                  className="w-full pl-9 sm:pl-10 md:pl-12 lg:pl-14 pr-10 py-2 sm:py-2.5 md:py-3 lg:py-3.5 rounded-full text-sm md:text-base shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-green-500"
                   style={{
                     background: COLORS.white,
                     color: COLORS.gray[900],
@@ -805,459 +945,728 @@ export default function AllPropertiesPage() {
                 />
                 {searchQuery && (
                   <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-gray-100 transition"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition"
                   >
-                    <X className="w-4 h-4" style={{ color: COLORS.gray[400] }} />
+                    <X
+                      className="w-3.5 h-3.5 md:w-4 md:h-4"
+                      style={{ color: COLORS.gray[400] }}
+                    />
                   </button>
                 )}
               </div>
+
+              {/* Filter button - Desktop */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowFilters(!showFilters)}
+                className="hidden md:flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-2 md:py-2.5 lg:py-3 border-2 rounded-xl font-medium transition text-sm lg:text-base"
+                style={{
+                  borderColor: COLORS.primary[500],
+                  color: COLORS.white,
+                  background: showFilters
+                    ? `${COLORS.primary[500]}20`
+                    : "transparent",
+                }}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="hidden lg:inline">Filters</span>
+                {hasActiveFilters && (
+                  <span
+                    className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full"
+                    style={{ background: COLORS.primary[400] }}
+                  />
+                )}
+                <motion.div animate={{ rotate: showFilters ? 180 : 0 }}>
+                  <ChevronDown className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+                </motion.div>
+              </motion.button>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 sm:gap-4">
+            {/* Right actions */}
+            <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+              {/* Mobile search toggle */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowMobileSearch(!showMobileSearch)}
+                className="sm:hidden flex items-center justify-center w-9 h-9 bg-white/10 rounded-full hover:bg-white/20 transition"
+              >
+                <Search className="w-4 h-4 text-white" />
+              </motion.button>
+
+              {/* Mobile filter toggle */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowFilters(!showFilters)}
+                className="md:hidden flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-white/10 rounded-full hover:bg-white/20 transition relative"
+              >
+                <SlidersHorizontal className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                {hasActiveFilters && (
+                  <span
+                    className="absolute top-1 right-1 w-2 h-2 rounded-full"
+                    style={{ background: COLORS.primary[400] }}
+                  />
+                )}
+              </motion.button>
+
+              {/* Home button - Hidden on xs/sm */}
               <Link href="/">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-white transition"
+                  className="hidden md:flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-2 lg:py-2.5 rounded-xl font-semibold text-white transition text-sm lg:text-base"
                   style={{ background: `${COLORS.white}15` }}
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Home
+                  <span className="hidden lg:inline">Home</span>
                 </motion.button>
               </Link>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-full hover:bg-white/20 transition"
+            </div>
+          </div>
+
+          {/* Mobile search bar - Expandable */}
+          <AnimatePresence>
+            {showMobileSearch && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="sm:hidden pb-3"
               >
-                <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-              </motion.button>
+                <div className="relative">
+                  <Search
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4"
+                    style={{ color: COLORS.primary[600] }}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search properties, locations..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    autoFocus
+                    className="w-full pl-10 pr-10 py-2.5 rounded-full text-sm shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-green-500"
+                    style={{
+                      background: COLORS.white,
+                      color: COLORS.gray[900],
+                    }}
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition"
+                    >
+                      <X
+                        className="w-4 h-4"
+                        style={{ color: COLORS.gray[400] }}
+                      />
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Mobile stats bar - Only visible on xs */}
+        <div
+          className="sm:hidden border-t"
+          style={{
+            background: `${COLORS.primary[950]}80`,
+            borderColor: `${COLORS.primary[700]}80`,
+          }}
+        >
+          <div className="max-w-7xl mx-auto px-3">
+            <div className="flex items-center justify-between py-1.5 text-[10px] text-white">
+              <div className="flex items-center gap-3">
+                <span>
+                  <strong style={{ color: COLORS.yellow[400] }}>
+                    {stats.published}
+                  </strong>{" "}
+                  Properties
+                </span>
+                <span>
+                  <strong style={{ color: "#22c55e" }}>{stats.forSale}</strong>{" "}
+                  Sale
+                </span>
+                <span>
+                  <strong style={{ color: "#3b82f6" }}>{stats.forRent}</strong>{" "}
+                  Rent
+                </span>
+              </div>
+              <span className="opacity-80">📞 +237 677...</span>
             </div>
           </div>
         </div>
       </motion.header>
 
-      {/* Hero section */}
+      {/* Hero section - Reduced spacing */}
       <section
-        className="py-10 sm:py-10"
+        className="py-4 sm:py-6 md:py-8"
         style={{
           background: `linear-gradient(180deg, ${COLORS.primary[900]} 0%, ${COLORS.gray[900]} 100%)`,
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
-              All Properties
-            </h1>
-            <p className="text-lg sm:text-xl" style={{ color: COLORS.primary[200] }}>
-              Discover {stats.published}+ premium properties across Cameroon
-            </p>
-          </motion.div>
-
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           {/* Filters panel */}
-        <AnimatePresence>
-          {!showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="rounded-2xl shadow-xl p-6 mb-0 border overflow-hidden"
-              style={{
-                background: `${COLORS.primary[800]}80`,
-                borderColor: `${COLORS.primary[600]}40`,
-                backdropFilter: 'blur(20px)',
-              }}
-            >
-              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <Filter className="w-5 h-5" />
-                Filter Properties
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {/* Property Type */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
-                    Property Type
-                  </label>
-                  <select
-                    value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value as PropertyType | 'All')}
-                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
-                    style={{
-                      background: `${COLORS.primary[700]}80`,
-                      color: COLORS.white,
-                      borderColor: `${COLORS.primary[500]}40`,
-                    }}
-                  >
-                    {propertyTypes.map((t) => (
-                      <option key={t} value={t} style={{ background: COLORS.primary[900] }}>
-                        {t}
+          <AnimatePresence>
+            {!showFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="rounded-xl sm:rounded-2xl shadow-xl p-3 sm:p-4 md:p-5 lg:p-6 border overflow-hidden"
+                style={{
+                  background: `${COLORS.primary[800]}80`,
+                  borderColor: `${COLORS.primary[600]}40`,
+                  backdropFilter: "blur(20px)",
+                }}
+              >
+                <h3 className="text-sm sm:text-base md:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+                  <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Filter Properties
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
+                  {/* Property Type */}
+                  <div>
+                    <label
+                      className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
+                      style={{ color: COLORS.primary[200] }}
+                    >
+                      Type
+                    </label>
+                    <select
+                      value={selectedType}
+                      onChange={(e) =>
+                        setSelectedType(e.target.value as PropertyType | "All")
+                      }
+                      className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 transition"
+                      style={{
+                        background: `${COLORS.primary[700]}80`,
+                        color: COLORS.white,
+                        borderColor: `${COLORS.primary[500]}40`,
+                      }}
+                    >
+                      {propertyTypes.map((t) => (
+                        <option
+                          key={t}
+                          value={t}
+                          style={{ background: COLORS.primary[900] }}
+                        >
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label
+                      className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
+                      style={{ color: COLORS.primary[200] }}
+                    >
+                      Status
+                    </label>
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) =>
+                        setSelectedStatus(
+                          e.target.value as "All" | "For Sale" | "For Rent",
+                        )
+                      }
+                      className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 transition"
+                      style={{
+                        background: `${COLORS.primary[700]}80`,
+                        color: COLORS.white,
+                        borderColor: `${COLORS.primary[500]}40`,
+                      }}
+                    >
+                      <option
+                        value="All"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        All
                       </option>
-                    ))}
-                  </select>
-                </div>
+                      <option
+                        value="For Sale"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        For Sale
+                      </option>
+                      <option
+                        value="For Rent"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        For Rent
+                      </option>
+                    </select>
+                  </div>
 
-                {/* Status */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
-                    Status
-                  </label>
-                  <select
-                    value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value as 'All' | 'For Sale' | 'For Rent')}
-                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
-                    style={{
-                      background: `${COLORS.primary[700]}80`,
-                      color: COLORS.white,
-                      borderColor: `${COLORS.primary[500]}40`,
-                    }}
-                  >
-                    <option value="All" style={{ background: COLORS.primary[900] }}>All</option>
-                    <option value="For Sale" style={{ background: COLORS.primary[900] }}>For Sale</option>
-                    <option value="For Rent" style={{ background: COLORS.primary[900] }}>For Rent</option>
-                  </select>
-                </div>
-
-                {/* Min Price */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
-                    Min Price (XAF)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={minPrice}
-                    onChange={(e) => setMinPrice(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
-                    style={{
-                      background: `${COLORS.primary[700]}80`,
-                      color: COLORS.white,
-                      borderColor: `${COLORS.primary[500]}40`,
-                    }}
-                  />
-                </div>
-
-                {/* Max Price */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
-                    Max Price (XAF)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Any"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
-                    style={{
-                      background: `${COLORS.primary[700]}80`,
-                      color: COLORS.white,
-                      borderColor: `${COLORS.primary[500]}40`,
-                    }}
-                  />
-                </div>
-
-                {/* Min Bedrooms */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
-                    Min Bedrooms
-                  </label>
-                  <select
-                    value={minBedrooms}
-                    onChange={(e) => setMinBedrooms(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
-                    style={{
-                      background: `${COLORS.primary[700]}80`,
-                      color: COLORS.white,
-                      borderColor: `${COLORS.primary[500]}40`,
-                    }}
-                  >
-                    <option value="" style={{ background: COLORS.primary[900] }}>Any</option>
-                    <option value="1" style={{ background: COLORS.primary[900] }}>1+</option>
-                    <option value="2" style={{ background: COLORS.primary[900] }}>2+</option>
-                    <option value="3" style={{ background: COLORS.primary[900] }}>3+</option>
-                    <option value="4" style={{ background: COLORS.primary[900] }}>4+</option>
-                    <option value="5" style={{ background: COLORS.primary[900] }}>5+</option>
-                  </select>
-                </div>
-
-                {/* Sort By */}
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
-                    Sort By
-                  </label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 transition"
-                    style={{
-                      background: `${COLORS.primary[700]}80`,
-                      color: COLORS.white,
-                      borderColor: `${COLORS.primary[500]}40`,
-                    }}
-                  >
-                    <option value="newest" style={{ background: COLORS.primary[900] }}>Newest First</option>
-                    <option value="oldest" style={{ background: COLORS.primary[900] }}>Oldest First</option>
-                    <option value="price-asc" style={{ background: COLORS.primary[900] }}>Price: Low to High</option>
-                    <option value="price-desc" style={{ background: COLORS.primary[900] }}>Price: High to Low</option>
-                    <option value="bedrooms-desc" style={{ background: COLORS.primary[900] }}>Most Bedrooms</option>
-                  </select>
-                </div>
-
-                {/* Amenities */}
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium mb-2" style={{ color: COLORS.primary[200] }}>
-                    Amenities
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setHasParking(hasParking === true ? undefined : true)}
-                      className="px-4 py-2 rounded-xl font-medium transition flex items-center gap-2"
+                  {/* Min Price */}
+                  <div>
+                    <label
+                      className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
+                      style={{ color: COLORS.primary[200] }}
+                    >
+                      Min Price
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={minPrice}
+                      onChange={(e) => setMinPrice(e.target.value)}
+                      className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 transition"
                       style={{
-                        background: hasParking ? GRADIENTS.button.primary : `${COLORS.primary[700]}80`,
+                        background: `${COLORS.primary[700]}80`,
                         color: COLORS.white,
+                        borderColor: `${COLORS.primary[500]}40`,
+                      }}
+                    />
+                  </div>
+
+                  {/* Max Price */}
+                  <div>
+                    <label
+                      className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
+                      style={{ color: COLORS.primary[200] }}
+                    >
+                      Max Price
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Any"
+                      value={maxPrice}
+                      onChange={(e) => setMaxPrice(e.target.value)}
+                      className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 transition"
+                      style={{
+                        background: `${COLORS.primary[700]}80`,
+                        color: COLORS.white,
+                        borderColor: `${COLORS.primary[500]}40`,
+                      }}
+                    />
+                  </div>
+
+                  {/* Min Bedrooms */}
+                  <div>
+                    <label
+                      className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
+                      style={{ color: COLORS.primary[200] }}
+                    >
+                      Bedrooms
+                    </label>
+                    <select
+                      value={minBedrooms}
+                      onChange={(e) => setMinBedrooms(e.target.value)}
+                      className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 transition"
+                      style={{
+                        background: `${COLORS.primary[700]}80`,
+                        color: COLORS.white,
+                        borderColor: `${COLORS.primary[500]}40`,
                       }}
                     >
-                      <Car className="w-4 h-4" />
-                      Parking
-                    </button>
-                    <button
-                      onClick={() => setHasGenerator(hasGenerator === true ? undefined : true)}
-                      className="px-4 py-2 rounded-xl font-medium transition flex items-center gap-2"
+                      <option
+                        value=""
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        Any
+                      </option>
+                      <option
+                        value="1"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        1+
+                      </option>
+                      <option
+                        value="2"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        2+
+                      </option>
+                      <option
+                        value="3"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        3+
+                      </option>
+                      <option
+                        value="4"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        4+
+                      </option>
+                      <option
+                        value="5"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        5+
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* Sort By */}
+                  <div className="col-span-2 sm:col-span-1">
+                    <label
+                      className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
+                      style={{ color: COLORS.primary[200] }}
+                    >
+                      Sort By
+                    </label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as SortOption)}
+                      className="w-full px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 rounded-lg sm:rounded-xl text-xs sm:text-sm md:text-base focus:outline-none focus:ring-2 transition"
                       style={{
-                        background: hasGenerator ? GRADIENTS.button.primary : `${COLORS.primary[700]}80`,
+                        background: `${COLORS.primary[700]}80`,
                         color: COLORS.white,
+                        borderColor: `${COLORS.primary[500]}40`,
                       }}
                     >
-                      <Zap className="w-4 h-4" />
-                      Generator
-                    </button>
+                      <option
+                        value="newest"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        Newest
+                      </option>
+                      <option
+                        value="oldest"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        Oldest
+                      </option>
+                      <option
+                        value="price-asc"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        Price ↑
+                      </option>
+                      <option
+                        value="price-desc"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        Price ↓
+                      </option>
+                      <option
+                        value="bedrooms-desc"
+                        style={{ background: COLORS.primary[900] }}
+                      >
+                        Beds ↓
+                      </option>
+                    </select>
+                  </div>
+
+                  {/* Amenities - Full width on mobile */}
+                  <div className="col-span-2 sm:col-span-2 md:col-span-3 lg:col-span-2 xl:col-span-4">
+                    <label
+                      className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
+                      style={{ color: COLORS.primary[200] }}
+                    >
+                      Amenities
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                      <button
+                        onClick={() =>
+                          setHasParking(hasParking === true ? undefined : true)
+                        }
+                        className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-medium transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                        style={{
+                          background: hasParking
+                            ? GRADIENTS.button.primary
+                            : `${COLORS.primary[700]}80`,
+                          color: COLORS.white,
+                        }}
+                      >
+                        <Car className="w-3 h-3 sm:w-4 sm:h-4" />
+                        Parking
+                      </button>
+                      <button
+                        onClick={() =>
+                          setHasGenerator(
+                            hasGenerator === true ? undefined : true,
+                          )
+                        }
+                        className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-medium transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                        style={{
+                          background: hasGenerator
+                            ? GRADIENTS.button.primary
+                            : `${COLORS.primary[700]}80`,
+                          color: COLORS.white,
+                        }}
+                      >
+                        <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
+                        Generator
+                      </button>
+                      {hasActiveFilters && (
+                        <button
+                          onClick={clearFilters}
+                          className="px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-medium transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm ml-auto"
+                          style={{
+                            background: `${COLORS.primary[500]}30`,
+                            color: COLORS.primary[300],
+                          }}
+                        >
+                          <X className="w-3 h-3 sm:w-4 sm:h-4" />
+                          Clear
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8 lg:py-10">
         {/* Toolbar */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6"
+          className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6"
         >
-          <div className="flex items-center gap-4">
-            <p className="text-lg font-semibold text-white">
-              {filteredProperties.length} {filteredProperties.length === 1 ? 'Property' : 'Properties'}
+          <div className="flex items-center gap-2 sm:gap-4">
+            <p className="text-sm sm:text-base md:text-lg font-semibold text-white">
+              {filteredProperties.length}{" "}
+              {filteredProperties.length === 1 ? "Property" : "Properties"}
             </p>
             {hasActiveFilters && (
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={clearFilters}
-                className="text-sm font-medium px-3 py-1 rounded-full transition flex items-center gap-1"
+                className="text-[10px] sm:text-xs md:text-sm font-medium px-2 sm:px-3 py-0.5 sm:py-1 rounded-full transition flex items-center gap-1"
                 style={{
                   color: COLORS.primary[300],
                   background: `${COLORS.primary[500]}20`,
                 }}
               >
-                <X className="w-3 h-3" />
-                Clear filters
+                <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                Clear
               </motion.button>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 md:gap-3">
             {/* View mode buttons */}
             {[
-              { mode: 'grid' as const, icon: Grid3x3, label: 'Grid' },
-              { mode: 'list' as const, icon: List, label: 'List' },
-              { mode: 'map' as const, icon: MapIcon, label: 'Map' },
+              { mode: "grid" as const, icon: Grid3x3, label: "Grid" },
+              { mode: "list" as const, icon: List, label: "List" },
+              { mode: "map" as const, icon: MapIcon, label: "Map" },
             ].map(({ mode, icon: Icon, label }) => (
               <motion.button
                 key={mode}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setViewMode(mode)}
-                className="px-4 py-2 rounded-xl font-medium transition flex items-center gap-2"
+                className="px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-medium transition flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
                 style={{
-                  background: viewMode === mode ? GRADIENTS.button.primary : `${COLORS.white}10`,
+                  background:
+                    viewMode === mode
+                      ? GRADIENTS.button.primary
+                      : `${COLORS.white}10`,
                   color: COLORS.white,
                 }}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">{label}</span>
               </motion.button>
             ))}
-
-            {/* Filter button */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 border-2 rounded-xl font-medium transition"
-              style={{
-                borderColor: COLORS.primary[500],
-                color: COLORS.white,
-                background: showFilters ? `${COLORS.primary[500]}20` : 'transparent',
-              }}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span>Filters</span>
-              {hasActiveFilters && (
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ background: COLORS.primary[400] }}
-                />
-              )}
-              <motion.div animate={{ rotate: showFilters ? 180 : 0 }}>
-                <ChevronDown className="w-4 h-4" />
-              </motion.div>
-            </motion.button>
           </div>
         </motion.div>
 
-       
-
         {/* Properties display */}
         {loading ? (
-          <div className="text-center py-20">
-            <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4" style={{ color: COLORS.primary[400] }} />
-            <p style={{ color: COLORS.primary[300] }}>Loading properties...</p>
+          <div className="text-center py-12 sm:py-16 md:py-20">
+            <Loader2
+              className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 animate-spin mx-auto mb-3 sm:mb-4"
+              style={{ color: COLORS.primary[400] }}
+            />
+            <p
+              className="text-sm sm:text-base"
+              style={{ color: COLORS.primary[300] }}
+            >
+              Loading properties...
+            </p>
           </div>
         ) : filteredProperties.length === 0 ? (
-          <div className="text-center py-20">
-            <Home className="w-16 h-16 mx-auto mb-4" style={{ color: COLORS.primary[600] }} />
-            <p className="text-xl mb-2" style={{ color: COLORS.primary[200] }}>
+          <div className="text-center py-12 sm:py-16 md:py-20">
+            <Home
+              className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 mx-auto mb-3 sm:mb-4"
+              style={{ color: COLORS.primary[600] }}
+            />
+            <p
+              className="text-base sm:text-lg md:text-xl mb-2"
+              style={{ color: COLORS.primary[200] }}
+            >
               No properties found
             </p>
-            <p style={{ color: COLORS.primary[400] }}>Try adjusting your search or filters</p>
+            <p
+              className="text-sm sm:text-base"
+              style={{ color: COLORS.primary[400] }}
+            >
+              Try adjusting your search or filters
+            </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={clearFilters}
-              className="mt-6 px-6 py-3 rounded-xl font-semibold text-white"
+              className="mt-4 sm:mt-6 px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-semibold text-white text-sm sm:text-base"
               style={{ background: GRADIENTS.button.primary }}
             >
               Clear All Filters
             </motion.button>
           </div>
-        ) : viewMode === 'map' ? (
+        ) : viewMode === "map" ? (
           // Map view
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="rounded-2xl shadow-xl border overflow-hidden"
+            className="rounded-xl sm:rounded-2xl shadow-xl border overflow-hidden"
             style={{
               background: `${COLORS.primary[800]}40`,
               borderColor: `${COLORS.primary[600]}40`,
             }}
           >
-            <div className="grid grid-cols-1 lg:grid-cols-3 h-[calc(100vh-300px)]">
-              <div className="lg:col-span-2 relative" style={{ background: `${COLORS.primary[900]}80` }}>
-                <div className="absolute inset-0 flex items-center justify-center">
+            <div className="grid grid-cols-1 lg:grid-cols-3 h-[60vh] sm:h-[70vh] lg:h-[calc(100vh-300px)]">
+              <div
+                className="lg:col-span-2 relative"
+                style={{ background: `${COLORS.primary[900]}80` }}
+              >
+                <div className="absolute inset-0 flex items-center justify-center p-4">
                   <div className="text-center">
-                    <MapPin className="w-16 h-16 mx-auto mb-4" style={{ color: COLORS.primary[500] }} />
-                    <p className="font-medium mb-2 text-white">Interactive Map View</p>
-                    <p className="text-sm max-w-md" style={{ color: COLORS.primary[300] }}>
-                      Map integration coming soon. Properties will be displayed with their exact locations.
+                    <MapPin
+                      className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 mx-auto mb-3 sm:mb-4"
+                      style={{ color: COLORS.primary[500] }}
+                    />
+                    <p className="font-medium mb-2 text-white text-sm sm:text-base">
+                      Interactive Map View
                     </p>
-                    <div className="mt-6 flex items-center justify-center gap-2 text-sm" style={{ color: COLORS.primary[400] }}>
-                      <MapPin className="w-4 h-4" />
-                      <span>{filteredProperties.length} properties in this area</span>
+                    <p
+                      className="text-xs sm:text-sm max-w-md"
+                      style={{ color: COLORS.primary[300] }}
+                    >
+                      Map integration coming soon.
+                    </p>
+                    <div
+                      className="mt-4 sm:mt-6 flex items-center justify-center gap-2 text-xs sm:text-sm"
+                      style={{ color: COLORS.primary[400] }}
+                    >
+                      <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span>{filteredProperties.length} properties</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               <div
-                className="border-l overflow-y-auto"
+                className="border-t lg:border-t-0 lg:border-l overflow-y-auto"
                 style={{
                   background: `${COLORS.primary[900]}90`,
                   borderColor: `${COLORS.primary[600]}40`,
                 }}
               >
                 <div
-                  className="p-4 border-b sticky top-0"
+                  className="p-3 sm:p-4 border-b sticky top-0"
                   style={{
                     background: `${COLORS.primary[800]}60`,
                     borderColor: `${COLORS.primary[600]}40`,
                   }}
                 >
-                  <h3 className="font-semibold text-white">Properties on Map</h3>
-                  <p className="text-sm" style={{ color: COLORS.primary[300] }}>
+                  <h3 className="font-semibold text-white text-sm sm:text-base">
+                    Properties
+                  </h3>
+                  <p
+                    className="text-xs sm:text-sm"
+                    style={{ color: COLORS.primary[300] }}
+                  >
                     {filteredProperties.length} results
                   </p>
                 </div>
-                <div className="divide-y" style={{ borderColor: `${COLORS.primary[700]}40` }}>
-                  {filteredProperties.slice(0, 20).map((property, index) => renderMapSidebarItem(property, index))}
+                <div
+                  className="divide-y"
+                  style={{ borderColor: `${COLORS.primary[700]}40` }}
+                >
+                  {filteredProperties
+                    .slice(0, 20)
+                    .map((property, index) =>
+                      renderMapSidebarItem(property, index),
+                    )}
                 </div>
               </div>
             </div>
           </motion.div>
-        ) : viewMode === 'grid' ? (
-          // Grid view
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProperties.map((property, index) => renderGridCard(property, index))}
+        ) : viewMode === "grid" ? (
+          // Grid view - Responsive columns
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+            {filteredProperties.map((property, index) =>
+              renderGridCard(property, index),
+            )}
           </div>
         ) : (
           // List view
-          <div className="space-y-4">
-            {filteredProperties.map((property, index) => renderListCard(property, index))}
+          <div className="space-y-3 sm:space-y-4">
+            {filteredProperties.map((property, index) =>
+              renderListCard(property, index),
+            )}
           </div>
         )}
       </main>
 
       {/* CTA Section */}
       <section
-        className="py-16"
+        className="py-10 sm:py-12 md:py-16"
         style={{
           background: GRADIENTS.background.hero,
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-4">
               Can't Find What You're Looking For?
             </h2>
-            <p className="text-xl mb-8 max-w-2xl mx-auto" style={{ color: COLORS.primary[200] }}>
+            <p
+              className="text-sm sm:text-base md:text-lg lg:text-xl mb-6 sm:mb-8 max-w-2xl mx-auto"
+              style={{ color: COLORS.primary[200] }}
+            >
               Our team of experts is ready to help you find the perfect property
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 <Link
                   href="/contact"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold transition shadow-lg"
+                  className="inline-flex items-center gap-2 px-5 sm:px-6 md:px-8 py-3 sm:py-3.5 md:py-4 rounded-xl font-semibold transition shadow-lg text-sm sm:text-base"
                   style={{
                     background: COLORS.white,
                     color: COLORS.primary[700],
                   }}
                 >
-                  <Phone className="w-5 h-5" />
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                   Contact Us
                 </Link>
               </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 <Link
                   href="/"
-                  className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-white transition"
+                  className="inline-flex items-center gap-2 px-5 sm:px-6 md:px-8 py-3 sm:py-3.5 md:py-4 rounded-xl font-semibold text-white transition text-sm sm:text-base"
                   style={{
                     background: `${COLORS.primary[700]}80`,
                     border: `2px solid ${COLORS.primary[500]}`,
                   }}
                 >
-                  <Home className="w-5 h-5" />
+                  <Home className="w-4 h-4 sm:w-5 sm:h-5" />
                   Back to Home
                 </Link>
               </motion.div>
