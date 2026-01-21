@@ -1,6 +1,6 @@
 // app/admin/dashboard/upload/video/page.tsx
 "use client";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Upload,
   X,
@@ -16,7 +16,6 @@ import {
   AlertCircle,
   Sparkles,
 } from "lucide-react";
-import { uploadFileInChunks } from "@/lib/utils/chunked-upload";
 
 interface UploadedVideo {
   url: string;
@@ -26,6 +25,12 @@ interface UploadedVideo {
   height: number;
   format: string;
   bytes: number;
+}
+
+declare global {
+  interface Window {
+    cloudinary?: any;
+  }
 }
 
 export default function VideoUploadPage() {
@@ -39,6 +44,24 @@ export default function VideoUploadPage() {
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load Cloudinary SDK on mount
+  useEffect(() => {
+    // Check if already loaded
+    if (window.cloudinary) {
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src =
+      "https://upload-widget.cloudinary.com/latest/CloudinaryUploadWidget.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      console.log("Cloudinary widget loaded");
+    };
+  }, []);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -98,19 +121,67 @@ export default function VideoUploadPage() {
     setUploadProgress(0);
 
     try {
-      const videoData = await uploadFileInChunks({
-        file: selectedFile,
-        onProgress: (progress) => {
-          setUploadProgress(Math.round(progress));
-        },
+      // Upload directly to Cloudinary using FormData
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append(
+        "upload_preset",
+        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "",
+      );
+      formData.append("folder", "earthdesign");
+      formData.append("resource_type", "video");
+
+      // Use XMLHttpRequest to track upload progress
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          setUploadProgress(Math.round(percentComplete));
+        }
       });
 
-      setUploadProgress(100);
+      // Return a promise that resolves when upload completes
+      const uploadPromise = new Promise<void>((resolve, reject) => {
+        xhr.addEventListener("load", () => {
+          if (xhr.status === 200) {
+            const result = JSON.parse(xhr.responseText);
 
-      setTimeout(() => {
-        setUploadedVideo(videoData);
-        setSelectedFile(null);
-      }, 500);
+            const videoData: UploadedVideo = {
+              url: result.secure_url,
+              publicId: result.public_id,
+              duration: result.duration || 0,
+              width: result.width || 0,
+              height: result.height || 0,
+              format: result.format || "",
+              bytes: result.bytes || 0,
+            };
+
+            setUploadProgress(100);
+            setTimeout(() => {
+              setUploadedVideo(videoData);
+              setSelectedFile(null);
+            }, 500);
+
+            resolve();
+          } else {
+            const error = new Error(`Upload failed with status ${xhr.status}`);
+            reject(error);
+          }
+        });
+
+        xhr.addEventListener("error", () => {
+          reject(new Error("Upload failed"));
+        });
+
+        xhr.open(
+          "POST",
+          `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/video/upload`,
+        );
+        xhr.send(formData);
+      });
+
+      await uploadPromise;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
