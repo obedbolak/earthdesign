@@ -1,6 +1,6 @@
 // app/admin/dashboard/upload/images/page.tsx
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Upload,
   X,
@@ -14,7 +14,6 @@ import {
   LayoutGrid,
   Search,
   RefreshCw,
-  Download,
   ExternalLink,
   Sparkles,
   AlertCircle,
@@ -23,6 +22,7 @@ import {
   HardDrive,
   Maximize2,
   ZoomIn,
+  Calendar,
 } from "lucide-react";
 
 interface ImageRecord {
@@ -62,6 +62,75 @@ export default function ImagesUploadPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sort images by most recent first
+  const sortedImages = useMemo(() => {
+    return [...images].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [images]);
+
+  // Filter sorted images
+  const filteredImages = useMemo(() => {
+    return sortedImages.filter(
+      (img) =>
+        img.format.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        img.id.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [sortedImages, searchQuery]);
+
+  // Format relative time
+  const formatRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) {
+      return "Just now";
+    }
+
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} minute${diffInMinutes !== 1 ? "s" : ""} ago`;
+    }
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours !== 1 ? "s" : ""} ago`;
+    }
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) {
+      return `${diffInDays} day${diffInDays !== 1 ? "s" : ""} ago`;
+    }
+
+    if (diffInDays < 30) {
+      const weeks = Math.floor(diffInDays / 7);
+      return `${weeks} week${weeks !== 1 ? "s" : ""} ago`;
+    }
+
+    if (diffInDays < 365) {
+      const months = Math.floor(diffInDays / 30);
+      return `${months} month${months !== 1 ? "s" : ""} ago`;
+    }
+
+    const years = Math.floor(diffInDays / 365);
+    return `${years} year${years !== 1 ? "s" : ""} ago`;
+  };
+
+  // Format full date and time
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
 
   const getFromCache = (): ImageRecord[] | null => {
     try {
@@ -304,26 +373,12 @@ export default function ImagesUploadPage() {
     fetchImages(true);
   };
 
-  const filteredImages = images.filter(
-    (img) =>
-      img.format.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      img.id.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return "N/A";
     if (bytes >= 1024 * 1024) {
       return (bytes / (1024 * 1024)).toFixed(2) + " MB";
     }
     return (bytes / 1024).toFixed(2) + " KB";
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
   };
 
   return (
@@ -348,7 +403,7 @@ export default function ImagesUploadPage() {
         </div>
       )}
 
-      <div className="mb-8  px-4 sm:px-0">
+      <div className="mb-8 px-4 sm:px-0">
         <div className="flex items-center gap-3 mb-2"></div>
         <p className="text-gray-500 ml-14">
           Upload, organize, and manage your images
@@ -667,6 +722,13 @@ export default function ImagesUploadPage() {
                   className="group relative rounded-xl overflow-hidden bg-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 animate-in fade-in zoom-in-95"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
+                  {/* Latest Badge */}
+                  {index === 0 && !searchQuery && (
+                    <div className="absolute top-2 left-2 z-10 px-2 py-1 bg-gradient-to-r from-blue-600 to-cyan-600 text-white text-xs font-semibold rounded-full shadow-lg">
+                      Latest
+                    </div>
+                  )}
+
                   {/* Image */}
                   <div
                     className={`relative ${
@@ -705,35 +767,52 @@ export default function ImagesUploadPage() {
                     </div>
                   </div>
 
-                  {/* Action Buttons - Copy and Delete at bottom */}
-                  <div className="p-3 bg-white border-t border-gray-100 flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => copyToClipboard(img.url, img.id)}
-                      className={`p-2 rounded-lg transition-all duration-300 ${
-                        copiedId === img.id
-                          ? "bg-emerald-100 text-emerald-600"
-                          : "bg-blue-100 text-blue-600 hover:bg-blue-200"
-                      }`}
-                      title="Copy URL"
-                    >
-                      {copiedId === img.id ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(img.id, img.publicId)}
-                      disabled={deleting === img.id}
-                      className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-all duration-300 disabled:opacity-50"
-                      title="Delete"
-                    >
-                      {deleting === img.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </button>
+                  {/* Info and Actions */}
+                  <div className="p-3 bg-white border-t border-gray-100">
+                    {/* Date/Time Info */}
+                    <div className="mb-3">
+                      <div
+                        className="flex items-center gap-1.5 text-xs text-gray-500 cursor-help"
+                        title={formatDateTime(img.createdAt)}
+                      >
+                        <Calendar className="w-3 h-3" />
+                        <span>{formatRelativeTime(img.createdAt)}</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {formatDateTime(img.createdAt)}
+                      </p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+                      <button
+                        onClick={() => copyToClipboard(img.url, img.id)}
+                        className={`p-2 rounded-lg transition-all duration-300 ${
+                          copiedId === img.id
+                            ? "bg-emerald-100 text-emerald-600"
+                            : "bg-blue-100 text-blue-600 hover:bg-blue-200"
+                        }`}
+                        title="Copy URL"
+                      >
+                        {copiedId === img.id ? (
+                          <Check className="w-4 h-4" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(img.id, img.publicId)}
+                        disabled={deleting === img.id}
+                        className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-all duration-300 disabled:opacity-50"
+                        title="Delete"
+                      >
+                        {deleting === img.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -768,7 +847,7 @@ export default function ImagesUploadPage() {
             </div>
 
             <div className="p-6 bg-white">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                 <div className="bg-gray-50 rounded-xl p-4">
                   <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
                     <Maximize2 className="w-4 h-4" />
@@ -802,7 +881,16 @@ export default function ImagesUploadPage() {
                     Uploaded
                   </div>
                   <p className="font-bold text-gray-800">
-                    {formatDate(selectedImage.createdAt)}
+                    {formatRelativeTime(selectedImage.createdAt)}
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                    <Calendar className="w-4 h-4" />
+                    Date & Time
+                  </div>
+                  <p className="font-bold text-gray-800 text-sm">
+                    {formatDateTime(selectedImage.createdAt)}
                   </p>
                 </div>
               </div>
