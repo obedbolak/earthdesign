@@ -204,7 +204,7 @@ export default function VideoUploadPage() {
             setTimeout(() => {
               setUploadedVideo(videoData);
               setSelectedFile(null);
-              fetchVideos(); // Refresh video list
+              fetchVideos();
             }, 500);
 
             resolve();
@@ -289,8 +289,6 @@ export default function VideoUploadPage() {
 
   return (
     <div className="max-w-4xl mx-auto mt-0 mb-20 p-4">
-      {/* Header */}
-
       <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
         <div className="p-8">
           {/* Drop Zone */}
@@ -320,7 +318,6 @@ export default function VideoUploadPage() {
                   : "border-gray-200 bg-gradient-to-b from-gray-50 to-white hover:border-purple-300 hover:bg-purple-50/50"
               }`}
             >
-              {/* Animated Background Pattern */}
               <div className="absolute inset-0 overflow-hidden rounded-2xl">
                 <div
                   className={`absolute inset-0 opacity-[0.03] transition-opacity duration-300 ${
@@ -333,7 +330,6 @@ export default function VideoUploadPage() {
               </div>
 
               <div className="relative flex flex-col items-center justify-center p-8">
-                {/* Icon Container */}
                 <div
                   className={`relative mb-6 transition-transform duration-300 ${
                     dragActive
@@ -351,7 +347,6 @@ export default function VideoUploadPage() {
                   </div>
                 </div>
 
-                {/* Text */}
                 <div className="text-center">
                   <p className="text-xl font-semibold text-gray-800 mb-2">
                     {dragActive
@@ -383,11 +378,9 @@ export default function VideoUploadPage() {
           {selectedFile && !uploading && (
             <div className="mt-6 animate-in slide-in-from-bottom-4 duration-300">
               <div className="relative bg-gradient-to-r from-purple-50 via-white to-pink-50 border border-purple-100 rounded-xl p-5 overflow-hidden">
-                {/* Decorative Elements */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full blur-3xl opacity-30" />
 
                 <div className="relative flex items-center gap-5">
-                  {/* Video Thumbnail/Icon */}
                   <div className="relative flex-shrink-0">
                     <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/25">
                       <Play className="w-8 h-8 text-white fill-white" />
@@ -399,7 +392,6 @@ export default function VideoUploadPage() {
                     </div>
                   </div>
 
-                  {/* File Info */}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-800 truncate text-lg">
                       {selectedFile.name}
@@ -417,7 +409,6 @@ export default function VideoUploadPage() {
                     </div>
                   </div>
 
-                  {/* Remove Button */}
                   <button
                     onClick={removeFile}
                     className="flex-shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200"
@@ -452,7 +443,6 @@ export default function VideoUploadPage() {
                   </span>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 rounded-full transition-all duration-300 ease-out"
@@ -515,7 +505,6 @@ export default function VideoUploadPage() {
         {/* Uploaded Video Success */}
         {uploadedVideo && (
           <div className="border-t border-gray-100 animate-in slide-in-from-bottom-4 duration-500">
-            {/* Success Header */}
             <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-8 py-5">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl shadow-lg shadow-emerald-500/25">
@@ -532,7 +521,6 @@ export default function VideoUploadPage() {
               </div>
             </div>
 
-            {/* Video Player */}
             <div className="p-8">
               <div className="relative group rounded-2xl overflow-hidden bg-black shadow-2xl">
                 <video
@@ -543,7 +531,6 @@ export default function VideoUploadPage() {
                 />
               </div>
 
-              {/* Video Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
                 {[
                   {
@@ -601,7 +588,6 @@ export default function VideoUploadPage() {
                 ))}
               </div>
 
-              {/* Video URL */}
               <div className="mt-6 bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
                   <Copy className="w-4 h-4" />
@@ -639,7 +625,6 @@ export default function VideoUploadPage() {
                 </div>
               </div>
 
-              {/* Upload Another Button */}
               <button
                 onClick={() => {
                   setUploadedVideo(null);
@@ -656,7 +641,6 @@ export default function VideoUploadPage() {
         )}
       </div>
 
-      {/* Add shimmer animation */}
       <style jsx>{`
         @keyframes shimmer {
           0% {
@@ -674,7 +658,6 @@ export default function VideoUploadPage() {
       {/* Videos List Section */}
       <div className="mt-8 bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
         <div className="p-8">
-          {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
@@ -700,7 +683,6 @@ export default function VideoUploadPage() {
             </button>
           </div>
 
-          {/* Videos Grid */}
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
@@ -763,49 +745,33 @@ export default function VideoUploadPage() {
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex gap-2">
+                    {/* Action Buttons - Copy and Delete */}
+                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-200">
                       <button
                         onClick={() => copyVideoLink(video.url, video.id)}
-                        className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center justify-center gap-1 ${
+                        className={`p-2 rounded-lg transition-all duration-300 ${
                           copiedVideoId === video.id
-                            ? "bg-emerald-100 text-emerald-700"
+                            ? "bg-emerald-100 text-emerald-600"
                             : "bg-purple-100 text-purple-600 hover:bg-purple-200"
                         }`}
+                        title="Copy URL"
                       >
                         {copiedVideoId === video.id ? (
-                          <>
-                            <Check className="w-3 h-3" />
-                            Copied
-                          </>
+                          <Check className="w-4 h-4" />
                         ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            Copy
-                          </>
+                          <Copy className="w-4 h-4" />
                         )}
                       </button>
-                      <a
-                        href={video.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors flex items-center justify-center gap-1"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Open
-                      </a>
                       <button
                         onClick={() => deleteVideo(video.publicId)}
                         disabled={deleting === video.publicId}
-                        className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-red-100 text-red-600 hover:bg-red-200 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                        className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-all duration-300 disabled:opacity-50"
+                        title="Delete"
                       >
                         {deleting === video.publicId ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <>
-                            <Trash2 className="w-3 h-3" />
-                            Delete
-                          </>
+                          <Trash2 className="w-4 h-4" />
                         )}
                       </button>
                     </div>

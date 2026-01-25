@@ -36,9 +36,8 @@ interface ImageRecord {
   createdAt: string;
 }
 
-// Cache configuration
 const CACHE_KEY = "uploaded_images_cache";
-const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
+const CACHE_EXPIRY = 5 * 60 * 1000;
 
 interface CacheData {
   images: ImageRecord[];
@@ -46,7 +45,6 @@ interface CacheData {
 }
 
 export default function ImagesUploadPage() {
-  // UI States
   const [showUploadBox, setShowUploadBox] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -57,7 +55,6 @@ export default function ImagesUploadPage() {
   const [selectedImage, setSelectedImage] = useState<ImageRecord | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Data States
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [error, setError] = useState("");
@@ -66,7 +63,6 @@ export default function ImagesUploadPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Cache functions
   const getFromCache = (): ImageRecord[] | null => {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
@@ -102,16 +98,13 @@ export default function ImagesUploadPage() {
     localStorage.removeItem(CACHE_KEY);
   };
 
-  // Fetch images with cache support
   const fetchImages = async (forceRefresh = false) => {
     try {
-      // Check cache first (unless forcing refresh)
       if (!forceRefresh) {
         const cached = getFromCache();
         if (cached) {
           setImages(cached);
           setLoading(false);
-          // Still fetch in background for freshness
           fetchFromServer(true);
           return;
         }
@@ -148,7 +141,6 @@ export default function ImagesUploadPage() {
     fetchImages();
   }, []);
 
-  // Drag and drop handlers
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -165,7 +157,7 @@ export default function ImagesUploadPage() {
     setDragActive(false);
 
     const files = Array.from(e.dataTransfer.files).filter((file) =>
-      file.type.startsWith("image/")
+      file.type.startsWith("image/"),
     );
 
     if (files.length > 0) {
@@ -221,7 +213,6 @@ export default function ImagesUploadPage() {
     setError("");
     setUploadProgress(0);
 
-    // Simulate progress
     const progressInterval = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev >= 90) {
@@ -258,7 +249,6 @@ export default function ImagesUploadPage() {
         setShowUploadBox(false);
         setUploadProgress(0);
 
-        // Update cache with new images
         const newImages = [...data.images, ...images];
         setImages(newImages);
         saveToCache(newImages);
@@ -286,7 +276,7 @@ export default function ImagesUploadPage() {
         `/api/upload/images?publicId=${encodeURIComponent(publicId)}`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       const data = await response.json();
@@ -295,7 +285,6 @@ export default function ImagesUploadPage() {
         throw new Error(data.error || "Delete failed");
       }
 
-      // Update state and cache
       const updatedImages = images.filter((img) => img.id !== id);
       setImages(updatedImages);
       saveToCache(updatedImages);
@@ -315,11 +304,10 @@ export default function ImagesUploadPage() {
     fetchImages(true);
   };
 
-  // Filter images based on search
   const filteredImages = images.filter(
     (img) =>
       img.format.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      img.id.toLowerCase().includes(searchQuery.toLowerCase())
+      img.id.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const formatFileSize = (bytes?: number) => {
@@ -346,7 +334,6 @@ export default function ImagesUploadPage() {
       onDragOver={handleDrag}
       onDrop={handleDrop}
     >
-      {/* Global Drag Overlay */}
       {dragActive && (
         <div className="fixed inset-0 z-50 bg-purple-500/10 backdrop-blur-sm flex items-center justify-center">
           <div className="bg-white rounded-3xl shadow-2xl p-12 text-center animate-in zoom-in-95 duration-200">
@@ -361,20 +348,16 @@ export default function ImagesUploadPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="mb-8 mt-4 px-4 sm:px-0">
+      <div className="mb-8  px-4 sm:px-0">
         <div className="flex items-center gap-3 mb-2"></div>
         <p className="text-gray-500 ml-14">
           Upload, organize, and manage your images
         </p>
       </div>
 
-      {/* Main Card */}
       <div className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
-        {/* Toolbar */}
         <div className="p-6 border-b border-gray-100">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Search */}
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
@@ -386,9 +369,7 @@ export default function ImagesUploadPage() {
               />
             </div>
 
-            {/* Actions */}
             <div className="flex items-center gap-3">
-              {/* View Toggle */}
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("grid")}
@@ -412,7 +393,6 @@ export default function ImagesUploadPage() {
                 </button>
               </div>
 
-              {/* Refresh */}
               <button
                 onClick={handleRefresh}
                 disabled={loading}
@@ -424,7 +404,6 @@ export default function ImagesUploadPage() {
                 />
               </button>
 
-              {/* Upload Button */}
               <button
                 onClick={() => setShowUploadBox(!showUploadBox)}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all ${
@@ -449,7 +428,6 @@ export default function ImagesUploadPage() {
           </div>
         </div>
 
-        {/* Success Message */}
         {success && (
           <div className="mx-6 mt-6 animate-in slide-in-from-top-4 duration-300">
             <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
@@ -467,7 +445,6 @@ export default function ImagesUploadPage() {
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
           <div className="mx-6 mt-6 animate-in slide-in-from-top-4 duration-300">
             <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
@@ -483,7 +460,6 @@ export default function ImagesUploadPage() {
           </div>
         )}
 
-        {/* Upload Box */}
         {showUploadBox && (
           <div className="m-6 animate-in slide-in-from-top-4 duration-300">
             <div className="bg-gradient-to-br from-blue-50 via-white to-cyan-50 rounded-2xl border-2 border-dashed border-blue-200 p-8">
@@ -501,7 +477,6 @@ export default function ImagesUploadPage() {
                 </div>
               </div>
 
-              {/* Drop Zone */}
               <label className="block cursor-pointer">
                 <div
                   className={`relative flex flex-col items-center justify-center w-full min-h-[200px] border-2 border-dashed rounded-xl transition-all duration-300 ${
@@ -536,7 +511,6 @@ export default function ImagesUploadPage() {
                 />
               </label>
 
-              {/* Selected Files Preview */}
               {selectedFiles.length > 0 && (
                 <div className="mt-6">
                   <div className="flex items-center justify-between mb-3">
@@ -577,7 +551,6 @@ export default function ImagesUploadPage() {
                 </div>
               )}
 
-              {/* Upload Progress */}
               {uploading && (
                 <div className="mt-6 p-4 bg-white rounded-xl border border-blue-100">
                   <div className="flex items-center justify-between mb-3">
@@ -598,7 +571,6 @@ export default function ImagesUploadPage() {
                 </div>
               )}
 
-              {/* Upload Button */}
               {!uploading && (
                 <button
                   onClick={handleUpload}
@@ -618,7 +590,6 @@ export default function ImagesUploadPage() {
           </div>
         )}
 
-        {/* Gallery */}
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-lg font-bold text-gray-800">
@@ -712,46 +683,14 @@ export default function ImagesUploadPage() {
                     {/* Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
 
-                    {/* Action Buttons */}
-                    <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                      {/* View */}
+                    {/* View Button (centered on hover) */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
                       <button
                         onClick={() => setSelectedImage(img)}
-                        className="p-2.5 bg-white/90 backdrop-blur-sm text-gray-700 rounded-full hover:bg-white transition-all shadow-lg hover:scale-110"
+                        className="p-3 bg-white/90 backdrop-blur-sm text-gray-700 rounded-full hover:bg-white transition-all shadow-lg hover:scale-110"
                         title="View"
                       >
-                        <ZoomIn className="w-5 h-5" />
-                      </button>
-
-                      {/* Copy URL */}
-                      <button
-                        onClick={() => copyToClipboard(img.url, img.id)}
-                        className={`p-2.5 rounded-full transition-all shadow-lg hover:scale-110 ${
-                          copiedId === img.id
-                            ? "bg-emerald-500 text-white"
-                            : "bg-white/90 backdrop-blur-sm text-gray-700 hover:bg-white"
-                        }`}
-                        title="Copy URL"
-                      >
-                        {copiedId === img.id ? (
-                          <Check className="w-5 h-5" />
-                        ) : (
-                          <Copy className="w-5 h-5" />
-                        )}
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDelete(img.id, img.publicId)}
-                        disabled={deleting === img.id}
-                        className="p-2.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all shadow-lg hover:scale-110 disabled:opacity-50"
-                        title="Delete"
-                      >
-                        {deleting === img.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-5 h-5" />
-                        )}
+                        <ZoomIn className="w-6 h-6" />
                       </button>
                     </div>
 
@@ -764,6 +703,37 @@ export default function ImagesUploadPage() {
                         {img.format}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Action Buttons - Copy and Delete at bottom */}
+                  <div className="p-3 bg-white border-t border-gray-100 flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => copyToClipboard(img.url, img.id)}
+                      className={`p-2 rounded-lg transition-all duration-300 ${
+                        copiedId === img.id
+                          ? "bg-emerald-100 text-emerald-600"
+                          : "bg-blue-100 text-blue-600 hover:bg-blue-200"
+                      }`}
+                      title="Copy URL"
+                    >
+                      {copiedId === img.id ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(img.id, img.publicId)}
+                      disabled={deleting === img.id}
+                      className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-all duration-300 disabled:opacity-50"
+                      title="Delete"
+                    >
+                      {deleting === img.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -782,7 +752,6 @@ export default function ImagesUploadPage() {
             className="relative max-w-5xl w-full max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close Button */}
             <button
               onClick={() => setSelectedImage(null)}
               className="absolute top-4 right-4 z-10 p-2 bg-black/50 backdrop-blur-sm text-white rounded-full hover:bg-black/70 transition-all"
@@ -790,7 +759,6 @@ export default function ImagesUploadPage() {
               <X className="w-5 h-5" />
             </button>
 
-            {/* Image */}
             <div className="relative bg-gray-900 flex items-center justify-center min-h-[300px] max-h-[60vh]">
               <img
                 src={selectedImage.url}
@@ -799,7 +767,6 @@ export default function ImagesUploadPage() {
               />
             </div>
 
-            {/* Info Panel */}
             <div className="p-6 bg-white">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="bg-gray-50 rounded-xl p-4">
@@ -840,7 +807,6 @@ export default function ImagesUploadPage() {
                 </div>
               </div>
 
-              {/* URL Copy */}
               <div className="flex items-center gap-3">
                 <div className="flex-1 relative">
                   <input
@@ -887,7 +853,6 @@ export default function ImagesUploadPage() {
         </div>
       )}
 
-      {/* Add shimmer animation styles */}
       <style jsx>{`
         @keyframes shimmer {
           0% {

@@ -815,7 +815,7 @@ export default function HomePage() {
                       )}
                   </div>
                   <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
-                    {featuredProperties.slice(0, 10).map((_, idx) => (
+                    {featuredProperties.slice(0, 5).map((_, idx) => (
                       <motion.button
                         key={idx}
                         onClick={(e) => {
