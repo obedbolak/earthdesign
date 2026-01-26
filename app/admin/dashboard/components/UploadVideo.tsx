@@ -75,6 +75,36 @@ export default function VideoUploadPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Generate thumbnail URL from Cloudinary video URL
+  const getVideoThumbnail = (videoUrl: string) => {
+    try {
+      // Convert video URL to thumbnail
+      // Changes: /video/upload/... to /video/upload/so_0,w_400,h_300,c_fill/...
+      // And changes extension to .jpg
+      const url = new URL(videoUrl);
+      const pathParts = url.pathname.split("/");
+
+      const uploadIndex = pathParts.findIndex((part) => part === "upload");
+      if (uploadIndex === -1) return videoUrl;
+
+      // Insert transformation after 'upload'
+      pathParts.splice(uploadIndex + 1, 0, "so_0,w_400,h_300,c_fill,f_jpg");
+
+      // Change extension to jpg
+      const lastPart = pathParts[pathParts.length - 1];
+      const extensionIndex = lastPart.lastIndexOf(".");
+      if (extensionIndex !== -1) {
+        pathParts[pathParts.length - 1] =
+          lastPart.substring(0, extensionIndex) + ".jpg";
+      }
+
+      url.pathname = pathParts.join("/");
+      return url.toString();
+    } catch {
+      return videoUrl;
+    }
+  };
+
   // Sort videos by most recent first
   const sortedVideos = useMemo(() => {
     return [...videos].sort(
@@ -473,15 +503,28 @@ export default function VideoUploadPage() {
                     )}
 
                     {/* Thumbnail */}
-                    <div className="relative h-32 bg-black flex items-center justify-center overflow-hidden">
-                      <video
-                        src={video.url}
+
+                    <div className="relative h-32 bg-gray-900 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={getVideoThumbnail(video.url)}
+                        alt={`${video.format.toUpperCase()} video thumbnail`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        onError={(e) => {
+                          // Hide broken image and show fallback
+                          e.currentTarget.style.display = "none";
+                        }}
                       />
-                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors flex items-center justify-center">
-                        <Play className="w-8 h-8 text-white" />
+                      {/* Fallback icon (shows if image fails) */}
+                      <VideoIcon className="absolute w-10 h-10 text-gray-600" />
+                      {/* Play overlay */}
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                        </div>
                       </div>
-                      <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/70 rounded text-xs text-white font-medium">
+                      {/* Duration badge */}
+                      <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 rounded text-xs text-white font-medium">
                         {formatDuration(video.duration)}
                       </div>
                     </div>
