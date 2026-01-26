@@ -55,7 +55,7 @@ interface HeaderProps {
 }
 
 // Placeholder images by property type
-const PLACEHOLDER_IMAGES: Record<PropertyType | "default", string> = {
+const PLACEHOLDER_IMAGES: Record<PropertyType | string, string> = {
   Villa:
     "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400&h=300&fit=crop&q=80",
   Apartment:
@@ -116,6 +116,8 @@ const TYPE_ICONS: Record<PropertyType, React.ComponentType<any>> = {
   Building: Building2,
   Studio: Home,
   Duplex: Home,
+  ChambreModerne: Home,
+  Chambre: Home,
 };
 
 // Get property status
@@ -247,13 +249,13 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
           setSelectedIndex((prev) =>
-            prev < searchResults.length - 1 ? prev + 1 : 0
+            prev < searchResults.length - 1 ? prev + 1 : 0,
           );
         }
         if (e.key === "ArrowUp") {
           e.preventDefault();
           setSelectedIndex((prev) =>
-            prev > 0 ? prev - 1 : searchResults.length - 1
+            prev > 0 ? prev - 1 : searchResults.length - 1,
           );
         }
         if (e.key === "Enter" && selectedIndex >= 0) {
@@ -276,7 +278,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
       setIsMobileMenuOpen(false);
       setSelectedIndex(-1);
     },
-    [router]
+    [router],
   );
 
   const getPlaceholderImage = useCallback((type: PropertyType) => {
@@ -287,7 +289,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
     },
-    []
+    [],
   );
 
   const handleClearSearch = useCallback(() => {
@@ -368,7 +370,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
   const renderPropertyCard = (
     property: Property,
     idx: number,
-    isMobile: boolean = false
+    isMobile: boolean = false,
   ) => {
     const TypeIcon = TYPE_ICONS[property.type] || Home;
     const isSelected = idx === selectedIndex && !isMobile;
@@ -446,9 +448,9 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
               >
                 {formatPriceCompact(property.price, property.currency)}
               </p>
-              {property.surface && (
+              {property.surfaceArea && (
                 <p className="text-xs" style={{ color: COLORS.primary[400] }}>
-                  {formatArea(property.surface)}
+                  {formatArea(property.surfaceArea)}
                 </p>
               )}
             </div>
@@ -536,13 +538,13 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 >
                   {formatPriceCompact(property.price, property.currency)}
                 </p>
-                {property.surface && (
+                {property.surfaceArea && (
                   <p
                     className="text-xs flex items-center gap-1"
                     style={{ color: COLORS.primary[300] }}
                   >
                     <Square className="w-3 h-3" />
-                    {formatArea(property.surface)}
+                    {formatArea(property.surfaceArea)}
                   </p>
                 )}
               </div>
@@ -594,8 +596,8 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   service.id === "real-estate"
                     ? "from-green-500 to-emerald-500"
                     : service.id === "land-survey"
-                    ? "from-blue-500 to-cyan-500"
-                    : "from-orange-500 to-red-500"
+                      ? "from-blue-500 to-cyan-500"
+                      : "from-orange-500 to-red-500"
                 } flex items-center justify-center flex-shrink-0 shadow-lg`}
               >
                 <service.icon
@@ -1551,7 +1553,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                           <div className="max-h-[500px] overflow-y-auto py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               {searchResults.map((property, idx) =>
-                                renderPropertyCard(property, idx, false)
+                                renderPropertyCard(property, idx, false),
                               )}
                             </div>
                           </div>
@@ -1563,7 +1565,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                           >
                             <Link
                               href={`/properties?search=${encodeURIComponent(
-                                searchQuery
+                                searchQuery,
                               )}`}
                               className="block text-center py-3 px-6 rounded-xl font-semibold text-white transition-all hover:shadow-lg"
                               style={{ background: GRADIENTS.button.primary }}
@@ -2065,7 +2067,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                         style={{ borderColor: `${COLORS.primary[400]}30` }}
                       >
                         {searchResults.map((property, idx) =>
-                          renderPropertyCard(property, idx, true)
+                          renderPropertyCard(property, idx, true),
                         )}
                       </div>
                       <div
@@ -2074,7 +2076,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                       >
                         <Link
                           href={`/properties?search=${encodeURIComponent(
-                            searchQuery
+                            searchQuery,
                           )}`}
                           className="block w-full text-center py-3 rounded-xl font-semibold text-white transition"
                           style={{ background: GRADIENTS.button.primary }}
