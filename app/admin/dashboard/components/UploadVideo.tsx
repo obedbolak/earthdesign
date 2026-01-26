@@ -63,6 +63,8 @@ export default function VideoUploadPage() {
   const [uploadedVideo, setUploadedVideo] = useState<UploadedVideo | null>(
     null,
   );
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
+  const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -372,6 +374,34 @@ export default function VideoUploadPage() {
     }
   };
 
+  // Handle video play
+  const handlePlayVideo = (videoId: string) => {
+    // Pause any currently playing video
+    if (playingVideoId && playingVideoId !== videoId) {
+      const prevVideo = videoRefs.current[playingVideoId];
+      if (prevVideo) {
+        prevVideo.pause();
+        prevVideo.currentTime = 0;
+      }
+    }
+    setPlayingVideoId(videoId);
+  };
+
+  // Handle video close/stop
+  const handleStopVideo = (videoId: string) => {
+    const video = videoRefs.current[videoId];
+    if (video) {
+      video.pause();
+      video.currentTime = 0;
+    }
+    setPlayingVideoId(null);
+  };
+
+  // Handle video ended
+  const handleVideoEnded = (videoId: string) => {
+    setPlayingVideoId(null);
+  };
+
   const copyVideoLink = async (url: string, videoId: string) => {
     try {
       await navigator.clipboard.writeText(url);
@@ -502,31 +532,65 @@ export default function VideoUploadPage() {
                       </div>
                     )}
 
-                    {/* Thumbnail */}
-
+                    {/* Thumbnail / Video Preview */}
                     <div className="relative h-32 bg-gray-900 flex items-center justify-center overflow-hidden">
-                      <img
-                        src={getVideoThumbnail(video.url)}
-                        alt={`${video.format.toUpperCase()} video thumbnail`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                        onError={(e) => {
-                          // Hide broken image and show fallback
-                          e.currentTarget.style.display = "none";
-                        }}
-                      />
-                      {/* Fallback icon (shows if image fails) */}
-                      <VideoIcon className="absolute w-10 h-10 text-gray-600" />
-                      {/* Play overlay */}
-                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                        <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-                        </div>
-                      </div>
-                      {/* Duration badge */}
-                      <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 rounded text-xs text-white font-medium">
-                        {formatDuration(video.duration)}
-                      </div>
+                      {playingVideoId === video.id ? (
+                        <>
+                          {/* Video Player */}
+                          <video
+                            ref={(el) => {
+                              videoRefs.current[video.id] = el;
+                            }}
+                            src={video.url}
+                            className="w-full h-full object-cover"
+                            autoPlay
+                            controls
+                            onEnded={() => handleVideoEnded(video.id)}
+                            onError={() => handleStopVideo(video.id)}
+                          />
+                          {/* Close button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStopVideo(video.id);
+                            }}
+                            className="absolute top-2 right-2 z-10 p-1.5 bg-black/70 hover:bg-black/90 rounded-full transition-colors"
+                          >
+                            <X className="w-4 h-4 text-white" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {/* Thumbnail Image */}
+                          <img
+                            src={getVideoThumbnail(video.url)}
+                            alt={`${video.format.toUpperCase()} video thumbnail`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
+                          />
+                          {/* Fallback icon */}
+                          <VideoIcon className="absolute w-10 h-10 text-gray-600" />
+                          {/* Play overlay */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlayVideo(video.id);
+                            }}
+                            className="absolute inset-0 bg-black/40 hover:bg-black/20 transition-colors flex items-center justify-center cursor-pointer group/play"
+                          >
+                            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover/play:scale-110 group-hover/play:bg-white/30 transition-all duration-300">
+                              <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                            </div>
+                          </button>
+                          {/* Duration badge */}
+                          <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 rounded text-xs text-white font-medium pointer-events-none">
+                            {formatDuration(video.duration)}
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     {/* Info */}
