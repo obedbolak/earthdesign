@@ -134,11 +134,13 @@ const propertyTypeIcons: Record<PropertyType, React.ComponentType<any>> = {
   Building: Building2,
   Studio: Home,
   Duplex: Home,
+  ChambreModerne: Home,
+  Chambre: Home,
 };
 
 // Placeholder images by type
 const getPlaceholderImage = (type: PropertyType): string => {
-  const map: Record<PropertyType, string> = {
+  const map: Record<PropertyType | string, string> = {
     Villa:
       "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=1200&h=800&fit=crop&q=80",
     Apartment:
@@ -645,7 +647,7 @@ export default function HomePage() {
                         className="text-sm"
                         style={{ color: COLORS.gray[500] }}
                       >
-                        {formatArea(property.surface)}
+                        {formatArea(property.surfaceArea)}
                       </p>
                     </div>
                   </motion.div>
@@ -744,10 +746,10 @@ export default function HomePage() {
                       transition={{ delay: 0.3 }}
                       className="flex items-center gap-4 sm:gap-6 text-sm sm:text-base"
                     >
-                      {currentHeroProperty.surface && (
+                      {currentHeroProperty.surfaceArea && (
                         <span className="flex items-center gap-1 sm:gap-2">
                           <Square className="w-4 h-4 sm:w-5 sm:h-5" />
-                          {formatArea(currentHeroProperty.surface)}
+                          {formatArea(currentHeroProperty.surfaceArea)}
                         </span>
                       )}
                       {currentHeroProperty.bedrooms &&
@@ -1531,13 +1533,13 @@ export default function HomePage() {
                             <span>{property.bathrooms}</span>
                           </div>
                         )}
-                      {property.surface && (
+                      {property.surfaceArea && (
                         <div className="flex items-center gap-2">
                           <Square
                             className="w-5 h-5"
                             style={{ color: COLORS.primary[400] }}
                           />
-                          <span>{formatArea(property.surface)}</span>
+                          <span>{formatArea(property.surfaceArea)}</span>
                         </div>
                       )}
                     </div>
@@ -1700,13 +1702,13 @@ export default function HomePage() {
                             <span>{property.bathrooms} Baths</span>
                           </div>
                         )}
-                      {property.surface && (
+                      {property.surfaceArea && (
                         <div className="flex items-center gap-2">
                           <Square
                             className="w-5 h-5"
                             style={{ color: COLORS.primary[400] }}
                           />
-                          <span>{formatArea(property.surface)}</span>
+                          <span>{formatArea(property.surfaceArea)}</span>
                         </div>
                       )}
                       {property.hasParking && (
