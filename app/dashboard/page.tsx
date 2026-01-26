@@ -29,9 +29,8 @@ async function getUserStats(userId: string, role: string) {
   // Agent-specific stats
   if (role === "AGENT") {
     const [listings, leads] = await Promise.all([
-      prisma.batiment.count({
-        where: { published: true }, // Add agent filter when available
-      }),
+      // Just count all batiments without any filter
+      prisma.batiment.count(),
       Promise.resolve(8), // Replace with actual leads count
     ]);
 
@@ -79,23 +78,31 @@ async function getRecentActivity(userId: string, role: string) {
 
 // Get recommended properties
 async function getRecommendedProperties() {
-  const properties = await prisma.batiment.findMany({
-    where: { published: true, featured: true },
-    take: 4,
-    include: {
-      parcelle: {
-        include: {
-          lotissement: {
-            include: {
-              arrondissement: true,
+  try {
+    // Fetch recent properties without any filter
+    const properties = await prisma.batiment.findMany({
+      take: 4,
+      orderBy: {
+        Id_Bat: "desc", // Get most recent by ID
+      },
+      include: {
+        parcelle: {
+          include: {
+            lotissement: {
+              include: {
+                arrondissement: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    });
 
-  return properties;
+    return properties;
+  } catch (error) {
+    console.error("Error fetching recommended properties:", error);
+    return [];
+  }
 }
 
 export default async function DashboardPage() {
@@ -228,8 +235,8 @@ export default async function DashboardPage() {
                     item.type === "view"
                       ? "bg-blue-100"
                       : item.type === "favorite"
-                      ? "bg-rose-100"
-                      : "bg-amber-100"
+                        ? "bg-rose-100"
+                        : "bg-amber-100"
                   }`}
                 >
                   <item.icon
@@ -237,8 +244,8 @@ export default async function DashboardPage() {
                       item.type === "view"
                         ? "text-blue-600"
                         : item.type === "favorite"
-                        ? "text-rose-600"
-                        : "text-amber-600"
+                          ? "text-rose-600"
+                          : "text-amber-600"
                     }`}
                   />
                 </div>
@@ -431,7 +438,7 @@ function QuickActionButton({
 function PropertyCard({ property }: { property: any }) {
   const image = property.Image_URL_1 || "/placeholder-property.jpg";
   const location =
-    property.Parcelle?.Lotissement?.Arrondissement?.Nom_Arrond || "Location";
+    property.parcelle?.lotissement?.arrondissement?.Nom_Arrond || "Location";
 
   // Generate proper URL slug
   const propertySlug = `batiment-${property.Id_Bat}`;
@@ -445,20 +452,15 @@ function PropertyCard({ property }: { property: any }) {
             alt={property.Type_Usage || "Property"}
             className="w-full h-full object-cover"
           />
-          {property.featured && (
-            <span className="absolute top-2 left-2 bg-amber-500 text-white text-xs font-bold px-2 py-1 rounded-lg">
-              Featured
-            </span>
-          )}
         </div>
         <div className="p-3">
           <p className="font-semibold text-gray-800 text-sm truncate">
             {property.Type_Usage || "Property"}
           </p>
           <p className="text-xs text-gray-500 truncate">{location}</p>
-          {property.price && (
+          {property.Cout_Bat && (
             <p className="text-sm font-bold text-teal-600 mt-1">
-              {(property.price / 1000000).toFixed(1)}M XAF
+              {(Number(property.Cout_Bat) / 1000000).toFixed(1)}M XAF
             </p>
           )}
         </div>
