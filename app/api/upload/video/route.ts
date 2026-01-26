@@ -21,15 +21,6 @@ interface UploadedVideoData {
   bytes: number;
 }
 
-// Configuration for Vercel - handle large uploads
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "100mb",
-    },
-  },
-};
-
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
