@@ -16,6 +16,8 @@ enum PropertyType {
   Building
   Studio
   Duplex
+  ChambreModerne
+  Chambre
 }
 
 enum UserRole {
@@ -24,36 +26,41 @@ enum UserRole {
   ADMIN
 }
 
-// ============================================
-// NextAuth.js Required Models
-// ============================================
-
-
-model OTPToken {
-  id         String   @id @default(uuid())
-  email      String
-  token      String   // 6-digit OTP code
-  type       OTPType
-  expires    DateTime
-  createdAt  DateTime @default(now())
-  
-  @@unique([email, token])
-  @@index([email])
-  @@index([expires])
-}
-
 enum OTPType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
   LOGIN_VERIFICATION
 }
 
+enum MediaEntityType {
+  PROPERTY
+  LOTISSEMENT
+  PARCELLE
+  BATIMENT
+  INFRASTRUCTURE
+}
+
+// ============================================
+// Authentication Models
+// ============================================
+
+model OTPToken {
+  id        String   @id @default(uuid())
+  email     String
+  token     String
+  type      OTPType
+  expires   DateTime
+  createdAt DateTime @default(now())
+  
+  @@unique([email, token])
+  @@index([email, expires])
+}
 
 model User {
   id            String    @id @default(uuid())
   email         String    @unique
   name          String?
-  password      String?   // hashed password
+  password      String?
   emailVerified DateTime?
   image         String?
   role          UserRole  @default(USER)
@@ -63,6 +70,9 @@ model User {
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
+  @@index([email])
+  @@index([role])
 }
 
 model Account {
@@ -82,6 +92,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -90,6 +101,8 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -100,16 +113,21 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// ============================================
+// Geographic Models (Optimized)
+// ============================================
 
 model Region {
   Id_Reg        Int           @id @default(autoincrement())
   Nom_Reg       String?
   Sup_Reg       Float?
   Chef_lieu_Reg String?
-  WKT_Geometry  String?
+  WKT_Geometry  String?       @db.Text
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   departements  Departement[]
+  
+  @@index([Nom_Reg])
 }
 
 model Departement {
@@ -118,11 +136,14 @@ model Departement {
   Sup_Dept        Float?
   Chef_lieu_Dept  String?
   Id_Reg          Int?
-  WKT_Geometry    String?
+  WKT_Geometry    String?          @db.Text
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   region          Region?          @relation(fields: [Id_Reg], references: [Id_Reg])
   arrondissements Arrondissement[]
+  
+  @@index([Id_Reg])
+  @@index([Nom_Dept])
 }
 
 model Arrondissement {
@@ -132,12 +153,19 @@ model Arrondissement {
   Chef_lieu_Arrond String?
   Commune          String?
   Id_Dept          Int?
-  WKT_Geometry     String?
+  WKT_Geometry     String?       @db.Text
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   departement      Departement?  @relation(fields: [Id_Dept], references: [Id_Dept])
   lotissements     Lotissement[]
+  
+  @@index([Id_Dept])
+  @@index([Nom_Arrond])
 }
+
+// ============================================
+// Property-Related Models (Optimized)
+// ============================================
 
 model Lotissement {
   Id_Lotis       Int             @id @default(autoincrement())
@@ -153,38 +181,19 @@ model Lotissement {
   Lieudit        String?
   Echelle        Int?
   Ccp            String?
-  
-  // Pricing fields for Lotissement
-  price          Decimal?        @db.Decimal(15, 2)
-  pricePerSqM    Decimal?        @db.Decimal(15, 2) // Price per square meter
-  currency       String?         @default("XAF")
-  forSale        Boolean?        @default(false)
-  forRent        Boolean?        @default(false)
-  rentPrice      Decimal?        @db.Decimal(15, 2) // Monthly rent if applicable
-  shortDescription String?       @db.VarChar(255)
-  description    String?         @db.Text
-  published      Boolean?        @default(false)
-  featured       Boolean?        @default(false)
-  
-  Video_URL      String?
-  Image_URL_1    String?
-  Image_URL_2    String?
-  Image_URL_3    String?
-  Image_URL_4    String?
-  Image_URL_5    String?
-  Image_URL_6    String?
   Id_Arrond      Int?
-  WKT_Geometry   String?
+  WKT_Geometry   String?         @db.Text
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+  
   arrondissement Arrondissement? @relation(fields: [Id_Arrond], references: [Id_Arrond])
   parcelles      Parcelle[]
   limitrophes    Limitrophe[]
+  media          Media[]
   
-  @@index([price])
-  @@index([forSale])
-  @@index([forRent])
-  @@index([published])
+  @@index([Id_Arrond])
+  @@index([Num_TF])
+  @@index([Statut])
 }
 
 model Parcelle {
@@ -207,30 +216,11 @@ model Parcelle {
   Ccp_N        String?
   Mise_Val     Boolean?
   Cloture      Boolean?
-  
-  // Pricing fields for Parcelle (land)
-  price          Decimal?     @db.Decimal(15, 2)
-  pricePerSqM    Decimal?     @db.Decimal(15, 2) // Price per square meter
-  currency       String?      @default("XAF")
-  forSale        Boolean?     @default(false)
-  forRent        Boolean?     @default(false)
-  rentPrice      Decimal?     @db.Decimal(15, 2) // Monthly rent if applicable
-  shortDescription String?    @db.VarChar(255)
-  description    String?      @db.Text
-  published      Boolean?     @default(false)
-  featured       Boolean?     @default(false)
-  
-  Video_URL    String?
-  Image_URL_1  String?
-  Image_URL_2  String?
-  Image_URL_3  String?
-  Image_URL_4  String?
-  Image_URL_5  String?
-  Image_URL_6  String?
   Id_Lotis     Int?
-  WKT_Geometry String?
+  WKT_Geometry String?      @db.Text
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+  
   properties   Property[]
   lotissement  Lotissement? @relation(fields: [Id_Lotis], references: [Id_Lotis])
   batiments    Batiment[]
@@ -239,72 +229,155 @@ model Parcelle {
   trouvrs      Trouver[]
   eclairers    Eclairer[]
   desservirs   Desservir[]
+  media        Media[]
   
-  @@index([price])
-  @@index([forSale])
-  @@index([forRent])
-  @@index([published])
+  @@index([Id_Lotis])
+  @@index([TF_Cree])
+  @@index([Num_lot])
 }
 
 model Batiment {
-  Id_Bat          Int              @id @default(autoincrement())
-  Type_Usage      String?
-  Cat_Bat         String?
-  Status          String?
-  Standing        String?
-  Cloture         Boolean?
-  No_Permis       String?
-  Type_Lodg       String?
-  Etat_Bat        String?
-  Nom             String?
-  Mat_Bati        String?
+  Id_Bat       Int       @id @default(autoincrement())
+  Type_Usage   String?
+  Cat_Bat      String?
+  Status       String?
+  Standing     String?
+  Cloture      Boolean?
+  No_Permis    String?
+  Type_Lodg    String?
+  Etat_Bat     String?
+  Nom          String?
+  Mat_Bati     String?
   
-  // Physical features of the building
-  bedrooms        Int?             // Total bedrooms in building
-  bathrooms       Int?             // Total bathrooms
-  kitchens        Int?             // Number of kitchens
-  livingRooms     Int?             // Number of living rooms
-  totalFloors     Int?             // Number of floors in building
-  totalUnits      Int?             // Number of units (for apartment buildings)
-  hasElevator     Boolean?         @default(false)
-  hasGenerator    Boolean?         @default(false)
-  hasParking      Boolean?         @default(false)
-  parkingSpaces   Int?             // Number of parking spaces
+  // Building-level metrics only
+  totalFloors   Int?
+  totalUnits    Int?
+  hasElevator   Boolean?  @default(false)
+  surfaceArea   Float?
+  doorNumber    String?
+  address       String?   @db.Text
   
-  // Pricing fields for Batiment
-  price           Decimal?         @db.Decimal(15, 2)
-  pricePerSqM     Decimal?         @db.Decimal(15, 2) // Price per square meter
-  currency        String?          @default("XAF")
-  forSale         Boolean?         @default(false)
-  forRent         Boolean?         @default(false)
-  rentPrice       Decimal?         @db.Decimal(15, 2) // Monthly rent if applicable
-  shortDescription String?         @db.VarChar(255)
-  description     String?          @db.Text
-  published       Boolean?         @default(false)
-  featured        Boolean?         @default(false)
+  Id_Parcel     Int?
+  WKT_Geometry  String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   
-  Video_URL       String?
-  Image_URL_1     String?
-  Image_URL_2     String?
-  Image_URL_3     String?
-  Image_URL_4     String?
-  Image_URL_5     String?
-  Image_URL_6     String?
-  Id_Parcel       Int?
-  WKT_Geometry    String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
   properties      Property[]
   parcelle        Parcelle?        @relation(fields: [Id_Parcel], references: [Id_Parcel])
   payers          Payer[]
   alimenters      Alimenter[]
   approvisionners Approvisionner[]
+  media           Media[]
   
-  @@index([price])
-  @@index([forSale])
-  @@index([forRent])
-  @@index([published])
+  @@index([Id_Parcel])
+  @@index([Type_Usage])
+  @@index([Standing])
 }
+
+// ============================================
+// Centralized Property Model (Main Listing)
+// ============================================
+
+model Property {
+  id                    Int          @id @default(autoincrement())
+  title                 String
+  shortDescription      String?      @db.VarChar(500)
+  description           String?      @db.Text
+  
+  // Pricing - ONLY HERE, not duplicated
+  price                 Decimal?     @db.Decimal(15, 2)
+  priceMin              Decimal?     @db.Decimal(15, 2)
+  priceMax              Decimal?     @db.Decimal(15, 2)
+  pricePerSqM           Decimal?     @db.Decimal(15, 2)
+  currency              String       @default("XAF")
+  
+  // Listing type
+  type                  PropertyType
+  forSale               Boolean      @default(true)
+  forRent               Boolean      @default(false)
+  rentPrice             Decimal?     @db.Decimal(15, 2)
+  
+  // Land specifics
+  isLandForDevelopment  Boolean      @default(false)
+  approvedForApartments Boolean?
+  
+  // Unit features (apartment/house specific)
+  bedrooms              Int?
+  bathrooms             Int?
+  kitchens              Int?
+  livingRooms           Int?
+  surfaceArea           Float?
+  floorLevel            Int?
+  totalFloors           Int?
+  doorNumber            String?
+  
+  // Amenities
+  hasGenerator          Boolean?     @default(false)
+  hasParking            Boolean?     @default(false)
+  parkingSpaces         Int?
+  amenities             String?      @db.Text
+  
+  // Location
+  address               String?      @db.Text
+  parcelleId            Int
+  batimentId            Int?
+  
+  // Relations
+  parcelle              Parcelle     @relation(fields: [parcelleId], references: [Id_Parcel])
+  batiment              Batiment?    @relation(fields: [batimentId], references: [Id_Bat])
+  media                 Media[]
+  
+  // Status
+  published             Boolean      @default(false)
+  featured              Boolean      @default(false)
+  
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  
+  @@index([parcelleId])
+  @@index([batimentId])
+  @@index([type])
+  @@index([price])
+  @@index([priceMin, priceMax])
+  @@index([published, featured])
+  @@index([forSale, forRent])
+  @@index([createdAt])
+}
+
+// ============================================
+// Centralized Media Model
+// ============================================
+
+model Media {
+  id          Int              @id @default(autoincrement())
+  entityType  MediaEntityType
+  entityId    Int
+  url         String
+  type        String           // 'image' or 'video'
+  order       Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  // Polymorphic relations
+  property       Property?       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId     Int?
+  lotissement    Lotissement?    @relation(fields: [lotissementId], references: [Id_Lotis], onDelete: Cascade)
+  lotissementId  Int?
+  parcelle       Parcelle?       @relation(fields: [parcelleId], references: [Id_Parcel], onDelete: Cascade)
+  parcelleId     Int?
+  batiment       Batiment?       @relation(fields: [batimentId], references: [Id_Bat], onDelete: Cascade)
+  batimentId     Int?
+  infrastructure Infrastructure? @relation(fields: [infrastructureId], references: [Id_Infras], onDelete: Cascade)
+  infrastructureId Int?
+  
+  @@index([entityType, entityId])
+  @@index([propertyId])
+  @@index([order])
+}
+
+// ============================================
+// Infrastructure & Utilities
+// ============================================
 
 model Route {
   Id_Rte       Int         @id @default(autoincrement())
@@ -313,10 +386,12 @@ model Route {
   Largeur_Rte  String?
   Etat_Rte     String?
   Mat_Rte      String?
-  WKT_Geometry String?
+  WKT_Geometry String?     @db.Text
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   desservirs   Desservir[]
+  
+  @@index([Type_Rte])
 }
 
 model Riviere {
@@ -325,7 +400,7 @@ model Riviere {
   Type_Riv     String?
   Etat_amenag  String?
   Debit_Riv    String?
-  WKT_Geometry String?
+  WKT_Geometry String?      @db.Text
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   limitrophes  Limitrophe[]
@@ -343,6 +418,9 @@ model Taxe_immobiliere {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   payers        Payer[]
+  
+  @@index([Num_TF])
+  @@index([NIU])
 }
 
 model Equipement {
@@ -351,7 +429,7 @@ model Equipement {
   Design_Equip String?
   Etat_Equip   String?
   Mat_Equip    String?
-  WKT_Geometry String?
+  WKT_Geometry String?    @db.Text
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   eclairers    Eclairer[]
@@ -363,7 +441,7 @@ model Reseau_energetique {
   Type_Reseau  String?
   Etat_Res     String?
   Materiau     String?
-  WKT_Geometry String?
+  WKT_Geometry String?     @db.Text
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   alimenters   Alimenter[]
@@ -375,7 +453,7 @@ model Reseau_en_eau {
   Type_Res        String?
   Etat_Res        String?
   Mat_Res         String?
-  WKT_Geometry    String?
+  WKT_Geometry    String?          @db.Text
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   approvisionners Approvisionner[]
@@ -389,17 +467,14 @@ model Infrastructure {
   Cycle            String?
   Statut_infras    String?
   Standing         String?
-  Video_URL        String?
-  Image_URL_1      String?
-  Image_URL_2      String?
-  Image_URL_3      String?
-  Image_URL_4      String?
-  Image_URL_5      String?
-  Image_URL_6      String?
-  WKT_Geometry     String?
+  WKT_Geometry     String?   @db.Text
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   trouvrs          Trouver[]
+  media            Media[]
+  
+  @@index([Type_Infraas])
+  @@index([Nom_infras])
 }
 
 model Borne {
@@ -407,13 +482,16 @@ model Borne {
   coord_x      Float?
   coord_y      Float?
   coord_z      Float?
-  WKT_Geometry String?
+  WKT_Geometry String?    @db.Text
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   contenirs    Contenir[]
 }
 
-// Relationship Models
+// ============================================
+// Relationship Models (with optimized indexes)
+// ============================================
+
 model Payer {
   Id_Parcel Int
   Id_Bat    Int
@@ -422,11 +500,12 @@ model Payer {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
-  parcelle Parcelle         @relation(fields: [Id_Parcel], references: [Id_Parcel])
-  batiment Batiment         @relation(fields: [Id_Bat], references: [Id_Bat])
-  taxe     Taxe_immobiliere @relation(fields: [Id_Taxe], references: [Id_Taxe])
+  parcelle Parcelle         @relation(fields: [Id_Parcel], references: [Id_Parcel], onDelete: Cascade)
+  batiment Batiment         @relation(fields: [Id_Bat], references: [Id_Bat], onDelete: Cascade)
+  taxe     Taxe_immobiliere @relation(fields: [Id_Taxe], references: [Id_Taxe], onDelete: Cascade)
 
   @@id([Id_Parcel, Id_Bat, Id_Taxe])
+  @@index([Id_Taxe])
 }
 
 model Limitrophe {
@@ -435,10 +514,11 @@ model Limitrophe {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  lotissement Lotissement @relation(fields: [Id_Lotis], references: [Id_Lotis])
-  riviere     Riviere     @relation(fields: [Id_Riv], references: [Id_Riv])
+  lotissement Lotissement @relation(fields: [Id_Lotis], references: [Id_Lotis], onDelete: Cascade)
+  riviere     Riviere     @relation(fields: [Id_Riv], references: [Id_Riv], onDelete: Cascade)
 
   @@id([Id_Lotis, Id_Riv])
+  @@index([Id_Riv])
 }
 
 model Alimenter {
@@ -447,10 +527,11 @@ model Alimenter {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  batiment          Batiment           @relation(fields: [Id_Bat], references: [Id_Bat])
-  reseauEnergetique Reseau_energetique @relation(fields: [Id_Reseaux], references: [Id_Reseaux])
+  batiment          Batiment           @relation(fields: [Id_Bat], references: [Id_Bat], onDelete: Cascade)
+  reseauEnergetique Reseau_energetique @relation(fields: [Id_Reseaux], references: [Id_Reseaux], onDelete: Cascade)
 
   @@id([Id_Bat, Id_Reseaux])
+  @@index([Id_Reseaux])
 }
 
 model Contenir {
@@ -459,10 +540,11 @@ model Contenir {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  parcelle Parcelle @relation(fields: [Id_Parcel], references: [Id_Parcel])
-  borne    Borne    @relation(fields: [Id_Borne], references: [Id_Borne])
+  parcelle Parcelle @relation(fields: [Id_Parcel], references: [Id_Parcel], onDelete: Cascade)
+  borne    Borne    @relation(fields: [Id_Borne], references: [Id_Borne], onDelete: Cascade)
 
   @@id([Id_Parcel, Id_Borne])
+  @@index([Id_Borne])
 }
 
 model Trouver {
@@ -471,10 +553,11 @@ model Trouver {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  parcelle       Parcelle       @relation(fields: [Id_Parcel], references: [Id_Parcel])
-  infrastructure Infrastructure @relation(fields: [Id_Infras], references: [Id_Infras])
+  parcelle       Parcelle       @relation(fields: [Id_Parcel], references: [Id_Parcel], onDelete: Cascade)
+  infrastructure Infrastructure @relation(fields: [Id_Infras], references: [Id_Infras], onDelete: Cascade)
 
   @@id([Id_Parcel, Id_Infras])
+  @@index([Id_Infras])
 }
 
 model Eclairer {
@@ -483,10 +566,11 @@ model Eclairer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  parcelle   Parcelle   @relation(fields: [Id_Parcel], references: [Id_Parcel])
-  equipement Equipement @relation(fields: [Id_Equip], references: [Id_Equip])
+  parcelle   Parcelle   @relation(fields: [Id_Parcel], references: [Id_Parcel], onDelete: Cascade)
+  equipement Equipement @relation(fields: [Id_Equip], references: [Id_Equip], onDelete: Cascade)
 
   @@id([Id_Parcel, Id_Equip])
+  @@index([Id_Equip])
 }
 
 model Desservir {
@@ -495,10 +579,11 @@ model Desservir {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  parcelle Parcelle @relation(fields: [Id_Parcel], references: [Id_Parcel])
-  route    Route    @relation(fields: [Id_Rte], references: [Id_Rte])
+  parcelle Parcelle @relation(fields: [Id_Parcel], references: [Id_Parcel], onDelete: Cascade)
+  route    Route    @relation(fields: [Id_Rte], references: [Id_Rte], onDelete: Cascade)
 
   @@id([Id_Parcel, Id_Rte])
+  @@index([Id_Rte])
 }
 
 model Approvisionner {
@@ -507,71 +592,9 @@ model Approvisionner {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  batiment    Batiment      @relation(fields: [Id_Bat], references: [Id_Bat])
-  reseauEnEau Reseau_en_eau @relation(fields: [Id_Reseaux], references: [Id_Reseaux])
+  batiment    Batiment      @relation(fields: [Id_Bat], references: [Id_Bat], onDelete: Cascade)
+  reseauEnEau Reseau_en_eau @relation(fields: [Id_Reseaux], references: [Id_Reseaux], onDelete: Cascade)
 
   @@id([Id_Bat, Id_Reseaux])
-}
-
-model Property {
-  id                    Int          @id @default(autoincrement())
-  title                 String
-  shortDescription      String?      @db.VarChar(255)
-  description           String?      @db.Text
-  price                 Decimal?     @db.Decimal(15, 2)
-  currency              String       @default("XAF")
-
-  // Property type
-  type                  PropertyType
-
-  // For sale/rent specifics
-  forSale               Boolean      @default(true)
-  forRent               Boolean      @default(false)
-  rentPrice             Decimal?     @db.Decimal(15, 2)
-
-  // Land for development
-  isLandForDevelopment  Boolean      @default(false)
-  approvedForApartments Boolean?
-
-  // Rooms & features
-  bedrooms              Int?
-  bathrooms             Int?
-  kitchens              Int?         @default(1)
-  livingRooms           Int?         @default(1)
-  hasGenerator          Boolean?     @default(false)
-  hasParking            Boolean?     @default(false)
-  floorLevel            Int?
-  totalFloors           Int?
-
-  // Location references
-  parcelleId            Int
-  batimentId            Int?
-
-  // Relations
-  parcelle              Parcelle     @relation(fields: [parcelleId], references: [Id_Parcel])
-  batiment              Batiment?    @relation(fields: [batimentId], references: [Id_Bat])
-
-  // Images & media
-  imageUrl1             String?
-  imageUrl2             String?
-  imageUrl3             String?
-  imageUrl4             String?
-  imageUrl5             String?
-  imageUrl6             String?
-  videoUrl              String?
-
-  // Automatic timestamps
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
-
-  // Status
-  published             Boolean      @default(false)
-  featured              Boolean      @default(false)
-
-  @@index([parcelleId])
-  @@index([batimentId])
-  @@index([type])
-  @@index([price])
-  @@index([published])
-  @@index([createdAt])
+  @@index([Id_Reseaux])
 }

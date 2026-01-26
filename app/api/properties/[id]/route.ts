@@ -1,57 +1,30 @@
 // app/api/properties/[id]/route.ts
-import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id } = await params;
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
 
-    // Parse the ID format: "source-numericId"
-    const [source, numericIdStr] = id.split('-');
-    const numericId = parseInt(numericIdStr);
-
-    if (!source || isNaN(numericId)) {
+    if (isNaN(id) || id <= 0) {
       return NextResponse.json(
-        { success: false, error: 'Invalid property ID format. Expected: source-id (e.g., lotissement-1)' },
-        { status: 400 }
+        { success: false, error: "Invalid property ID" },
+        { status: 400 },
       );
     }
 
-    let property = null;
-
-    switch (source) {
-      case 'lotissement':
-        const lotissement = await prisma.lotissement.findUnique({
-          where: { Id_Lotis: numericId },
-          include: {
-            arrondissement: {
-              include: {
-                departement: {
-                  include: {
-                    region: true,
-                  },
-                },
-              },
-            },
-            parcelles: {
-              take: 10,
-              include: {
-                batiments: true,
-              },
-            },
-          },
-        });
-        if (lotissement) {
-          property = transformLotissement(lotissement);
-        }
-        break;
-
-      case 'parcelle':
-        const parcelle = await prisma.parcelle.findUnique({
-          where: { Id_Parcel: numericId },
+    const property = await prisma.property.findUnique({
+      where: { id },
+      include: {
+        media: {
+          orderBy: { order: "asc" },
+        },
+        parcelle: {
           include: {
             lotissement: {
               include: {
@@ -66,275 +39,213 @@ export async function GET(
                 },
               },
             },
-            batiments: true,
           },
-        });
-        if (parcelle) {
-          property = transformParcelle(parcelle);
-        }
-        break;
-
-      case 'batiment':
-        const batiment = await prisma.batiment.findUnique({
-          where: { Id_Bat: numericId },
-          include: {
-            parcelle: {
-              include: {
-                lotissement: {
-                  include: {
-                    arrondissement: {
-                      include: {
-                        departement: {
-                          include: {
-                            region: true,
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        });
-        if (batiment) {
-          property = transformBatiment(batiment);
-        }
-        break;
-
-      default:
-        return NextResponse.json(
-          { success: false, error: `Unknown source: ${source}` },
-          { status: 400 }
-        );
-    }
+        },
+        batiment: true,
+      },
+    });
 
     if (!property) {
       return NextResponse.json(
-        { success: false, error: 'Property not found' },
-        { status: 404 }
+        { success: false, error: "Property not found" },
+        { status: 404 },
       );
     }
+
+    // Also fetch media from Media table linked via entityType/entityId
+    const additionalMedia = await prisma.media.findMany({
+      where: {
+        OR: [
+          { propertyId: id },
+          {
+            entityType: "PROPERTY",
+            entityId: id,
+          },
+        ],
+      },
+      orderBy: { order: "asc" },
+    });
+
+    // Merge and deduplicate media
+    const relationMedia = property.media || [];
+    const allMediaMap = new Map<number, any>();
+    [...relationMedia, ...additionalMedia].forEach((m) => {
+      if (!allMediaMap.has(m.id)) {
+        allMediaMap.set(m.id, m);
+      }
+    });
+
+    const allMedia = Array.from(allMediaMap.values()).sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    );
+
+    const parcelle = property.parcelle;
+    const lotissement = parcelle?.lotissement;
+    const arrondissement = lotissement?.arrondissement;
+    const departement = arrondissement?.departement;
+    const region = departement?.region;
+
+    const transformedProperty = {
+      id: property.id,
+      title: property.title,
+      shortDescription: property.shortDescription,
+      description: property.description,
+      price: property.price ? Number(property.price) : null,
+      priceMin: property.priceMin ? Number(property.priceMin) : null,
+      priceMax: property.priceMax ? Number(property.priceMax) : null,
+      pricePerSqM: property.pricePerSqM ? Number(property.pricePerSqM) : null,
+      currency: property.currency,
+      type: property.type,
+      forSale: property.forSale,
+      forRent: property.forRent,
+      rentPrice: property.rentPrice ? Number(property.rentPrice) : null,
+      isLandForDevelopment: property.isLandForDevelopment,
+      approvedForApartments: property.approvedForApartments,
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      kitchens: property.kitchens,
+      livingRooms: property.livingRooms,
+      surfaceArea: property.surfaceArea,
+      floorLevel: property.floorLevel,
+      totalFloors: property.totalFloors,
+      doorNumber: property.doorNumber,
+      hasGenerator: property.hasGenerator,
+      hasParking: property.hasParking,
+      parkingSpaces: property.parkingSpaces,
+      hasElevator: property.batiment?.hasElevator ?? null,
+      totalUnits: property.batiment?.totalUnits ?? null,
+      amenities: property.amenities,
+      address: property.address,
+      location: {
+        lieudit: parcelle?.Lieu_dit ?? lotissement?.Lieudit ?? null,
+        arrondissement: arrondissement?.Nom_Arrond ?? null,
+        departement: departement?.Nom_Dept ?? null,
+        region: region?.Nom_Reg ?? null,
+      },
+      parcelleId: property.parcelleId,
+      batimentId: property.batimentId,
+      media: allMedia.map((m) => ({
+        id: m.id,
+        url: m.url,
+        type: m.type as "image" | "video",
+        order: m.order ?? 0,
+      })),
+      published: property.published,
+      featured: property.featured,
+      createdAt: property.createdAt.toISOString(),
+      updatedAt: property.updatedAt.toISOString(),
+    };
+
+    return NextResponse.json({
+      success: true,
+      data: transformedProperty,
+    });
+  } catch (error) {
+    console.error("Error fetching property:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch property",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
+
+    if (isNaN(id) || id <= 0) {
+      return NextResponse.json(
+        { success: false, error: "Invalid property ID" },
+        { status: 400 },
+      );
+    }
+
+    const body = await request.json();
+    const {
+      id: _,
+      createdAt,
+      updatedAt,
+      media,
+      parcelle,
+      batiment,
+      location,
+      ...updateData
+    } = body;
+
+    const property = await prisma.property.update({
+      where: { id },
+      data: updateData,
+      include: {
+        media: {
+          orderBy: { order: "asc" },
+        },
+      },
+    });
 
     return NextResponse.json({
       success: true,
       data: property,
     });
   } catch (error) {
-    console.error('Error fetching property:', error);
+    console.error("Error updating property:", error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch property' },
-      { status: 500 }
+      {
+        success: false,
+        error: "Failed to update property",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
     );
   }
 }
 
-// Transform functions (same as in main route)
-function transformLotissement(l: any) {
-  return {
-    id: `lotissement-${l.Id_Lotis}`,
-    numericId: l.Id_Lotis,
-    source: 'lotissement',
-    title: l.Nom_proprio ? `Lotissement ${l.Nom_proprio}` : `Lotissement #${l.Id_Lotis}`,
-    shortDescription: l.shortDescription || `${l.Nbre_lots || 0} lots disponibles`,
-    description: l.description || `Lotissement de ${l.Surface?.toFixed(0) || 'N/A'} m² avec ${l.Nbre_lots || 0} lots`,
-    price: l.price ? Number(l.price) : 0,
-    pricePerSqM: l.pricePerSqM ? Number(l.pricePerSqM) : null,
-    currency: l.currency || 'XAF',
-    type: 'Land',
-    forSale: l.forSale ?? true,
-    forRent: l.forRent ?? false,
-    rentPrice: l.rentPrice ? Number(l.rentPrice) : null,
-    isLandForDevelopment: true,
-    approvedForApartments: null,
-    bedrooms: null,
-    bathrooms: null,
-    kitchens: null,
-    livingRooms: null,
-    hasGenerator: false,
-    hasParking: false,
-    parkingSpaces: null,
-    hasElevator: null,
-    totalUnits: null,
-    floorLevel: null,
-    totalFloors: null,
-    surface: l.Surface,
-    nbreLots: l.Nbre_lots,
-    location: {
-      lieudit: l.Lieudit,
-      arrondissement: l.arrondissement?.Nom_Arrond,
-      departement: l.arrondissement?.departement?.Nom_Dept,
-      region: l.arrondissement?.departement?.region?.Nom_Reg,
-    },
-    imageUrl1: l.Image_URL_1,
-    imageUrl2: l.Image_URL_2,
-    imageUrl3: l.Image_URL_3,
-    imageUrl4: l.Image_URL_4,
-    imageUrl5: l.Image_URL_5,
-    imageUrl6: l.Image_URL_6,
-    videoUrl: l.Video_URL,
-    published: l.published ?? true,
-    featured: l.featured ?? false,
-    createdAt: l.createdAt?.toISOString(),
-    updatedAt: l.updatedAt?.toISOString(),
-    // Related data
-    parcelles: l.parcelles?.map((p: any) => ({
-      id: p.Id_Parcel,
-      name: p.Nom_Prop,
-      surface: p.Sup,
-      batiments: p.batiments?.length || 0,
-    })),
-    _meta: {
-      Num_TF: l.Num_TF,
-      Statut: l.Statut,
-      Date_approb: l.Date_approb,
-      Nom_visa_lotis: l.Nom_visa_lotis,
-    },
-  };
-}
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
 
-function transformParcelle(p: any) {
-  return {
-    id: `parcelle-${p.Id_Parcel}`,
-    numericId: p.Id_Parcel,
-    source: 'parcelle',
-    title: p.Nom_Prop ? `Parcelle ${p.Nom_Prop}` : `Parcelle #${p.Id_Parcel}`,
-    shortDescription: p.shortDescription || `Terrain de ${p.Sup?.toFixed(0) || 'N/A'} m²`,
-    description: p.description || `Parcelle située à ${p.Lieu_dit || 'emplacement non spécifié'}`,
-    price: p.price ? Number(p.price) : 0,
-    pricePerSqM: p.pricePerSqM ? Number(p.pricePerSqM) : null,
-    currency: p.currency || 'XAF',
-    type: 'Land',
-    forSale: p.forSale ?? true,
-    forRent: p.forRent ?? false,
-    rentPrice: p.rentPrice ? Number(p.rentPrice) : null,
-    isLandForDevelopment: true,
-    approvedForApartments: null,
-    bedrooms: null,
-    bathrooms: null,
-    kitchens: null,
-    livingRooms: null,
-    hasGenerator: false,
-    hasParking: false,
-    parkingSpaces: null,
-    hasElevator: null,
-    totalUnits: null,
-    floorLevel: null,
-    totalFloors: null,
-    surface: p.Sup,
-    nbreLots: null,
-    location: {
-      lieudit: p.Lieu_dit,
-      arrondissement: p.lotissement?.arrondissement?.Nom_Arrond,
-      departement: p.lotissement?.arrondissement?.departement?.Nom_Dept,
-      region: p.lotissement?.arrondissement?.departement?.region?.Nom_Reg,
-    },
-    imageUrl1: p.Image_URL_1,
-    imageUrl2: p.Image_URL_2,
-    imageUrl3: p.Image_URL_3,
-    imageUrl4: p.Image_URL_4,
-    imageUrl5: p.Image_URL_5,
-    imageUrl6: p.Image_URL_6,
-    videoUrl: p.Video_URL,
-    published: p.published ?? true,
-    featured: p.featured ?? false,
-    createdAt: p.createdAt?.toISOString(),
-    updatedAt: p.updatedAt?.toISOString(),
-    // Related data
-    batiments: p.batiments?.map((b: any) => ({
-      id: b.Id_Bat,
-      name: b.Nom,
-      type: b.Cat_Bat,
-      bedrooms: b.bedrooms,
-    })),
-    lotissement: p.lotissement ? {
-      id: p.lotissement.Id_Lotis,
-      name: p.lotissement.Nom_proprio,
-    } : null,
-    _meta: {
-      TF_Mere: p.TF_Mere,
-      TF_Cree: p.TF_Cree,
-      Num_lot: p.Num_lot,
-      Mise_Val: p.Mise_Val,
-      Cloture: p.Cloture,
-    },
-  };
-}
+    if (isNaN(id) || id <= 0) {
+      return NextResponse.json(
+        { success: false, error: "Invalid property ID" },
+        { status: 400 },
+      );
+    }
 
-function transformBatiment(b: any) {
-  return {
-    id: `batiment-${b.Id_Bat}`,
-    numericId: b.Id_Bat,
-    source: 'batiment',
-    title: b.Nom || `${b.Cat_Bat || 'Bâtiment'} #${b.Id_Bat}`,
-    shortDescription: b.shortDescription || `${b.Cat_Bat || 'Bâtiment'} - ${b.Type_Usage || 'Usage mixte'}`,
-    description: b.description || `${b.Cat_Bat || 'Bâtiment'} avec ${b.bedrooms || 0} chambres. ${b.Standing ? `Standing: ${b.Standing}` : ''}`,
-    price: b.price ? Number(b.price) : 0,  // NEW: using batiment price
-    pricePerSqM: b.pricePerSqM ? Number(b.pricePerSqM) : null,  // NEW
-    currency: b.currency || 'XAF',
-    type: mapBatimentType(b.Cat_Bat, b.Type_Usage),
-    forSale: b.forSale ?? false,  // NEW: using batiment forSale
-    forRent: b.forRent ?? false,  // NEW: using batiment forRent
-    rentPrice: b.rentPrice ? Number(b.rentPrice) : null,  // NEW
-    isLandForDevelopment: false,
-    approvedForApartments: null,
-    bedrooms: b.bedrooms,
-    bathrooms: b.bathrooms,
-    kitchens: b.kitchens,
-    livingRooms: b.livingRooms,
-    hasGenerator: b.hasGenerator ?? false,
-    hasParking: b.hasParking ?? false,
-    parkingSpaces: b.parkingSpaces,  // NEW
-    hasElevator: b.hasElevator ?? false,  // NEW
-    totalUnits: b.totalUnits,  // NEW
-    floorLevel: null,
-    totalFloors: b.totalFloors,
-    surface: b.parcelle?.Sup,
-    nbreLots: null,
-    location: {
-      lieudit: b.parcelle?.Lieu_dit,
-      arrondissement: b.parcelle?.lotissement?.arrondissement?.Nom_Arrond,
-      departement: b.parcelle?.lotissement?.arrondissement?.departement?.Nom_Dept,
-      region: b.parcelle?.lotissement?.arrondissement?.departement?.region?.Nom_Reg,
-    },
-    imageUrl1: b.Image_URL_1,
-    imageUrl2: b.Image_URL_2,
-    imageUrl3: b.Image_URL_3,
-    imageUrl4: b.Image_URL_4,
-    imageUrl5: b.Image_URL_5,
-    imageUrl6: b.Image_URL_6,
-    videoUrl: b.Video_URL,
-    published: b.published ?? true,  // NEW: using batiment published
-    featured: b.featured ?? false,  // NEW: using batiment featured
-    createdAt: b.createdAt?.toISOString(),
-    updatedAt: b.updatedAt?.toISOString(),
-    parcelle: b.parcelle ? {
-      id: b.parcelle.Id_Parcel,
-      name: b.parcelle.Nom_Prop,
-      surface: b.parcelle.Sup,
-    } : null,
-    _meta: {
-      Standing: b.Standing,
-      Etat_Bat: b.Etat_Bat,
-      No_Permis: b.No_Permis,
-      parkingSpaces: b.parkingSpaces,
-      hasElevator: b.hasElevator,
-      totalUnits: b.totalUnits,
-    },
-  };
-}
+    // Delete associated media first
+    await prisma.media.deleteMany({
+      where: {
+        OR: [{ propertyId: id }, { entityType: "PROPERTY", entityId: id }],
+      },
+    });
 
-function mapBatimentType(catBat: string | null, typeUsage: string | null): string {
-  const cat = (catBat || '').toLowerCase();
-  const usage = (typeUsage || '').toLowerCase();
-  
-  if (cat.includes('villa')) return 'Villa';
-  if (cat.includes('apartment')) return 'Apartment';
-  if (cat.includes('studio')) return 'Studio';
-  if (cat.includes('duplex')) return 'Duplex';
-  if (cat.includes('house') || cat.includes('maison')) return 'House';
-  if (usage.includes('commercial') || cat.includes('shop')) return 'Commercial';
-  if (usage.includes('office')) return 'Office';
-  
-  return 'Building';
+    await prisma.property.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Property deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting property:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to delete property",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
+  }
 }

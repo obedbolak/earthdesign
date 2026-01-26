@@ -28,9 +28,30 @@ import {
   Image as ImageIcon,
   Video,
   RefreshCw,
+  Home,
+  Layers,
+  Play,
+  Images,
+  LucideIcon,
 } from "lucide-react";
 
-const tableConfigs = {
+// Define the type for table config
+interface TableConfig {
+  icon: LucideIcon;
+  color: string;
+  lightColor: string;
+  textColor: string;
+  borderColor: string;
+  hoverBg: string;
+  label: string;
+  fields: string[];
+  hasMedia: boolean;
+  mediaEntityType?: string;
+  mediaForeignKey?: string;
+}
+
+// Table configurations matching the Prisma schema
+const tableConfigs: Record<string, TableConfig> = {
   Region: {
     icon: Map,
     color: "bg-gradient-to-br from-blue-500 to-blue-600",
@@ -40,6 +61,7 @@ const tableConfigs = {
     hoverBg: "hover:bg-blue-50",
     label: "Régions",
     fields: ["Id_Reg", "Nom_Reg", "Sup_Reg", "Chef_lieu_Reg", "WKT_Geometry"],
+    hasMedia: false,
   },
   Departement: {
     icon: MapPin,
@@ -57,6 +79,7 @@ const tableConfigs = {
       "Id_Reg",
       "WKT_Geometry",
     ],
+    hasMedia: false,
   },
   Arrondissement: {
     icon: Flag,
@@ -75,9 +98,10 @@ const tableConfigs = {
       "Id_Dept",
       "WKT_Geometry",
     ],
+    hasMedia: false,
   },
   Lotissement: {
-    icon: Database,
+    icon: Layers,
     color: "bg-gradient-to-br from-purple-500 to-purple-600",
     lightColor: "bg-purple-50",
     textColor: "text-purple-600",
@@ -98,26 +122,12 @@ const tableConfigs = {
       "Lieudit",
       "Echelle",
       "Ccp",
-      "Video_URL",
-      "Image_URL_1",
-      "Image_URL_2",
-      "Image_URL_3",
-      "Image_URL_4",
-      "Image_URL_5",
-      "Image_URL_6",
       "Id_Arrond",
       "WKT_Geometry",
-      "price",
-      "pricePerSqM",
-      "currency",
-      "forSale",
-      "forRent",
-      "rentPrice",
-      "shortDescription",
-      "description",
-      "published",
-      "featured",
     ],
+    hasMedia: true,
+    mediaEntityType: "LOTISSEMENT",
+    mediaForeignKey: "lotissementId",
   },
   Parcelle: {
     icon: MapPin,
@@ -147,26 +157,12 @@ const tableConfigs = {
       "Ccp_N",
       "Mise_Val",
       "Cloture",
-      "Video_URL",
-      "Image_URL_1",
-      "Image_URL_2",
-      "Image_URL_3",
-      "Image_URL_4",
-      "Image_URL_5",
-      "Image_URL_6",
       "Id_Lotis",
       "WKT_Geometry",
-      "price",
-      "pricePerSqM",
-      "currency",
-      "forSale",
-      "forRent",
-      "rentPrice",
-      "shortDescription",
-      "description",
-      "published",
-      "featured",
     ],
+    hasMedia: true,
+    mediaEntityType: "PARCELLE",
+    mediaForeignKey: "parcelleId",
   },
   Batiment: {
     icon: Building2,
@@ -188,36 +184,87 @@ const tableConfigs = {
       "Etat_Bat",
       "Nom",
       "Mat_Bati",
-      "Video_URL",
-      "Image_URL_1",
-      "Image_URL_2",
-      "Image_URL_3",
-      "Image_URL_4",
-      "Image_URL_5",
-      "Image_URL_6",
+      "totalFloors",
+      "totalUnits",
+      "hasElevator",
+      "surfaceArea",
+      "doorNumber",
+      "address",
       "Id_Parcel",
       "WKT_Geometry",
+    ],
+    hasMedia: true,
+    mediaEntityType: "BATIMENT",
+    mediaForeignKey: "batimentId",
+  },
+  Property: {
+    icon: Home,
+    color: "bg-gradient-to-br from-teal-500 to-emerald-600",
+    lightColor: "bg-teal-50",
+    textColor: "text-teal-600",
+    borderColor: "border-teal-300",
+    hoverBg: "hover:bg-teal-50",
+    label: "Properties",
+    fields: [
+      "id",
+      "title",
+      "shortDescription",
+      "description",
+      "price",
+      "priceMin",
+      "priceMax",
+      "pricePerSqM",
+      "currency",
+      "type",
+      "forSale",
+      "forRent",
+      "rentPrice",
+      "isLandForDevelopment",
+      "approvedForApartments",
       "bedrooms",
       "bathrooms",
       "kitchens",
       "livingRooms",
+      "surfaceArea",
+      "floorLevel",
       "totalFloors",
-      "totalUnits",
-      "hasElevator",
+      "doorNumber",
       "hasGenerator",
       "hasParking",
       "parkingSpaces",
-      "price",
-      "pricePerSqM",
-      "currency",
-      "forSale",
-      "forRent",
-      "rentPrice",
-      "shortDescription",
-      "description",
+      "amenities",
+      "address",
+      "parcelleId",
+      "batimentId",
       "published",
       "featured",
     ],
+    hasMedia: true,
+    mediaEntityType: "PROPERTY",
+    mediaForeignKey: "propertyId",
+  },
+  Media: {
+    icon: ImageIcon,
+    color: "bg-gradient-to-br from-pink-500 to-rose-600",
+    lightColor: "bg-pink-50",
+    textColor: "text-pink-600",
+    borderColor: "border-pink-300",
+    hoverBg: "hover:bg-pink-50",
+    label: "Media",
+    fields: [
+      "id",
+      "entityType",
+      "entityId",
+      "url",
+      "type",
+      "order",
+      "propertyId",
+      "lotissementId",
+      "parcelleId",
+      "batimentId",
+      "infrastructureId",
+    ],
+    hasMedia: false,
   },
   Route: {
     icon: Route,
@@ -236,6 +283,7 @@ const tableConfigs = {
       "Mat_Rte",
       "WKT_Geometry",
     ],
+    hasMedia: false,
   },
   Riviere: {
     icon: Droplets,
@@ -253,6 +301,7 @@ const tableConfigs = {
       "Debit_Riv",
       "WKT_Geometry",
     ],
+    hasMedia: false,
   },
   Taxe_immobiliere: {
     icon: DollarSign,
@@ -272,6 +321,7 @@ const tableConfigs = {
       "Date_declaree",
       "Type_taxe",
     ],
+    hasMedia: false,
   },
   Equipement: {
     icon: Lightbulb,
@@ -289,6 +339,7 @@ const tableConfigs = {
       "Mat_Equip",
       "WKT_Geometry",
     ],
+    hasMedia: false,
   },
   Reseau_energetique: {
     icon: Zap,
@@ -306,6 +357,7 @@ const tableConfigs = {
       "Materiau",
       "WKT_Geometry",
     ],
+    hasMedia: false,
   },
   Reseau_en_eau: {
     icon: Droplets,
@@ -323,6 +375,7 @@ const tableConfigs = {
       "Mat_Res",
       "WKT_Geometry",
     ],
+    hasMedia: false,
   },
   Infrastructure: {
     icon: Building2,
@@ -340,15 +393,11 @@ const tableConfigs = {
       "Cycle",
       "Statut_infras",
       "Standing",
-      "Video_URL",
-      "Image_URL_1",
-      "Image_URL_2",
-      "Image_URL_3",
-      "Image_URL_4",
-      "Image_URL_5",
-      "Image_URL_6",
       "WKT_Geometry",
     ],
+    hasMedia: true,
+    mediaEntityType: "INFRASTRUCTURE",
+    mediaForeignKey: "infrastructureId",
   },
   Borne: {
     icon: MapPin,
@@ -359,11 +408,13 @@ const tableConfigs = {
     hoverBg: "hover:bg-pink-50",
     label: "Bornes",
     fields: ["Id_Borne", "coord_x", "coord_y", "coord_z", "WKT_Geometry"],
+    hasMedia: false,
   },
 };
 
 type TableName = keyof typeof tableConfigs;
 
+// ID field mapping for each table
 const idFieldMap: Record<TableName, string> = {
   Region: "Id_Reg",
   Departement: "Id_Dept",
@@ -371,6 +422,8 @@ const idFieldMap: Record<TableName, string> = {
   Lotissement: "Id_Lotis",
   Parcelle: "Id_Parcel",
   Batiment: "Id_Bat",
+  Property: "id",
+  Media: "id",
   Route: "Id_Rte",
   Riviere: "Id_Riv",
   Taxe_immobiliere: "Id_Taxe",
@@ -381,6 +434,7 @@ const idFieldMap: Record<TableName, string> = {
   Borne: "Id_Borne",
 };
 
+// Numeric fields
 const numericFields = new Set([
   "Sup_Reg",
   "Sup_Dept",
@@ -395,17 +449,34 @@ const numericFields = new Set([
   "coord_y",
   "coord_z",
   "price",
+  "priceMin",
+  "priceMax",
   "pricePerSqM",
   "rentPrice",
   "bedrooms",
   "bathrooms",
   "kitchens",
   "livingRooms",
+  "surfaceArea",
+  "floorLevel",
   "totalFloors",
   "totalUnits",
   "parkingSpaces",
+  "order",
+  "entityId",
+  "parcelleId",
+  "batimentId",
+  "propertyId",
+  "lotissementId",
+  "infrastructureId",
+  "Id_Arrond",
+  "Id_Dept",
+  "Id_Reg",
+  "Id_Lotis",
+  "Id_Parcel",
 ]);
 
+// Boolean fields
 const booleanFields = new Set([
   "Taxe_Payee",
   "Mise_Val",
@@ -417,8 +488,578 @@ const booleanFields = new Set([
   "hasElevator",
   "hasGenerator",
   "hasParking",
+  "isLandForDevelopment",
+  "approvedForApartments",
 ]);
 
+// Enum fields with their values
+const enumFields: Record<string, string[]> = {
+  type: [
+    "Apartment",
+    "House",
+    "Villa",
+    "Office",
+    "Commercial",
+    "Land",
+    "Building",
+    "Studio",
+    "Duplex",
+    "ChambreModerne",
+    "Chambre",
+  ],
+  entityType: [
+    "PROPERTY",
+    "LOTISSEMENT",
+    "PARCELLE",
+    "BATIMENT",
+    "INFRASTRUCTURE",
+  ],
+};
+
+// Date fields
+const dateFields = new Set([
+  "Date_approb",
+  "Date_visa",
+  "Date_impl",
+  "Date_declaree",
+  "createdAt",
+  "updatedAt",
+]);
+
+// URL fields (for images/videos)
+const urlFields = new Set(["url"]);
+
+// ============================================
+// MEDIA MODAL COMPONENT WITH ADD/DELETE
+// ============================================
+interface MediaModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  entityType: string;
+  entityId: number;
+  entityName: string;
+  foreignKey?: string;
+}
+
+function MediaModal({
+  isOpen,
+  onClose,
+  entityType,
+  entityId,
+  entityName,
+  foreignKey,
+}: MediaModalProps) {
+  const [media, setMedia] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+
+  // Add media form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addingMedia, setAddingMedia] = useState(false);
+  const [newMediaUrl, setNewMediaUrl] = useState("");
+  const [newMediaType, setNewMediaType] = useState<"image" | "video">("image");
+
+  useEffect(() => {
+    if (isOpen && entityType && entityId) {
+      fetchMedia();
+    }
+  }, [isOpen, entityType, entityId]);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setShowAddForm(false);
+      setNewMediaUrl("");
+      setNewMediaType("image");
+    }
+  }, [isOpen]);
+
+  const fetchMedia = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/data/Media?entityType=${entityType}&entityId=${entityId}`,
+      );
+      if (!res.ok) throw new Error("Failed to fetch media");
+      const json = await res.json();
+      setMedia(json.data || []);
+    } catch (err) {
+      console.error("Error fetching media:", err);
+      setError("Failed to load media");
+      setMedia([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteMedia = async (mediaId: number) => {
+    if (!confirm("Are you sure you want to delete this media?")) return;
+
+    setDeleting(mediaId);
+    try {
+      const res = await fetch(`/api/data/Media/${mediaId}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to delete");
+      }
+
+      // Remove from local state
+      setMedia((prev) => prev.filter((m) => m.id !== mediaId));
+    } catch (err) {
+      console.error("Error deleting media:", err);
+      alert("Failed to delete media");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleAddMedia = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newMediaUrl.trim()) {
+      alert("Please enter a URL");
+      return;
+    }
+
+    // Basic URL validation
+    try {
+      new URL(newMediaUrl);
+    } catch {
+      alert("Please enter a valid URL");
+      return;
+    }
+
+    setAddingMedia(true);
+    try {
+      // Build the request body with the correct foreign key
+      const body: any = {
+        entityType,
+        entityId,
+        url: newMediaUrl.trim(),
+        type: newMediaType,
+      };
+
+      // Add the specific foreign key based on entity type
+      if (foreignKey) {
+        body[foreignKey] = entityId;
+      }
+
+      const res = await fetch("/api/data/Media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to add media");
+      }
+
+      const json = await res.json();
+
+      // Add to local state
+      setMedia((prev) => [...prev, json.data]);
+
+      // Reset form
+      setNewMediaUrl("");
+      setNewMediaType("image");
+      setShowAddForm(false);
+    } catch (err) {
+      console.error("Error adding media:", err);
+      alert(err instanceof Error ? err.message : "Failed to add media");
+    } finally {
+      setAddingMedia(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const images = media.filter((m) => m.type === "image");
+  const videos = media.filter((m) => m.type === "video");
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative min-h-screen flex items-center justify-center p-4">
+        <div
+          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <Images className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Media Gallery</h2>
+                <p className="text-white/80 text-sm">
+                  {entityName} • {entityType}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Add Media Button */}
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                  ${
+                    showAddForm
+                      ? "bg-white text-purple-600"
+                      : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
+              >
+                {showAddForm ? (
+                  <>
+                    <X className="w-4 h-4" />
+                    Cancel
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Add Media
+                  </>
+                )}
+              </button>
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
+          </div>
+
+          {/* Add Media Form */}
+          {showAddForm && (
+            <div className="bg-purple-50 border-b border-purple-100 px-6 py-4">
+              <form onSubmit={handleAddMedia} className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {/* URL Input */}
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Media URL
+                    </label>
+                    <input
+                      type="url"
+                      value={newMediaUrl}
+                      onChange={(e) => setNewMediaUrl(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
+                               focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500
+                               text-gray-800 text-sm"
+                      required
+                    />
+                  </div>
+
+                  {/* Type Selection */}
+                  <div className="sm:w-40">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Type
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setNewMediaType("image")}
+                        className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                          ${
+                            newMediaType === "image"
+                              ? "bg-purple-600 text-white ring-2 ring-purple-300"
+                              : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                          }`}
+                      >
+                        <ImageIcon className="w-4 h-4" />
+                        Image
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewMediaType("video")}
+                        className={`flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                          ${
+                            newMediaType === "video"
+                              ? "bg-red-600 text-white ring-2 ring-red-300"
+                              : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                          }`}
+                      >
+                        <Video className="w-4 h-4" />
+                        Video
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preview & Submit */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+                  {/* URL Preview */}
+                  {newMediaUrl && (
+                    <div className="flex-1">
+                      <p className="text-xs text-gray-500 mb-1">Preview:</p>
+                      {newMediaType === "image" ? (
+                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-purple-200 bg-gray-100">
+                          <img
+                            src={newMediaUrl}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display =
+                                "none";
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm">
+                          <Play className="w-4 h-4" />
+                          <span className="truncate max-w-[200px]">
+                            {newMediaUrl}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={addingMedia || !newMediaUrl.trim()}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-purple-600 text-white rounded-lg 
+                             text-sm font-semibold hover:bg-purple-700 transition-colors
+                             disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-200"
+                  >
+                    {addingMedia ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="w-4 h-4" />
+                        Add {newMediaType === "image" ? "Image" : "Video"}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
+                <p className="text-gray-500 mt-3">Loading media...</p>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <AlertCircle className="w-12 h-12 text-red-400" />
+                <p className="text-red-600 mt-3 font-medium">{error}</p>
+                <button
+                  onClick={fetchMedia}
+                  className="mt-4 px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : media.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                  <ImageIcon className="w-10 h-10 text-gray-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  No Media Found
+                </h3>
+                <p className="text-gray-500 text-sm mt-1 text-center max-w-sm">
+                  No images or videos have been added to this{" "}
+                  {entityType.toLowerCase()} yet.
+                </p>
+                <button
+                  onClick={() => setShowAddForm(true)}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg 
+                           text-sm font-medium hover:bg-purple-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add First Media
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Images Section */}
+                {images.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <ImageIcon className="w-5 h-5 text-purple-600" />
+                      <h3 className="text-base font-semibold text-gray-800">
+                        Images ({images.length})
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {images.map((img, idx) => (
+                        <div
+                          key={img.id || idx}
+                          className="group relative aspect-square rounded-xl overflow-hidden 
+                                   border-2 border-gray-100 hover:border-purple-400 
+                                   transition-all shadow-sm hover:shadow-lg"
+                        >
+                          <a
+                            href={img.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block w-full h-full"
+                          >
+                            <img
+                              src={img.url}
+                              alt={`Image ${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </a>
+
+                          {/* Overlay with actions */}
+                          <div
+                            className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent 
+                                      opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+                              <span className="text-white text-xs font-medium bg-black/40 px-2 py-0.5 rounded">
+                                #{img.order ?? idx + 1}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <a
+                                  href={img.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="p-1.5 bg-white/90 rounded-lg hover:bg-white transition-colors"
+                                  title="Open in new tab"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5 text-gray-700" />
+                                </a>
+                                <button
+                                  onClick={() => handleDeleteMedia(img.id)}
+                                  disabled={deleting === img.id}
+                                  className="p-1.5 bg-red-500 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                                  title="Delete"
+                                >
+                                  {deleting === img.id ? (
+                                    <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-3.5 h-3.5 text-white" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {idx === 0 && (
+                            <div
+                              className="absolute top-2 left-2 px-2 py-0.5 bg-purple-600 text-white 
+                                        text-[10px] font-bold rounded-full shadow"
+                            >
+                              COVER
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Videos Section */}
+                {videos.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Video className="w-5 h-5 text-red-500" />
+                      <h3 className="text-base font-semibold text-gray-800">
+                        Videos ({videos.length})
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {videos.map((vid, idx) => (
+                        <div
+                          key={vid.id || idx}
+                          className="group flex items-center gap-4 p-4 bg-gradient-to-r from-red-50 to-orange-50 
+                                   rounded-xl border border-red-100 hover:border-red-300 
+                                   transition-all hover:shadow-md"
+                        >
+                          <a
+                            href={vid.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-14 h-14 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl 
+                                      flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg shrink-0"
+                          >
+                            <Play className="w-6 h-6 text-white ml-0.5" />
+                          </a>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-800">
+                              Video {idx + 1}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate mt-0.5">
+                              {vid.url}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <a
+                              href={vid.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+                              title="Open in new tab"
+                            >
+                              <ExternalLink className="w-4 h-4 text-gray-600" />
+                            </a>
+                            <button
+                              onClick={() => handleDeleteMedia(vid.id)}
+                              disabled={deleting === vid.id}
+                              className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
+                              title="Delete"
+                            >
+                              {deleting === vid.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Summary */}
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between text-sm text-gray-500">
+                    <span>
+                      Total: {media.length} file{media.length !== 1 ? "s" : ""}
+                    </span>
+                    <span>
+                      {images.length} image{images.length !== 1 ? "s" : ""},{" "}
+                      {videos.length} video{videos.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 export default function DataManagement() {
   const [selectedTable, setSelectedTable] = useState<TableName | null>(null);
   const [data, setData] = useState<any[]>([]);
@@ -427,23 +1068,20 @@ export default function DataManagement() {
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Record<string, any>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [tableCounts, setTableCounts] = useState<Record<TableName, number>>({
-    Region: 0,
-    Departement: 0,
-    Arrondissement: 0,
-    Lotissement: 0,
-    Parcelle: 0,
-    Batiment: 0,
-    Route: 0,
-    Riviere: 0,
-    Taxe_immobiliere: 0,
-    Equipement: 0,
-    Reseau_energetique: 0,
-    Reseau_en_eau: 0,
-    Infrastructure: 0,
-    Borne: 0,
-  });
+  const [tableCounts, setTableCounts] = useState<Record<TableName, number>>(
+    {} as Record<TableName, number>,
+  );
 
+  // Media modal state
+  const [mediaModalOpen, setMediaModalOpen] = useState(false);
+  const [mediaModalData, setMediaModalData] = useState<{
+    entityType: string;
+    entityId: number;
+    entityName: string;
+    foreignKey?: string;
+  } | null>(null);
+
+  // Reset state when table changes
   useEffect(() => {
     setExpandedRow(null);
     setEditingRowIndex(null);
@@ -451,11 +1089,11 @@ export default function DataManagement() {
     setSearchQuery("");
   }, [selectedTable]);
 
+  // Fetch data when table is selected
   useEffect(() => {
     if (selectedTable) {
       fetchData(selectedTable);
     } else {
-      // Fetch counts for all tables when viewing table selection
       fetchAllTableCounts();
     }
   }, [selectedTable]);
@@ -463,7 +1101,6 @@ export default function DataManagement() {
   const fetchAllTableCounts = async () => {
     const tables = Object.keys(tableConfigs) as TableName[];
 
-    // Fetch ALL tables in parallel
     const results = await Promise.all(
       tables.map(async (table) => {
         try {
@@ -480,7 +1117,6 @@ export default function DataManagement() {
       }),
     );
 
-    // Convert results array back to object
     const counts: Record<TableName, number> = results.reduce(
       (acc, { table, count }) => {
         acc[table] = count;
@@ -515,6 +1151,47 @@ export default function DataManagement() {
     return id != null ? Number(id) : null;
   };
 
+  // Get display name for an entity
+  const getEntityName = (item: any, table: TableName): string => {
+    const nameFields: Record<string, string[]> = {
+      Lotissement: ["Nom_proprio", "Lieudit", "Num_TF"],
+      Parcelle: ["Nom_Prop", "Lieu_dit", "Num_lot"],
+      Batiment: ["Nom", "Type_Usage", "Cat_Bat"],
+      Property: ["title", "shortDescription"],
+      Infrastructure: ["Nom_infras", "Type_Infraas"],
+    };
+
+    const fields = nameFields[table] || [];
+    for (const field of fields) {
+      if (item[field]) return String(item[field]);
+    }
+
+    const id = getRowId(item);
+    return `${table} #${id}`;
+  };
+
+  // Open media modal
+  const handleOpenMedia = (item: any) => {
+    if (!selectedTable) return;
+
+    const config = tableConfigs[selectedTable];
+    if (!config.hasMedia || !config.mediaEntityType) return;
+
+    const id = getRowId(item);
+    if (id == null) {
+      alert("Cannot view media: missing database ID");
+      return;
+    }
+
+    setMediaModalData({
+      entityType: config.mediaEntityType,
+      entityId: id,
+      entityName: getEntityName(item, selectedTable),
+      foreignKey: config.mediaForeignKey, // Add this
+    });
+    setMediaModalOpen(true);
+  };
+
   const handleViewToggle = (index: number) =>
     setExpandedRow(expandedRow === index ? null : index);
 
@@ -543,18 +1220,24 @@ export default function DataManagement() {
 
     for (const field of fields) {
       const value = editForm[field];
-      if (value === "" || value == null) processedForm[field] = null;
-      else if (numericFields.has(field)) {
+
+      if (value === "" || value == null) {
+        processedForm[field] = null;
+      } else if (numericFields.has(field)) {
         const num = parseFloat(value);
         processedForm[field] = isNaN(num) ? null : num;
       } else if (booleanFields.has(field)) {
         processedForm[field] =
           value === true || value === "true" || value === "1";
-      } else processedForm[field] = value;
+      } else if (dateFields.has(field)) {
+        processedForm[field] = value ? new Date(value).toISOString() : null;
+      } else {
+        processedForm[field] = value;
+      }
     }
 
     const idField = idFieldMap[selectedTable];
-    const { [idField]: _, ...updateData } = processedForm;
+    const { [idField]: _, createdAt, updatedAt, ...updateData } = processedForm;
 
     try {
       const res = await fetch(`/api/data/${selectedTable}/${id}`, {
@@ -567,7 +1250,10 @@ export default function DataManagement() {
         setEditingRowIndex(null);
         setEditForm({});
         setExpandedRow(null);
-      } else alert("Update failed");
+      } else {
+        const error = await res.json();
+        alert(`Update failed: ${error.error || "Unknown error"}`);
+      }
     } catch {
       alert("Update failed");
     }
@@ -591,20 +1277,30 @@ export default function DataManagement() {
       const res = await fetch(`/api/data/${selectedTable!}/${id}`, {
         method: "DELETE",
       });
-      if (res.ok) setData((prev) => prev.filter((_, i) => i !== index));
-      else alert("Delete failed");
+      if (res.ok) {
+        setData((prev) => prev.filter((_, i) => i !== index));
+      } else {
+        const error = await res.json();
+        alert(`Delete failed: ${error.error || "Unknown error"}`);
+      }
     } catch {
       alert("Delete failed");
     }
   };
 
   const getFieldType = (field: string) => {
-    if (field.startsWith("Image_URL")) return "image";
-    if (field === "Video_URL") return "video";
+    if (urlFields.has(field)) return "url";
     if (field === "WKT_Geometry") return "geometry";
     if (booleanFields.has(field)) return "boolean";
     if (numericFields.has(field)) return "number";
-    if (field.includes("description") || field.includes("Description"))
+    if (dateFields.has(field)) return "date";
+    if (enumFields[field]) return "enum";
+    if (
+      field.includes("description") ||
+      field.includes("Description") ||
+      field === "amenities" ||
+      field === "address"
+    )
       return "text";
     return "string";
   };
@@ -617,49 +1313,43 @@ export default function DataManagement() {
     const fieldType = getFieldType(field);
 
     if (
-      fieldType === "image" &&
+      fieldType === "url" &&
       typeof value === "string" &&
       value.startsWith("http")
     ) {
-      return (
-        <a
-          href={value}
-          target="_blank"
-          rel="noreferrer"
-          className="group relative inline-block"
-        >
-          <img
-            src={value}
-            alt={field}
-            className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-cover rounded-lg border-2 border-gray-200 
-                       group-hover:border-teal-400 transition-all shadow-sm"
-          />
-          <div
-            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 
-                          transition-opacity rounded-lg flex items-center justify-center"
+      if (value.match(/\.(jpg|jpeg|png|gif|webp)/i)) {
+        return (
+          <a
+            href={value}
+            target="_blank"
+            rel="noreferrer"
+            className="group relative inline-block"
           >
-            <ExternalLink className="w-4 h-4 text-white" />
-          </div>
-        </a>
-      );
-    }
-
-    if (
-      fieldType === "video" &&
-      typeof value === "string" &&
-      value.startsWith("http")
-    ) {
+            <img
+              src={value}
+              alt={field}
+              className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-cover rounded-lg border-2 border-gray-200 
+                         group-hover:border-teal-400 transition-all shadow-sm"
+            />
+            <div
+              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 
+                            transition-opacity rounded-lg flex items-center justify-center"
+            >
+              <ExternalLink className="w-4 h-4 text-white" />
+            </div>
+          </a>
+        );
+      }
       return (
         <a
           href={value}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-50 text-red-600 
-                     rounded-lg hover:bg-red-100 transition-colors text-xs font-medium"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 text-blue-600 
+                     rounded-lg hover:bg-blue-100 transition-colors text-xs font-medium"
         >
-          <Video className="w-3.5 h-3.5" />
-          Watch
-          <ExternalLink className="w-3 h-3" />
+          <ExternalLink className="w-3.5 h-3.5" />
+          Open
         </a>
       );
     }
@@ -670,13 +1360,51 @@ export default function DataManagement() {
       return (
         <span
           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-          ${
-            isTrue ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-          }`}
+          ${isTrue ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
         >
           {isTrue ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
           {isTrue ? "Yes" : "No"}
         </span>
+      );
+    }
+
+    if (fieldType === "date" && value) {
+      try {
+        return (
+          <span className="text-gray-800 text-sm">
+            {new Date(value).toLocaleDateString()}
+          </span>
+        );
+      } catch {
+        return <span className="text-gray-800 text-sm">{String(value)}</span>;
+      }
+    }
+
+    if (fieldType === "enum") {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+          {String(value)}
+        </span>
+      );
+    }
+
+    if (fieldType === "number" && typeof value === "number") {
+      if (value >= 1000000) {
+        return (
+          <span className="text-gray-800 text-sm font-medium">
+            {(value / 1000000).toFixed(1)}M
+          </span>
+        );
+      }
+      if (value >= 1000) {
+        return (
+          <span className="text-gray-800 text-sm font-medium">
+            {(value / 1000).toFixed(1)}K
+          </span>
+        );
+      }
+      return (
+        <span className="text-gray-800 text-sm">{value.toLocaleString()}</span>
       );
     }
 
@@ -699,7 +1427,6 @@ export default function DataManagement() {
   if (!selectedTable) {
     return (
       <div className="flex flex-col h-full w-full">
-        {/* Header - Sticky */}
         <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0">
           <div className="px-4 sm:px-6 py-4 sm:py-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -719,11 +1446,12 @@ export default function DataManagement() {
           </div>
         </div>
 
-        {/* Cards Grid - Full Width */}
         <div className="flex-1 overflow-auto p-4 sm:p-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
             {Object.entries(tableConfigs).map(([key, cfg]) => {
               const Icon = cfg.icon;
+              const count = tableCounts[key as TableName] ?? 0;
+
               return (
                 <button
                   key={key}
@@ -734,8 +1462,7 @@ export default function DataManagement() {
                              hover:-translate-y-0.5 active:translate-y-0
                              flex flex-col"
                 >
-                  {/* Gradient Header */}
-                  <div className={`${cfg.color} p-3 sm:p-4`}>
+                  <div className={`${cfg.color} p-3 sm:p-4 relative`}>
                     <div
                       className="w-9 h-9 sm:w-11 sm:h-11 bg-white/20 backdrop-blur-sm 
                                     rounded-lg flex items-center justify-center
@@ -743,16 +1470,20 @@ export default function DataManagement() {
                     >
                       <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     </div>
+                    {/* Media indicator */}
+                    {cfg.hasMedia && (
+                      <div className="absolute top-2 right-2">
+                        <Images className="w-3.5 h-3.5 text-white/70" />
+                      </div>
+                    )}
                   </div>
 
-                  {/* Content */}
                   <div className="p-3 sm:p-4 flex-1 flex flex-col">
                     <h3 className="text-xs sm:text-sm font-semibold text-gray-800 line-clamp-2 leading-tight">
                       {cfg.label}
                     </h3>
                     <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
-                      {tableCounts[key as TableName] ?? 0} record
-                      {(tableCounts[key as TableName] ?? 0) !== 1 ? "s" : ""}
+                      {count} record{count !== 1 ? "s" : ""}
                     </p>
                   </div>
                 </button>
@@ -768,13 +1499,28 @@ export default function DataManagement() {
   const Icon = config.icon;
 
   // ------------------------------------------------
-  // TABLE DATA VIEW - FULL WIDTH
+  // TABLE DATA VIEW
   // ------------------------------------------------
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="flex flex-col h-full w-full">
+      {/* Media Modal */}
+      {/* Media Modal */}
+      {mediaModalData && (
+        <MediaModal
+          isOpen={mediaModalOpen}
+          onClose={() => {
+            setMediaModalOpen(false);
+            setMediaModalData(null);
+          }}
+          entityType={mediaModalData.entityType}
+          entityId={mediaModalData.entityId}
+          entityName={mediaModalData.entityName}
+          foreignKey={mediaModalData.foreignKey}
+        />
+      )}
+
       {/* Sticky Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shrink-0">
-        {/* Back Button */}
         <div className="px-4 sm:px-6 py-2 border-b border-gray-100">
           <button
             onClick={() => setSelectedTable(null)}
@@ -786,10 +1532,8 @@ export default function DataManagement() {
           </button>
         </div>
 
-        {/* Title + Controls */}
         <div className="px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            {/* Title */}
             <div className="flex items-center gap-3 min-w-0">
               <div
                 className={`${config.color} p-2 sm:p-2.5 rounded-xl shadow-lg shrink-0`}
@@ -797,9 +1541,17 @@ export default function DataManagement() {
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
-                  {config.label}
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
+                    {config.label}
+                  </h1>
+                  {config.hasMedia && (
+                    <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-[10px] font-medium rounded-full flex items-center gap-1">
+                      <Images className="w-3 h-3" />
+                      Media
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs sm:text-sm text-gray-500">
                   {searchQuery
                     ? `${filteredData.length} of ${data.length}`
@@ -809,9 +1561,7 @@ export default function DataManagement() {
               </div>
             </div>
 
-            {/* Search + Actions */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
-              {/* Search */}
               <div className="relative flex-1 lg:flex-none lg:w-56 xl:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -833,7 +1583,6 @@ export default function DataManagement() {
                 )}
               </div>
 
-              {/* Refresh + Add */}
               <div className="flex gap-2">
                 <button
                   onClick={() => fetchData(selectedTable)}
@@ -862,7 +1611,7 @@ export default function DataManagement() {
         </div>
       </div>
 
-      {/* Content Area - Full Width Scrollable */}
+      {/* Content Area */}
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         {loading ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-12 text-center">
@@ -894,21 +1643,12 @@ export default function DataManagement() {
             )}
           </div>
         ) : (
-          /* Records List - FULL WIDTH */
           <div className="space-y-3">
             {filteredData.map((item, index) => {
               const id = getRowId(item);
               const isExpanded = expandedRow === index;
               const isEditing = editingRowIndex === index;
               const idField = idFieldMap[selectedTable];
-              // Show more fields on larger screens
-              const summaryFieldsCount =
-                typeof window !== "undefined" && window.innerWidth >= 1280
-                  ? 6
-                  : typeof window !== "undefined" && window.innerWidth >= 768
-                    ? 5
-                    : 3;
-              const summaryFields = config.fields.slice(0, summaryFieldsCount);
 
               return (
                 <div
@@ -923,9 +1663,7 @@ export default function DataManagement() {
                   {/* COLLAPSED VIEW */}
                   {!isExpanded && (
                     <div className="p-3 sm:p-4 lg:p-5">
-                      {/* Mobile: Stack | Desktop: Row */}
                       <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4">
-                        {/* Summary Fields - Responsive Grid */}
                         <div className="flex-1 min-w-0">
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-2">
                             {config.fields.slice(0, 6).map((f, fIndex) => (
@@ -942,34 +1680,34 @@ export default function DataManagement() {
                                 <p className="text-[10px] text-gray-400 uppercase tracking-wider font-medium truncate">
                                   {f.replace(/_/g, " ")}
                                 </p>
-                                <p className="text-xs sm:text-sm font-medium text-gray-800 truncate mt-0.5">
-                                  {booleanFields.has(f) ? (
-                                    <span
-                                      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px]
-                                      ${
-                                        item[f]
-                                          ? "bg-green-100 text-green-700"
-                                          : "bg-gray-100 text-gray-500"
-                                      }`}
-                                    >
-                                      {item[f] ? (
-                                        <Check className="w-2.5 h-2.5" />
-                                      ) : (
-                                        <X className="w-2.5 h-2.5" />
-                                      )}
-                                      {item[f] ? "Yes" : "No"}
-                                    </span>
-                                  ) : (
-                                    String(item[f] ?? "—")
-                                  )}
-                                </p>
+                                <div className="mt-0.5">
+                                  {renderCellValue(item[f], f)}
+                                </div>
                               </div>
                             ))}
                           </div>
                         </div>
 
-                        {/* Actions - Always visible */}
+                        {/* Actions */}
                         <div className="flex items-center justify-between lg:justify-end gap-2 pt-2 lg:pt-0 border-t lg:border-0 border-gray-100 shrink-0">
+                          {/* MEDIA BUTTON - Only for tables with media */}
+                          {config.hasMedia && config.mediaEntityType && (
+                            <button
+                              onClick={() => handleOpenMedia(item)}
+                              disabled={id == null}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
+                                        text-xs sm:text-sm font-medium transition-colors
+                                        ${
+                                          id != null
+                                            ? "bg-purple-50 text-purple-600 hover:bg-purple-100"
+                                            : "bg-gray-50 text-gray-400 cursor-not-allowed"
+                                        }`}
+                            >
+                              <Images className="w-3.5 h-3.5" />
+                              <span>Media</span>
+                            </button>
+                          )}
+
                           <button
                             onClick={() => handleViewToggle(index)}
                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg
@@ -985,11 +1723,7 @@ export default function DataManagement() {
                               onClick={() => handleEdit(item, index)}
                               disabled={id == null}
                               className={`p-2 rounded-lg transition-colors
-                                ${
-                                  id != null
-                                    ? "text-blue-600 hover:bg-blue-50"
-                                    : "text-gray-300 cursor-not-allowed"
-                                }`}
+                                ${id != null ? "text-blue-600 hover:bg-blue-50" : "text-gray-300 cursor-not-allowed"}`}
                               title="Edit"
                             >
                               <Edit className="w-4 h-4" />
@@ -998,11 +1732,7 @@ export default function DataManagement() {
                               onClick={() => handleDelete(index)}
                               disabled={id == null}
                               className={`p-2 rounded-lg transition-colors
-                                ${
-                                  id != null
-                                    ? "text-red-600 hover:bg-red-50"
-                                    : "text-gray-300 cursor-not-allowed"
-                                }`}
+                                ${id != null ? "text-red-600 hover:bg-red-50" : "text-gray-300 cursor-not-allowed"}`}
                               title="Delete"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1013,40 +1743,51 @@ export default function DataManagement() {
                     </div>
                   )}
 
-                  {/* EXPANDED VIEW - FULL WIDTH */}
+                  {/* EXPANDED VIEW */}
                   {isExpanded && (
                     <div className="w-full">
-                      {/* Colored Header Bar */}
                       <div
-                        className={`${config.color} px-4 sm:px-5 py-3 
-                          flex flex-wrap items-center justify-between gap-2`}
+                        className={`${config.color} px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2`}
                       >
                         <button
                           onClick={() => handleViewToggle(index)}
-                          className="inline-flex items-center gap-1.5 text-white/90 hover:text-white 
-                                   transition-colors text-sm font-medium"
+                          className="inline-flex items-center gap-1.5 text-white/90 hover:text-white transition-colors text-sm font-medium"
                         >
                           <ChevronUp className="w-4 h-4" />
                           <span>Collapse</span>
                         </button>
 
                         <div className="flex items-center gap-2 flex-wrap">
+                          {/* MEDIA BUTTON in expanded view */}
+                          {config.hasMedia && config.mediaEntityType && (
+                            <button
+                              onClick={() => handleOpenMedia(item)}
+                              disabled={id == null}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 
+                                        bg-white rounded-lg text-sm font-medium transition-colors shadow-sm
+                                        ${
+                                          id != null
+                                            ? "text-purple-600 hover:bg-purple-50"
+                                            : "text-gray-400 cursor-not-allowed"
+                                        }`}
+                            >
+                              <Images className="w-4 h-4" />
+                              <span>View Media</span>
+                            </button>
+                          )}
+
                           {isEditing ? (
                             <>
                               <button
                                 onClick={handleSave}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 
-                                         bg-white text-green-600 rounded-lg text-sm font-medium
-                                         hover:bg-green-50 transition-colors shadow-sm"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-green-600 rounded-lg text-sm font-medium hover:bg-green-50 transition-colors shadow-sm"
                               >
                                 <Check className="w-4 h-4" />
                                 <span>Save</span>
                               </button>
                               <button
                                 onClick={handleCancel}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 
-                                         bg-white/20 text-white rounded-lg text-sm font-medium
-                                         hover:bg-white/30 transition-colors"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 text-white rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"
                               >
                                 <X className="w-4 h-4" />
                                 <span>Cancel</span>
@@ -1057,13 +1798,8 @@ export default function DataManagement() {
                               <button
                                 onClick={() => handleEdit(item, index)}
                                 disabled={id == null}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 
-                                          bg-white rounded-lg text-sm font-medium transition-colors shadow-sm
-                                          ${
-                                            id != null
-                                              ? "text-blue-600 hover:bg-blue-50"
-                                              : "text-gray-400 cursor-not-allowed"
-                                          }`}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-white rounded-lg text-sm font-medium transition-colors shadow-sm
+                                  ${id != null ? "text-blue-600 hover:bg-blue-50" : "text-gray-400 cursor-not-allowed"}`}
                               >
                                 <Edit className="w-4 h-4" />
                                 <span>Edit</span>
@@ -1071,13 +1807,8 @@ export default function DataManagement() {
                               <button
                                 onClick={() => handleDelete(index)}
                                 disabled={id == null}
-                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 
-                                          bg-white/20 rounded-lg text-sm font-medium transition-colors
-                                          ${
-                                            id != null
-                                              ? "text-white hover:bg-white/30"
-                                              : "text-white/50 cursor-not-allowed"
-                                          }`}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 rounded-lg text-sm font-medium transition-colors
+                                  ${id != null ? "text-white hover:bg-white/30" : "text-white/50 cursor-not-allowed"}`}
                               >
                                 <Trash2 className="w-4 h-4" />
                                 <span>Delete</span>
@@ -1087,17 +1818,15 @@ export default function DataManagement() {
                         </div>
                       </div>
 
-                      {/* Fields Grid - FULL WIDTH RESPONSIVE */}
+                      {/* Fields Grid */}
                       <div className="p-4 sm:p-5 lg:p-6 w-full">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-5 w-full">
                           {config.fields.map((field) => {
-                            const isGeometry = field === "WKT_Geometry";
                             const fieldType = getFieldType(field);
+                            const isGeometry = field === "WKT_Geometry";
                             const isLongText =
                               fieldType === "text" || isGeometry;
-                            const isImageField = fieldType === "image";
 
-                            // Make long text fields span full width
                             let colSpan = "";
                             if (isLongText) {
                               colSpan =
@@ -1106,13 +1835,9 @@ export default function DataManagement() {
 
                             return (
                               <div key={field} className={`${colSpan} w-full`}>
-                                {/* Label */}
                                 <div className="flex items-center gap-1.5 mb-2">
-                                  {fieldType === "image" && (
+                                  {fieldType === "url" && (
                                     <ImageIcon className="w-3.5 h-3.5 text-purple-500" />
-                                  )}
-                                  {fieldType === "video" && (
-                                    <Video className="w-3.5 h-3.5 text-red-500" />
                                   )}
                                   {isGeometry && (
                                     <Map className="w-3.5 h-3.5 text-teal-500" />
@@ -1130,9 +1855,12 @@ export default function DataManagement() {
                                   )}
                                 </div>
 
-                                {/* Value/Input */}
                                 <div className="w-full">
-                                  {isEditing && field !== idField ? (
+                                  {isEditing &&
+                                  field !== idField &&
+                                  !["createdAt", "updatedAt"].includes(
+                                    field,
+                                  ) ? (
                                     booleanFields.has(field) ? (
                                       <button
                                         type="button"
@@ -1142,13 +1870,8 @@ export default function DataManagement() {
                                             [field]: !editForm[field],
                                           })
                                         }
-                                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg 
-                                                  font-medium text-sm transition-all
-                                                  ${
-                                                    editForm[field]
-                                                      ? "bg-green-100 text-green-700 ring-2 ring-green-200"
-                                                      : "bg-gray-100 text-gray-600"
-                                                  }`}
+                                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all
+                                          ${editForm[field] ? "bg-green-100 text-green-700 ring-2 ring-green-200" : "bg-gray-100 text-gray-600"}`}
                                       >
                                         {editForm[field] ? (
                                           <Check className="w-4 h-4" />
@@ -1157,6 +1880,24 @@ export default function DataManagement() {
                                         )}
                                         {editForm[field] ? "Yes" : "No"}
                                       </button>
+                                    ) : enumFields[field] ? (
+                                      <select
+                                        value={editForm[field] ?? ""}
+                                        onChange={(e) =>
+                                          setEditForm({
+                                            ...editForm,
+                                            [field]: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-800 text-sm"
+                                      >
+                                        <option value="">Select...</option>
+                                        {enumFields[field].map((opt) => (
+                                          <option key={opt} value={opt}>
+                                            {opt}
+                                          </option>
+                                        ))}
+                                      </select>
                                     ) : isLongText ? (
                                       <textarea
                                         rows={isGeometry ? 4 : 3}
@@ -1167,14 +1908,26 @@ export default function DataManagement() {
                                             [field]: e.target.value,
                                           })
                                         }
-                                        className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg
-                                                  focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500
-                                                  text-gray-800 text-sm resize-y
-                                                  ${
-                                                    isGeometry
-                                                      ? "font-mono text-xs bg-gray-50"
-                                                      : ""
-                                                  }`}
+                                        className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-800 text-sm resize-y
+                                          ${isGeometry ? "font-mono text-xs bg-gray-50" : ""}`}
+                                      />
+                                    ) : dateFields.has(field) ? (
+                                      <input
+                                        type="date"
+                                        value={
+                                          editForm[field]
+                                            ? new Date(editForm[field])
+                                                .toISOString()
+                                                .split("T")[0]
+                                            : ""
+                                        }
+                                        onChange={(e) =>
+                                          setEditForm({
+                                            ...editForm,
+                                            [field]: e.target.value,
+                                          })
+                                        }
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-800 text-sm"
                                       />
                                     ) : (
                                       <input
@@ -1195,18 +1948,12 @@ export default function DataManagement() {
                                             [field]: e.target.value,
                                           })
                                         }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg
-                                                 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500
-                                                 text-gray-800 text-sm"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-800 text-sm"
                                       />
                                     )
                                   ) : (
                                     <div
-                                      className={`w-full ${
-                                        isGeometry
-                                          ? "font-mono text-xs bg-gray-100 p-3 rounded-lg overflow-x-auto max-h-32 scrollbar-thin"
-                                          : ""
-                                      }`}
+                                      className={`w-full ${isGeometry ? "font-mono text-xs bg-gray-100 p-3 rounded-lg overflow-x-auto max-h-32" : ""}`}
                                     >
                                       {renderCellValue(item[field], field)}
                                     </div>

@@ -1,7 +1,7 @@
 // app/property/[id]/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -39,19 +39,23 @@ import {
   TreePine,
   Layers,
   Grid3X3,
+  Utensils,
+  Sofa,
+  DoorOpen,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import {
   useProperty,
   useProperties,
-  UnifiedProperty,
+  Property,
   formatPrice,
   formatPriceCompact,
   formatArea,
   getPropertyImages,
+  getPropertyVideo,
   getPropertyLocation,
-  getSourceLabel,
-  getSourceColor,
+  getTypeLabel,
   getSimilarProperties,
 } from "@/lib/hooks/useProperties";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
@@ -69,7 +73,11 @@ const PLACEHOLDER_IMAGES: Record<string, string> = {
   Office: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200",
   Studio: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200",
   Duplex: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200",
-  default: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1200",
+  ChambreModerne:
+    "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=1200",
+  Chambre: "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=1200",
+  default:
+    "https://i.pinimg.com/736x/80/89/a5/8089a5f2196e505b38f3bcf21d64963f.jpg",
 };
 
 // Get placeholder by type
@@ -77,8 +85,26 @@ const getPlaceholderImage = (type: string): string => {
   return PLACEHOLDER_IMAGES[type] || PLACEHOLDER_IMAGES.default;
 };
 
+// Get type color
+const getTypeColor = (type: string): string => {
+  const colors: Record<string, string> = {
+    Villa: "#10b981",
+    Apartment: "#6366f1",
+    House: "#3b82f6",
+    Land: "#f59e0b",
+    Commercial: "#ec4899",
+    Office: "#8b5cf6",
+    Building: "#14b8a6",
+    Studio: "#06b6d4",
+    Duplex: "#f97316",
+    ChambreModerne: "#84cc16",
+    Chambre: "#22c55e",
+  };
+  return colors[type] || "#10b981";
+};
+
 // Get property status
-const getPropertyStatus = (property: UnifiedProperty): string => {
+const getPropertyStatus = (property: Property): string => {
   if (property.forSale && property.forRent) return "Sale / Rent";
   if (property.forSale) return "For Sale";
   if (property.forRent) return "For Rent";
@@ -86,7 +112,7 @@ const getPropertyStatus = (property: UnifiedProperty): string => {
 };
 
 // Get status color
-const getStatusBgColor = (property: UnifiedProperty): string => {
+const getStatusBgColor = (property: Property): string => {
   if (property.forSale && property.forRent)
     return "from-purple-500 to-indigo-600";
   if (property.forSale) return "from-green-500 to-emerald-600";
@@ -94,12 +120,31 @@ const getStatusBgColor = (property: UnifiedProperty): string => {
   return "from-gray-500 to-gray-600";
 };
 
-// YouTube helpers
+// Format time ago
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+  return `${Math.floor(diffDays / 365)} years ago`;
+}
+
+// Video URL helpers
 const getYouTubeVideoId = (url: string): string | null => {
   if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   return match && match[2].length === 11 ? match[2] : null;
+};
+
+const isYouTubeUrl = (url: string): boolean => {
+  return url.includes("youtube.com") || url.includes("youtu.be");
 };
 
 const getVideoThumbnail = (videoUrl: string, type: string): string => {
@@ -121,10 +166,9 @@ const getYouTubeEmbedUrl = (videoUrl: string): string => {
 export default function PropertyDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const propertyId = params.id as string;
-
-  // Fetch property using the hook
+  const propertyId = params?.id as string;
   const { property, loading, error } = useProperty(propertyId);
+  // Fetch property using the hook
   const { properties } = useProperties();
 
   // UI State
@@ -149,10 +193,17 @@ export default function PropertyDetailPage() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Get images array
-  const images = property ? getPropertyImages(property) : [];
+  // Get images and video from media array
+  const images = useMemo(
+    () => (property ? getPropertyImages(property) : []),
+    [property],
+  );
+  const videoUrl = useMemo(
+    () => (property ? getPropertyVideo(property) : null),
+    [property],
+  );
   const hasImages = images.length > 0;
-  const hasVideo = property?.videoUrl && property.videoUrl.trim() !== "";
+  const hasVideo = !!videoUrl;
   const hasMedia = hasImages || hasVideo;
 
   // Image navigation
@@ -187,209 +238,149 @@ export default function PropertyDetailPage() {
     return images[currentImageIndex];
   };
 
-  function formatTimeAgoIntl(dateString: string, locale = "en") {
-    const pastDate = new Date(dateString);
-    const now = new Date();
-    const diffInMilliseconds = pastDate.getTime() - now.getTime(); // Past date minus now results in a negative value
+  // Parse amenities string to array
+  const getAmenitiesList = (): string[] => {
+    if (!property?.amenities) return [];
+    return property.amenities
+      .split(",")
+      .map((a) => a.trim())
+      .filter(Boolean);
+  };
 
-    const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  // Render property details
+  const renderPropertyDetails = () => {
+    if (!property) return null;
 
-    const MS_PER_SECOND = 1000;
-    const MS_PER_MINUTE = 60 * MS_PER_SECOND;
-    const MS_PER_HOUR = 60 * MS_PER_MINUTE;
-    const MS_PER_DAY = 24 * MS_PER_HOUR;
+    const details: { label: string; value: any; icon: any }[] = [];
 
-    if (Math.abs(diffInMilliseconds) < MS_PER_MINUTE) {
-      return formatter.format(
-        Math.round(diffInMilliseconds / MS_PER_SECOND),
-        "second",
-      );
-    } else if (Math.abs(diffInMilliseconds) < MS_PER_HOUR) {
-      return formatter.format(
-        Math.round(diffInMilliseconds / MS_PER_MINUTE),
-        "minute",
-      );
-    } else if (Math.abs(diffInMilliseconds) < MS_PER_DAY) {
-      return formatter.format(
-        Math.round(diffInMilliseconds / MS_PER_HOUR),
-        "hour",
-      );
-    } else if (Math.abs(diffInMilliseconds) < 30 * MS_PER_DAY) {
-      // Less than approx 30 days
-      return formatter.format(
-        Math.round(diffInMilliseconds / MS_PER_DAY),
-        "day",
-      );
-    } else if (Math.abs(diffInMilliseconds) < 365 * MS_PER_DAY) {
-      // Less than approx 1 year
-      return formatter.format(
-        Math.round(diffInMilliseconds / (30 * MS_PER_DAY)),
-        "month",
-      );
-    } else {
-      return formatter.format(
-        Math.round(diffInMilliseconds / (365 * MS_PER_DAY)),
-        "year",
-      );
-    }
-  }
-  // Render property details based on source
-  const renderPropertyFields = () => {
-    if (!property?._meta) return null;
-    const meta = property._meta;
-    const source = property.source;
-
-    const fields: { label: string; value: any; icon: any }[] = [];
-
-    // Common fields
-    if (property.surface) {
-      fields.push({
+    // Basic details
+    if (property.surfaceArea) {
+      details.push({
         label: "Surface Area",
-        value: formatArea(property.surface),
+        value: formatArea(property.surfaceArea),
         icon: Square,
       });
     }
 
-    if (source === "lotissement") {
-      if (meta.Num_TF)
-        fields.push({
-          label: "Title Deed",
-          value: meta.Num_TF,
-          icon: FileText,
-        });
-      if (property.nbreLots)
-        fields.push({
-          label: "Number of Lots",
-          value: property.nbreLots,
-          icon: Grid3X3,
-        });
-      if (meta.Date_approb)
-        fields.push({
-          label: "Approval Date",
-          value: new Date(meta.Date_approb).toLocaleDateString(),
-          icon: Calendar,
-        });
-      if (meta.Geo_exe)
-        fields.push({ label: "Surveyor", value: meta.Geo_exe, icon: User });
-      if (meta.Statut)
-        fields.push({ label: "Status", value: meta.Statut, icon: Tag });
-      if (meta.Nom_visa_lotis)
-        fields.push({
-          label: "Visa",
-          value: meta.Nom_visa_lotis,
-          icon: ShieldCheck,
-        });
-    } else if (source === "parcelle") {
-      if (meta.TF_Cree)
-        fields.push({
-          label: "Title Deed",
-          value: meta.TF_Cree,
-          icon: FileText,
-        });
-      if (meta.TF_Mere)
-        fields.push({
-          label: "Parent Title",
-          value: meta.TF_Mere,
-          icon: FileText,
-        });
-      if (meta.Num_lot)
-        fields.push({ label: "Lot Number", value: meta.Num_lot, icon: Tag });
-      if (meta.Num_bloc)
-        fields.push({
-          label: "Block Number",
-          value: meta.Num_bloc,
-          icon: Building2,
-        });
-      if (meta.Largeur_Rte)
-        fields.push({
-          label: "Road Width",
-          value: meta.Largeur_Rte,
-          icon: Ruler,
-        });
-      if (meta.Mise_Val !== undefined) {
-        fields.push({
-          label: "Developed",
-          value: meta.Mise_Val ? "Yes" : "No",
-          icon: meta.Mise_Val ? CheckCircle2 : XCircle,
-        });
-      }
-      if (meta.Cloture !== undefined) {
-        fields.push({
-          label: "Enclosed",
-          value: meta.Cloture ? "Yes" : "No",
-          icon: meta.Cloture ? CheckCircle2 : XCircle,
-        });
-      }
-    } else if (source === "batiment") {
-      if (property.bedrooms)
-        fields.push({ label: "Bedrooms", value: property.bedrooms, icon: Bed });
-      if (property.bathrooms)
-        fields.push({
-          label: "Bathrooms",
-          value: property.bathrooms,
-          icon: Bath,
-        });
-      if (property.kitchens)
-        fields.push({
-          label: "Kitchens",
-          value: property.kitchens,
-          icon: Home,
-        });
-      if (property.livingRooms)
-        fields.push({
-          label: "Living Rooms",
-          value: property.livingRooms,
-          icon: Home,
-        });
-      if (property.totalFloors)
-        fields.push({
-          label: "Floors",
-          value: property.totalFloors,
-          icon: Layers,
-        });
-      if (meta.Standing)
-        fields.push({ label: "Standing", value: meta.Standing, icon: Award });
-      if (meta.Etat_Bat)
-        fields.push({
-          label: "Condition",
-          value: meta.Etat_Bat,
-          icon: CheckCircle2,
-        });
-      if (meta.Mat_Bati)
-        fields.push({
-          label: "Material",
-          value: meta.Mat_Bati,
-          icon: Building2,
-        });
-      if (meta.No_Permis)
-        fields.push({
-          label: "Permit #",
-          value: meta.No_Permis,
-          icon: FileText,
-        });
-      if (property.hasParking)
-        fields.push({
-          label: "Parking",
-          value: `${meta.parkingSpaces || "Yes"}`,
-          icon: Car,
-        });
-      if (property.hasGenerator)
-        fields.push({ label: "Generator", value: "Available", icon: Zap });
-      if (meta.hasElevator)
-        fields.push({ label: "Elevator", value: "Yes", icon: Building2 });
-      if (meta.totalUnits)
-        fields.push({
-          label: "Total Units",
-          value: meta.totalUnits,
-          icon: Grid3X3,
-        });
+    if (property.bedrooms) {
+      details.push({
+        label: "Bedrooms",
+        value: property.bedrooms,
+        icon: Bed,
+      });
     }
 
-    if (fields.length === 0) return null;
+    if (property.bathrooms) {
+      details.push({
+        label: "Bathrooms",
+        value: property.bathrooms,
+        icon: Bath,
+      });
+    }
+
+    if (property.kitchens) {
+      details.push({
+        label: "Kitchens",
+        value: property.kitchens,
+        icon: Utensils,
+      });
+    }
+
+    if (property.livingRooms) {
+      details.push({
+        label: "Living Rooms",
+        value: property.livingRooms,
+        icon: Sofa,
+      });
+    }
+
+    if (property.totalFloors) {
+      details.push({
+        label: "Total Floors",
+        value: property.totalFloors,
+        icon: Layers,
+      });
+    }
+
+    if (property.floorLevel) {
+      details.push({
+        label: "Floor Level",
+        value: property.floorLevel,
+        icon: Building2,
+      });
+    }
+
+    if (property.doorNumber) {
+      details.push({
+        label: "Door Number",
+        value: property.doorNumber,
+        icon: DoorOpen,
+      });
+    }
+
+    if (property.totalUnits) {
+      details.push({
+        label: "Total Units",
+        value: property.totalUnits,
+        icon: Grid3X3,
+      });
+    }
+
+    if (property.parkingSpaces) {
+      details.push({
+        label: "Parking Spaces",
+        value: property.parkingSpaces,
+        icon: Car,
+      });
+    }
+
+    // Boolean features
+    if (property.hasParking) {
+      details.push({
+        label: "Parking",
+        value: "Available",
+        icon: Car,
+      });
+    }
+
+    if (property.hasGenerator) {
+      details.push({
+        label: "Generator",
+        value: "Available",
+        icon: Zap,
+      });
+    }
+
+    if (property.hasElevator) {
+      details.push({
+        label: "Elevator",
+        value: "Available",
+        icon: Building2,
+      });
+    }
+
+    // Land specific
+    if (property.isLandForDevelopment) {
+      details.push({
+        label: "Development Land",
+        value: "Yes",
+        icon: TreePine,
+      });
+    }
+
+    if (property.approvedForApartments) {
+      details.push({
+        label: "Approved for Apartments",
+        value: "Yes",
+        icon: Building2,
+      });
+    }
+
+    if (details.length === 0) return null;
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {fields.map((field, idx) => (
+        {details.map((detail, idx) => (
           <motion.div
             key={idx}
             initial={{ opacity: 0, y: 20 }}
@@ -407,11 +398,11 @@ export default function PropertyDetailPage() {
               className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: GRADIENTS.button.primary }}
             >
-              <field.icon className="w-5 h-5 text-white" />
+              <detail.icon className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-sm text-gray-400 mb-1">{field.label}</p>
-              <p className="font-semibold text-white">{field.value}</p>
+              <p className="text-sm text-gray-400 mb-1">{detail.label}</p>
+              <p className="font-semibold text-white">{detail.value}</p>
             </div>
           </motion.div>
         ))}
@@ -507,6 +498,8 @@ export default function PropertyDetailPage() {
     );
   }
 
+  const amenitiesList = getAmenitiesList();
+
   return (
     <div
       className="relative min-h-screen overflow-x-hidden"
@@ -581,19 +574,28 @@ export default function PropertyDetailPage() {
           )}
 
           <div className="max-w-full max-h-[90vh] w-full flex items-center justify-center">
-            {showVideo && property.videoUrl ? (
+            {showVideo && videoUrl ? (
               isPlayingVideo ? (
-                <iframe
-                  src={getYouTubeEmbedUrl(property.videoUrl)}
-                  className="w-full aspect-video max-h-[90vh] rounded-2xl"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title="Property Video Tour"
-                />
+                isYouTubeUrl(videoUrl) ? (
+                  <iframe
+                    src={getYouTubeEmbedUrl(videoUrl)}
+                    className="w-full aspect-video max-h-[90vh] rounded-2xl"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title="Property Video Tour"
+                  />
+                ) : (
+                  <video
+                    src={videoUrl}
+                    controls
+                    autoPlay
+                    className="w-full max-h-[90vh] rounded-2xl"
+                  />
+                )
               ) : (
                 <div className="relative w-full aspect-video max-h-[90vh]">
                   <img
-                    src={getVideoThumbnail(property.videoUrl, property.type)}
+                    src={getVideoThumbnail(videoUrl, property.type)}
                     alt="Video thumbnail"
                     className="w-full h-full object-contain rounded-2xl"
                     onError={(e) => {
@@ -655,7 +657,7 @@ export default function PropertyDetailPage() {
               >
                 <img
                   src="/logo.png"
-                  alt="earth design Logo"
+                  alt="Logo"
                   className="w-full h-60 object-contain p-1"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
@@ -666,8 +668,7 @@ export default function PropertyDetailPage() {
             </motion.div>
           </Link>
 
-          {/*lets make the title of the property at the top bar*/}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0 mx-4">
             <h1 className="text-white font-bold text-sm sm:text-base md:text-lg truncate">
               {property.title}
             </h1>
@@ -704,124 +705,152 @@ export default function PropertyDetailPage() {
           {/* Left Column - Images & Details */}
           <div className="lg:col-span-2 space-y-6">
             {/* Image Gallery */}
-            {hasMedia && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-3xl shadow-2xl overflow-hidden border"
-                style={{
-                  background: "rgba(255,255,255,0.1)",
-                  borderColor: "rgba(255,255,255,0.2)",
-                }}
-              >
-                <div className="relative aspect-video">
-                  {showVideo && hasVideo ? (
-                    isPlayingVideo ? (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-3xl shadow-2xl overflow-hidden border"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                borderColor: "rgba(255,255,255,0.2)",
+              }}
+            >
+              <div className="relative aspect-video">
+                {showVideo && videoUrl ? (
+                  isPlayingVideo ? (
+                    isYouTubeUrl(videoUrl) ? (
                       <iframe
-                        src={getYouTubeEmbedUrl(property.videoUrl!)}
+                        src={getYouTubeEmbedUrl(videoUrl)}
                         className="w-full h-full"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                         title="Property Video Tour"
                       />
                     ) : (
-                      <div className="relative w-full h-full">
-                        <img
-                          src={getVideoThumbnail(
-                            property.videoUrl!,
-                            property.type,
-                          )}
-                          alt="Video thumbnail"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src =
-                              getPlaceholderImage(property.type);
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => setIsPlayingVideo(true)}
-                            className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition shadow-2xl"
-                          >
-                            <Play
-                              className="w-12 h-12 text-white ml-2"
-                              fill="white"
-                            />
-                          </motion.button>
-                        </div>
-                      </div>
+                      <video
+                        src={videoUrl}
+                        controls
+                        autoPlay
+                        className="w-full h-full object-cover"
+                      />
                     )
                   ) : (
-                    <img
-                      src={getCurrentImage()}
-                      alt={property.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          getPlaceholderImage(property.type);
-                      }}
+                    <div className="relative w-full h-full">
+                      <img
+                        src={getVideoThumbnail(videoUrl, property.type)}
+                        alt="Video thumbnail"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src =
+                            getPlaceholderImage(property.type);
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setIsPlayingVideo(true)}
+                          className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center hover:bg-red-700 transition shadow-2xl"
+                        >
+                          <Play
+                            className="w-12 h-12 text-white ml-2"
+                            fill="white"
+                          />
+                        </motion.button>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <img
+                    src={getCurrentImage()}
+                    alt={property.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = getPlaceholderImage(
+                        property.type,
+                      );
+                    }}
+                  />
+                )}
+
+                {/* Action buttons */}
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
+                  >
+                    <Heart
+                      className="w-5 h-5"
+                      style={{ color: COLORS.gray[800] }}
                     />
-                  )}
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
+                  >
+                    <Share2
+                      className="w-5 h-5"
+                      style={{ color: COLORS.gray[800] }}
+                    />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowLightbox(true)}
+                    className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
+                  >
+                    <Maximize2
+                      className="w-5 h-5"
+                      style={{ color: COLORS.gray[800] }}
+                    />
+                  </motion.button>
+                </div>
 
-                  {/* Action buttons */}
-                  <div className="absolute top-4 right-4 flex gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
-                    >
-                      <Heart
-                        className="w-5 h-5"
-                        style={{ color: COLORS.gray[800] }}
-                      />
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
-                    >
-                      <Share2
-                        className="w-5 h-5"
-                        style={{ color: COLORS.gray[800] }}
-                      />
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setShowLightbox(true)}
-                      className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
-                    >
-                      <Maximize2
-                        className="w-5 h-5"
-                        style={{ color: COLORS.gray[800] }}
-                      />
-                    </motion.button>
-                  </div>
-
-                  {/* Navigation arrows */}
-                  {!showVideo && images.length > 1 && (
-                    <>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        onClick={prevImage}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
-                      >
-                        <ChevronLeft className="w-6 h-6" />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        onClick={nextImage}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
-                      >
-                        <ChevronRight className="w-6 h-6" />
-                      </motion.button>
-                    </>
+                {/* Badges */}
+                <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+                  <span
+                    className={`px-3 py-1 bg-gradient-to-r ${getStatusBgColor(property)} text-white rounded-full text-sm font-medium shadow-lg`}
+                  >
+                    {getPropertyStatus(property)}
+                  </span>
+                  {property.featured && (
+                    <span className="px-3 py-1 bg-yellow-500 text-gray-900 rounded-full text-sm font-bold shadow-lg flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> Featured
+                    </span>
                   )}
                 </div>
 
-                {/* Thumbnails */}
+                {/* Navigation arrows */}
+                {!showVideo && images.length > 1 && (
+                  <>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      onClick={prevImage}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      onClick={nextImage}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </motion.button>
+                  </>
+                )}
+
+                {/* Image counter */}
+                {images.length > 1 && !showVideo && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/60 rounded-full text-white text-sm">
+                    {currentImageIndex + 1} / {images.length}
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnails */}
+              {(hasImages || hasVideo) && (
                 <div className="p-4 flex gap-2 overflow-x-auto">
                   {images.map((img, idx) => (
                     <motion.button
@@ -865,10 +894,7 @@ export default function PropertyDetailPage() {
                       }}
                     >
                       <img
-                        src={getVideoThumbnail(
-                          property.videoUrl!,
-                          property.type,
-                        )}
+                        src={getVideoThumbnail(videoUrl!, property.type)}
                         alt="Video"
                         className="w-full h-full object-cover"
                         onError={(e) => {
@@ -882,8 +908,8 @@ export default function PropertyDetailPage() {
                     </motion.button>
                   )}
                 </div>
-              </motion.div>
-            )}
+              )}
+            </motion.div>
 
             {/* Property Info */}
             <motion.div
@@ -896,39 +922,17 @@ export default function PropertyDetailPage() {
                 borderColor: "rgba(255,255,255,0.2)",
               }}
             >
-              {/* Badges */}
+              {/* Type Badge */}
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 <span
-                  className={`px-3 py-1 bg-gradient-to-r ${getStatusBgColor(
-                    property,
-                  )} text-white rounded-full text-sm font-medium`}
-                >
-                  {getPropertyStatus(property)}
-                </span>
-                <span
                   className="px-3 py-1 rounded-full text-sm font-medium text-white"
-                  style={{ background: getSourceColor(property.source) }}
+                  style={{ background: getTypeColor(property.type) }}
                 >
-                  {getSourceLabel(property.source)}
+                  {getTypeLabel(property.type)}
                 </span>
-                <span
-                  className="px-3 py-1 rounded-full text-sm font-medium"
-                  style={{
-                    background: `${COLORS.primary[500]}33`,
-                    color: COLORS.primary[300],
-                  }}
-                >
-                  {property.type}
-                </span>
-                {property.featured && (
-                  <span
-                    className="px-3 py-1 rounded-full text-sm font-medium"
-                    style={{
-                      background: COLORS.yellow[500],
-                      color: COLORS.gray[900],
-                    }}
-                  >
-                    ⭐ Featured
+                {property.isLandForDevelopment && (
+                  <span className="px-3 py-1 rounded-full text-sm font-medium bg-amber-500 text-gray-900">
+                    Development Land
                   </span>
                 )}
               </div>
@@ -950,13 +954,15 @@ export default function PropertyDetailPage() {
                 <span>{getPropertyLocation(property)}</span>
               </div>
 
-              {/* Price and Surface */}
+              {/* Price Section */}
               <div
                 className="flex flex-wrap items-baseline gap-8 py-6 border-y"
                 style={{ borderColor: "rgba(255,255,255,0.2)" }}
               >
                 <div>
-                  {property.forSale && property.price && property.price > 0 ? (
+                  {property.forSale &&
+                  property.price &&
+                  Number(property.price) > 0 ? (
                     <>
                       <p
                         className="text-sm mb-1"
@@ -970,19 +976,23 @@ export default function PropertyDetailPage() {
                       >
                         {formatPrice(property.price, property.currency)}
                       </p>
-                      {property.pricePerSqM && (
-                        <p
-                          className="text-sm mt-1"
-                          style={{ color: COLORS.gray[400] }}
-                        >
-                          {formatPrice(property.pricePerSqM, property.currency)}
-                          /m²
-                        </p>
-                      )}
+                      {property.pricePerSqM &&
+                        Number(property.pricePerSqM) > 0 && (
+                          <p
+                            className="text-sm mt-1"
+                            style={{ color: COLORS.gray[400] }}
+                          >
+                            {formatPrice(
+                              property.pricePerSqM,
+                              property.currency,
+                            )}
+                            /m²
+                          </p>
+                        )}
                     </>
                   ) : property.forRent &&
                     property.rentPrice &&
-                    property.rentPrice > 0 ? (
+                    Number(property.rentPrice) > 0 ? (
                     <>
                       <p
                         className="text-sm mb-1"
@@ -1017,22 +1027,16 @@ export default function PropertyDetailPage() {
                       >
                         Prix sur demande
                       </p>
-                      <p
-                        className="text-sm mt-1"
-                        style={{ color: COLORS.gray[400] }}
-                      >
-                        Contact us for pricing
-                      </p>
                     </>
                   )}
 
-                  {/* Show rent price separately if both sale and rent are available */}
+                  {/* Show rent price if both sale and rent */}
                   {property.forSale &&
                     property.forRent &&
                     property.price &&
-                    property.price > 0 &&
+                    Number(property.price) > 0 &&
                     property.rentPrice &&
-                    property.rentPrice > 0 && (
+                    Number(property.rentPrice) > 0 && (
                       <div
                         className="mt-4 pt-4 border-t"
                         style={{ borderColor: "rgba(255,255,255,0.2)" }}
@@ -1054,7 +1058,8 @@ export default function PropertyDetailPage() {
                     )}
                 </div>
 
-                {property.surface && !property.forRent && (
+                {/* Quick Stats */}
+                {property.surfaceArea && (
                   <div className="flex items-center gap-2">
                     <Square
                       className="w-5 h-5"
@@ -1062,33 +1067,13 @@ export default function PropertyDetailPage() {
                     />
                     <div>
                       <p className="text-2xl font-bold text-white">
-                        {formatArea(property.surface)}
+                        {formatArea(property.surfaceArea)}
                       </p>
                       <p
                         className="text-sm"
                         style={{ color: COLORS.gray[400] }}
                       >
                         Surface
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {property.nbreLots && property.nbreLots > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Grid3X3
-                      className="w-5 h-5"
-                      style={{ color: COLORS.gray[400] }}
-                    />
-                    <div>
-                      <p className="text-2xl font-bold text-white">
-                        {property.nbreLots}
-                      </p>
-                      <p
-                        className="text-sm"
-                        style={{ color: COLORS.gray[400] }}
-                      >
-                        Lots
                       </p>
                     </div>
                   </div>
@@ -1133,48 +1118,6 @@ export default function PropertyDetailPage() {
                     </div>
                   </div>
                 )}
-
-                {property.kitchens && property.kitchens > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Home
-                      className="w-5 h-5"
-                      style={{ color: COLORS.gray[400] }}
-                    />
-                    <div>
-                      <p className="text-2xl font-bold text-white">
-                        {property.kitchens}
-                      </p>
-                      <p
-                        className="text-sm"
-                        style={{ color: COLORS.gray[400] }}
-                      >
-                        {property.kitchens > 1 ? "Kitchens" : "Kitchen"}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {property.livingRooms && property.livingRooms > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Home
-                      className="w-5 h-5"
-                      style={{ color: COLORS.gray[400] }}
-                    />
-                    <div>
-                      <p className="text-2xl font-bold text-white">
-                        {property.livingRooms}
-                      </p>
-                      <p
-                        className="text-sm"
-                        style={{ color: COLORS.gray[400] }}
-                      >
-                        {property.livingRooms > 1
-                          ? "Living Rooms"
-                          : "Living Room"}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Description */}
@@ -1193,10 +1136,13 @@ export default function PropertyDetailPage() {
               </div>
 
               {/* Amenities */}
-              {(property.hasParking || property.hasGenerator) && (
+              {(amenitiesList.length > 0 ||
+                property.hasParking ||
+                property.hasGenerator ||
+                property.hasElevator) && (
                 <div className="mt-6">
                   <h2 className="text-xl font-bold text-white mb-4">
-                    Amenities
+                    Amenities & Features
                   </h2>
                   <div className="flex flex-wrap gap-3">
                     {property.hasParking && (
@@ -1223,6 +1169,31 @@ export default function PropertyDetailPage() {
                         Generator
                       </span>
                     )}
+                    {property.hasElevator && (
+                      <span
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
+                        style={{ background: "rgba(255,255,255,0.1)" }}
+                      >
+                        <Building2
+                          className="w-5 h-5"
+                          style={{ color: COLORS.primary[400] }}
+                        />
+                        Elevator
+                      </span>
+                    )}
+                    {amenitiesList.map((amenity, idx) => (
+                      <span
+                        key={idx}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
+                        style={{ background: "rgba(255,255,255,0.1)" }}
+                      >
+                        <CheckCircle2
+                          className="w-4 h-4"
+                          style={{ color: COLORS.primary[400] }}
+                        />
+                        {amenity}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1242,7 +1213,7 @@ export default function PropertyDetailPage() {
               <h2 className="text-xl font-bold text-white mb-6">
                 Property Details
               </h2>
-              {renderPropertyFields()}
+              {renderPropertyDetails()}
             </motion.div>
 
             {/* Location */}
@@ -1287,12 +1258,20 @@ export default function PropertyDetailPage() {
                   >
                     {getPropertyLocation(property)}
                   </p>
+                  {property.address && (
+                    <p
+                      className="text-sm mt-1"
+                      style={{ color: COLORS.gray[400] }}
+                    >
+                      {property.address}
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>
           </div>
 
-          {/* Right Column - Contact */}
+          {/* Right Column - Contact & Stats */}
           <div className="space-y-6">
             {/* Contact Card */}
             <motion.div
@@ -1317,8 +1296,8 @@ export default function PropertyDetailPage() {
                   <User className="w-6 h-6" />
                 </div>
                 <div>
-                  <p className="font-semibold">Mr. Cletus</p>
-                  <p className="text-sm opacity-90">Property Agent</p>
+                  <p className="font-semibold">Property Agent</p>
+                  <p className="text-sm opacity-90">Real Estate Specialist</p>
                 </div>
               </div>
 
@@ -1336,14 +1315,12 @@ export default function PropertyDetailPage() {
                 <motion.a
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  href="mailto:realeastate@earthdesignengineeringltd.com"
+                  href="mailto:contact@example.com"
                   className="flex items-center gap-3 p-3 rounded-xl transition"
                   style={{ background: "rgba(255,255,255,0.1)" }}
                 >
                   <Mail className="w-5 h-5" />
-                  <span className="text-sm">
-                    realeastate@earthdesignengineeringltd.com
-                  </span>
+                  <span className="text-sm">contact@example.com</span>
                 </motion.a>
               </div>
 
@@ -1369,24 +1346,26 @@ export default function PropertyDetailPage() {
                 </motion.button>
               </div>
 
-              {/* Property ID */}
+              {/* Property Info */}
               <div
                 className="mt-6 pt-6 border-t text-sm space-y-2"
                 style={{ borderColor: "rgba(255,255,255,0.2)" }}
               >
                 <div className="flex justify-between">
                   <span className="opacity-75">Property ID</span>
-                  <span className="font-semibold">{property.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="opacity-75">Source</span>
-                  <span className="font-semibold">
-                    {getSourceLabel(property.source)}
-                  </span>
+                  <span className="font-semibold">#{property.id}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="opacity-75">Type</span>
-                  <span className="font-semibold">{property.type}</span>
+                  <span className="font-semibold">
+                    {getTypeLabel(property.type)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="opacity-75">Status</span>
+                  <span className="font-semibold">
+                    {property.published ? "Published" : "Draft"}
+                  </span>
                 </div>
               </div>
             </motion.div>
@@ -1415,8 +1394,8 @@ export default function PropertyDetailPage() {
                     />
                     <span style={{ color: COLORS.gray[300] }}>Listed</span>
                   </div>
-                  <span className="text-gray-400 font-normal ml-2">
-                    ({formatTimeAgoIntl(property.createdAt)})
+                  <span className="text-white font-medium">
+                    {formatTimeAgo(property.createdAt)}
                   </span>
                 </div>
                 <div
@@ -1449,6 +1428,21 @@ export default function PropertyDetailPage() {
                       </span>
                     </div>
                     <span className="font-semibold text-white">Available</span>
+                  </div>
+                )}
+                {property.featured && (
+                  <div
+                    className="flex items-center justify-between p-3 rounded-xl"
+                    style={{ background: "rgba(255,255,255,0.05)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles
+                        className="w-5 h-5"
+                        style={{ color: COLORS.yellow[400] }}
+                      />
+                      <span style={{ color: COLORS.gray[300] }}>Featured</span>
+                    </div>
+                    <span className="font-semibold text-yellow-400">Yes</span>
                   </div>
                 )}
               </div>
@@ -1509,9 +1503,7 @@ export default function PropertyDetailPage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                         <div className="absolute top-3 left-3 flex gap-2">
                           <span
-                            className={`bg-gradient-to-r ${getStatusBgColor(
-                              related,
-                            )} text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg`}
+                            className={`bg-gradient-to-r ${getStatusBgColor(related)} text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg`}
                           >
                             {getPropertyStatus(related)}
                           </span>
@@ -1519,24 +1511,13 @@ export default function PropertyDetailPage() {
                         <div className="absolute top-3 right-3">
                           <span
                             className="px-2 py-1 rounded-full text-xs font-bold text-white"
-                            style={{
-                              background: getSourceColor(related.source),
-                            }}
+                            style={{ background: getTypeColor(related.type) }}
                           >
-                            {getSourceLabel(related.source)}
+                            {getTypeLabel(related.type)}
                           </span>
                         </div>
                       </div>
                       <div className="p-4">
-                        <span
-                          className="inline-block px-3 py-1 rounded-full text-xs font-bold mb-2"
-                          style={{
-                            background: `${COLORS.primary[500]}33`,
-                            color: COLORS.primary[300],
-                          }}
-                        >
-                          {related.type}
-                        </span>
                         <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-green-400 transition">
                           {related.title}
                         </h3>
@@ -1559,26 +1540,23 @@ export default function PropertyDetailPage() {
                           >
                             {related.forSale &&
                             related.price &&
-                            related.price > 0
+                            Number(related.price) > 0
                               ? formatPriceCompact(
                                   related.price,
                                   related.currency,
                                 )
                               : related.forRent &&
                                   related.rentPrice &&
-                                  related.rentPrice > 0
-                                ? `${formatPriceCompact(
-                                    related.rentPrice,
-                                    related.currency,
-                                  )}/mo`
+                                  Number(related.rentPrice) > 0
+                                ? `${formatPriceCompact(related.rentPrice, related.currency)}/mo`
                                 : "Prix sur demande"}
                           </p>
-                          {related.surface && (
+                          {related.surfaceArea && (
                             <span
                               className="text-sm"
                               style={{ color: COLORS.gray[400] }}
                             >
-                              {formatArea(related.surface)}
+                              {formatArea(related.surfaceArea)}
                             </span>
                           )}
                         </div>
@@ -1591,16 +1569,6 @@ export default function PropertyDetailPage() {
           </motion.div>
         )}
       </main>
-
-      <style jsx>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
     </div>
   );
 }

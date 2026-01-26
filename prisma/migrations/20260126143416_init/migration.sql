@@ -1,11 +1,14 @@
 -- CreateEnum
-CREATE TYPE "PropertyType" AS ENUM ('Apartment', 'House', 'Villa', 'Office', 'Commercial', 'Land', 'Building', 'Studio', 'Duplex');
+CREATE TYPE "PropertyType" AS ENUM ('Apartment', 'House', 'Villa', 'Office', 'Commercial', 'Land', 'Building', 'Studio', 'Duplex', 'ChambreModerne', 'Chambre');
 
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('USER', 'AGENT', 'ADMIN');
 
 -- CreateEnum
 CREATE TYPE "OTPType" AS ENUM ('EMAIL_VERIFICATION', 'PASSWORD_RESET', 'LOGIN_VERIFICATION');
+
+-- CreateEnum
+CREATE TYPE "MediaEntityType" AS ENUM ('PROPERTY', 'LOTISSEMENT', 'PARCELLE', 'BATIMENT', 'INFRASTRUCTURE');
 
 -- CreateTable
 CREATE TABLE "OTPToken" (
@@ -126,23 +129,6 @@ CREATE TABLE "Lotissement" (
     "Lieudit" TEXT,
     "Echelle" INTEGER,
     "Ccp" TEXT,
-    "price" DECIMAL(15,2),
-    "pricePerSqM" DECIMAL(15,2),
-    "currency" TEXT DEFAULT 'XAF',
-    "forSale" BOOLEAN DEFAULT false,
-    "forRent" BOOLEAN DEFAULT false,
-    "rentPrice" DECIMAL(15,2),
-    "shortDescription" VARCHAR(255),
-    "description" TEXT,
-    "published" BOOLEAN DEFAULT false,
-    "featured" BOOLEAN DEFAULT false,
-    "Video_URL" TEXT,
-    "Image_URL_1" TEXT,
-    "Image_URL_2" TEXT,
-    "Image_URL_3" TEXT,
-    "Image_URL_4" TEXT,
-    "Image_URL_5" TEXT,
-    "Image_URL_6" TEXT,
     "Id_Arrond" INTEGER,
     "WKT_Geometry" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -172,23 +158,6 @@ CREATE TABLE "Parcelle" (
     "Ccp_N" TEXT,
     "Mise_Val" BOOLEAN,
     "Cloture" BOOLEAN,
-    "price" DECIMAL(15,2),
-    "pricePerSqM" DECIMAL(15,2),
-    "currency" TEXT DEFAULT 'XAF',
-    "forSale" BOOLEAN DEFAULT false,
-    "forRent" BOOLEAN DEFAULT false,
-    "rentPrice" DECIMAL(15,2),
-    "shortDescription" VARCHAR(255),
-    "description" TEXT,
-    "published" BOOLEAN DEFAULT false,
-    "featured" BOOLEAN DEFAULT false,
-    "Video_URL" TEXT,
-    "Image_URL_1" TEXT,
-    "Image_URL_2" TEXT,
-    "Image_URL_3" TEXT,
-    "Image_URL_4" TEXT,
-    "Image_URL_5" TEXT,
-    "Image_URL_6" TEXT,
     "Id_Lotis" INTEGER,
     "WKT_Geometry" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -210,39 +179,77 @@ CREATE TABLE "Batiment" (
     "Etat_Bat" TEXT,
     "Nom" TEXT,
     "Mat_Bati" TEXT,
-    "bedrooms" INTEGER,
-    "bathrooms" INTEGER,
-    "kitchens" INTEGER,
-    "livingRooms" INTEGER,
     "totalFloors" INTEGER,
     "totalUnits" INTEGER,
     "hasElevator" BOOLEAN DEFAULT false,
-    "hasGenerator" BOOLEAN DEFAULT false,
-    "hasParking" BOOLEAN DEFAULT false,
-    "parkingSpaces" INTEGER,
-    "price" DECIMAL(15,2),
-    "pricePerSqM" DECIMAL(15,2),
-    "currency" TEXT DEFAULT 'XAF',
-    "forSale" BOOLEAN DEFAULT false,
-    "forRent" BOOLEAN DEFAULT false,
-    "rentPrice" DECIMAL(15,2),
-    "shortDescription" VARCHAR(255),
-    "description" TEXT,
-    "published" BOOLEAN DEFAULT false,
-    "featured" BOOLEAN DEFAULT false,
-    "Video_URL" TEXT,
-    "Image_URL_1" TEXT,
-    "Image_URL_2" TEXT,
-    "Image_URL_3" TEXT,
-    "Image_URL_4" TEXT,
-    "Image_URL_5" TEXT,
-    "Image_URL_6" TEXT,
+    "surfaceArea" DOUBLE PRECISION,
+    "doorNumber" TEXT,
+    "address" TEXT,
     "Id_Parcel" INTEGER,
     "WKT_Geometry" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Batiment_pkey" PRIMARY KEY ("Id_Bat")
+);
+
+-- CreateTable
+CREATE TABLE "Property" (
+    "id" SERIAL NOT NULL,
+    "title" TEXT NOT NULL,
+    "shortDescription" VARCHAR(500),
+    "description" TEXT,
+    "price" DECIMAL(15,2),
+    "priceMin" DECIMAL(15,2),
+    "priceMax" DECIMAL(15,2),
+    "pricePerSqM" DECIMAL(15,2),
+    "currency" TEXT NOT NULL DEFAULT 'XAF',
+    "type" "PropertyType" NOT NULL,
+    "forSale" BOOLEAN NOT NULL DEFAULT true,
+    "forRent" BOOLEAN NOT NULL DEFAULT false,
+    "rentPrice" DECIMAL(15,2),
+    "isLandForDevelopment" BOOLEAN NOT NULL DEFAULT false,
+    "approvedForApartments" BOOLEAN,
+    "bedrooms" INTEGER,
+    "bathrooms" INTEGER,
+    "kitchens" INTEGER,
+    "livingRooms" INTEGER,
+    "surfaceArea" DOUBLE PRECISION,
+    "floorLevel" INTEGER,
+    "totalFloors" INTEGER,
+    "doorNumber" TEXT,
+    "hasGenerator" BOOLEAN DEFAULT false,
+    "hasParking" BOOLEAN DEFAULT false,
+    "parkingSpaces" INTEGER,
+    "amenities" TEXT,
+    "address" TEXT,
+    "parcelleId" INTEGER NOT NULL,
+    "batimentId" INTEGER,
+    "published" BOOLEAN NOT NULL DEFAULT false,
+    "featured" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Property_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Media" (
+    "id" SERIAL NOT NULL,
+    "entityType" "MediaEntityType" NOT NULL,
+    "entityId" INTEGER NOT NULL,
+    "url" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "propertyId" INTEGER,
+    "lotissementId" INTEGER,
+    "parcelleId" INTEGER,
+    "batimentId" INTEGER,
+    "infrastructureId" INTEGER,
+
+    CONSTRAINT "Media_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -341,13 +348,6 @@ CREATE TABLE "Infrastructure" (
     "Cycle" TEXT,
     "Statut_infras" TEXT,
     "Standing" TEXT,
-    "Video_URL" TEXT,
-    "Image_URL_1" TEXT,
-    "Image_URL_2" TEXT,
-    "Image_URL_3" TEXT,
-    "Image_URL_4" TEXT,
-    "Image_URL_5" TEXT,
-    "Image_URL_6" TEXT,
     "WKT_Geometry" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -450,50 +450,8 @@ CREATE TABLE "Approvisionner" (
     CONSTRAINT "Approvisionner_pkey" PRIMARY KEY ("Id_Bat","Id_Reseaux")
 );
 
--- CreateTable
-CREATE TABLE "Property" (
-    "id" SERIAL NOT NULL,
-    "title" TEXT NOT NULL,
-    "shortDescription" VARCHAR(255),
-    "description" TEXT,
-    "price" DECIMAL(15,2),
-    "currency" TEXT NOT NULL DEFAULT 'XAF',
-    "type" "PropertyType" NOT NULL,
-    "forSale" BOOLEAN NOT NULL DEFAULT true,
-    "forRent" BOOLEAN NOT NULL DEFAULT false,
-    "rentPrice" DECIMAL(15,2),
-    "isLandForDevelopment" BOOLEAN NOT NULL DEFAULT false,
-    "approvedForApartments" BOOLEAN,
-    "bedrooms" INTEGER,
-    "bathrooms" INTEGER,
-    "kitchens" INTEGER DEFAULT 1,
-    "livingRooms" INTEGER DEFAULT 1,
-    "hasGenerator" BOOLEAN DEFAULT false,
-    "hasParking" BOOLEAN DEFAULT false,
-    "floorLevel" INTEGER,
-    "totalFloors" INTEGER,
-    "parcelleId" INTEGER NOT NULL,
-    "batimentId" INTEGER,
-    "imageUrl1" TEXT,
-    "imageUrl2" TEXT,
-    "imageUrl3" TEXT,
-    "imageUrl4" TEXT,
-    "imageUrl5" TEXT,
-    "imageUrl6" TEXT,
-    "videoUrl" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-    "published" BOOLEAN NOT NULL DEFAULT false,
-    "featured" BOOLEAN NOT NULL DEFAULT false,
-
-    CONSTRAINT "Property_pkey" PRIMARY KEY ("id")
-);
-
 -- CreateIndex
-CREATE INDEX "OTPToken_email_idx" ON "OTPToken"("email");
-
--- CreateIndex
-CREATE INDEX "OTPToken_expires_idx" ON "OTPToken"("expires");
+CREATE INDEX "OTPToken_email_expires_idx" ON "OTPToken"("email", "expires");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "OTPToken_email_token_key" ON "OTPToken"("email", "token");
@@ -502,10 +460,22 @@ CREATE UNIQUE INDEX "OTPToken_email_token_key" ON "OTPToken"("email", "token");
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE INDEX "User_email_idx" ON "User"("email");
+
+-- CreateIndex
+CREATE INDEX "User_role_idx" ON "User"("role");
+
+-- CreateIndex
+CREATE INDEX "Account_userId_idx" ON "Account"("userId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
+
+-- CreateIndex
+CREATE INDEX "Session_userId_idx" ON "Session"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken"("token");
@@ -514,40 +484,46 @@ CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken"("token"
 CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
 
 -- CreateIndex
-CREATE INDEX "Lotissement_price_idx" ON "Lotissement"("price");
+CREATE INDEX "Region_Nom_Reg_idx" ON "Region"("Nom_Reg");
 
 -- CreateIndex
-CREATE INDEX "Lotissement_forSale_idx" ON "Lotissement"("forSale");
+CREATE INDEX "Departement_Id_Reg_idx" ON "Departement"("Id_Reg");
 
 -- CreateIndex
-CREATE INDEX "Lotissement_forRent_idx" ON "Lotissement"("forRent");
+CREATE INDEX "Departement_Nom_Dept_idx" ON "Departement"("Nom_Dept");
 
 -- CreateIndex
-CREATE INDEX "Lotissement_published_idx" ON "Lotissement"("published");
+CREATE INDEX "Arrondissement_Id_Dept_idx" ON "Arrondissement"("Id_Dept");
 
 -- CreateIndex
-CREATE INDEX "Parcelle_price_idx" ON "Parcelle"("price");
+CREATE INDEX "Arrondissement_Nom_Arrond_idx" ON "Arrondissement"("Nom_Arrond");
 
 -- CreateIndex
-CREATE INDEX "Parcelle_forSale_idx" ON "Parcelle"("forSale");
+CREATE INDEX "Lotissement_Id_Arrond_idx" ON "Lotissement"("Id_Arrond");
 
 -- CreateIndex
-CREATE INDEX "Parcelle_forRent_idx" ON "Parcelle"("forRent");
+CREATE INDEX "Lotissement_Num_TF_idx" ON "Lotissement"("Num_TF");
 
 -- CreateIndex
-CREATE INDEX "Parcelle_published_idx" ON "Parcelle"("published");
+CREATE INDEX "Lotissement_Statut_idx" ON "Lotissement"("Statut");
 
 -- CreateIndex
-CREATE INDEX "Batiment_price_idx" ON "Batiment"("price");
+CREATE INDEX "Parcelle_Id_Lotis_idx" ON "Parcelle"("Id_Lotis");
 
 -- CreateIndex
-CREATE INDEX "Batiment_forSale_idx" ON "Batiment"("forSale");
+CREATE INDEX "Parcelle_TF_Cree_idx" ON "Parcelle"("TF_Cree");
 
 -- CreateIndex
-CREATE INDEX "Batiment_forRent_idx" ON "Batiment"("forRent");
+CREATE INDEX "Parcelle_Num_lot_idx" ON "Parcelle"("Num_lot");
 
 -- CreateIndex
-CREATE INDEX "Batiment_published_idx" ON "Batiment"("published");
+CREATE INDEX "Batiment_Id_Parcel_idx" ON "Batiment"("Id_Parcel");
+
+-- CreateIndex
+CREATE INDEX "Batiment_Type_Usage_idx" ON "Batiment"("Type_Usage");
+
+-- CreateIndex
+CREATE INDEX "Batiment_Standing_idx" ON "Batiment"("Standing");
 
 -- CreateIndex
 CREATE INDEX "Property_parcelleId_idx" ON "Property"("parcelleId");
@@ -562,10 +538,64 @@ CREATE INDEX "Property_type_idx" ON "Property"("type");
 CREATE INDEX "Property_price_idx" ON "Property"("price");
 
 -- CreateIndex
-CREATE INDEX "Property_published_idx" ON "Property"("published");
+CREATE INDEX "Property_priceMin_priceMax_idx" ON "Property"("priceMin", "priceMax");
+
+-- CreateIndex
+CREATE INDEX "Property_published_featured_idx" ON "Property"("published", "featured");
+
+-- CreateIndex
+CREATE INDEX "Property_forSale_forRent_idx" ON "Property"("forSale", "forRent");
 
 -- CreateIndex
 CREATE INDEX "Property_createdAt_idx" ON "Property"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Media_entityType_entityId_idx" ON "Media"("entityType", "entityId");
+
+-- CreateIndex
+CREATE INDEX "Media_propertyId_idx" ON "Media"("propertyId");
+
+-- CreateIndex
+CREATE INDEX "Media_order_idx" ON "Media"("order");
+
+-- CreateIndex
+CREATE INDEX "Route_Type_Rte_idx" ON "Route"("Type_Rte");
+
+-- CreateIndex
+CREATE INDEX "Taxe_immobiliere_Num_TF_idx" ON "Taxe_immobiliere"("Num_TF");
+
+-- CreateIndex
+CREATE INDEX "Taxe_immobiliere_NIU_idx" ON "Taxe_immobiliere"("NIU");
+
+-- CreateIndex
+CREATE INDEX "Infrastructure_Type_Infraas_idx" ON "Infrastructure"("Type_Infraas");
+
+-- CreateIndex
+CREATE INDEX "Infrastructure_Nom_infras_idx" ON "Infrastructure"("Nom_infras");
+
+-- CreateIndex
+CREATE INDEX "Payer_Id_Taxe_idx" ON "Payer"("Id_Taxe");
+
+-- CreateIndex
+CREATE INDEX "Limitrophe_Id_Riv_idx" ON "Limitrophe"("Id_Riv");
+
+-- CreateIndex
+CREATE INDEX "Alimenter_Id_Reseaux_idx" ON "Alimenter"("Id_Reseaux");
+
+-- CreateIndex
+CREATE INDEX "Contenir_Id_Borne_idx" ON "Contenir"("Id_Borne");
+
+-- CreateIndex
+CREATE INDEX "Trouver_Id_Infras_idx" ON "Trouver"("Id_Infras");
+
+-- CreateIndex
+CREATE INDEX "Eclairer_Id_Equip_idx" ON "Eclairer"("Id_Equip");
+
+-- CreateIndex
+CREATE INDEX "Desservir_Id_Rte_idx" ON "Desservir"("Id_Rte");
+
+-- CreateIndex
+CREATE INDEX "Approvisionner_Id_Reseaux_idx" ON "Approvisionner"("Id_Reseaux");
 
 -- AddForeignKey
 ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -589,58 +619,73 @@ ALTER TABLE "Parcelle" ADD CONSTRAINT "Parcelle_Id_Lotis_fkey" FOREIGN KEY ("Id_
 ALTER TABLE "Batiment" ADD CONSTRAINT "Batiment_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Payer" ADD CONSTRAINT "Payer_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Payer" ADD CONSTRAINT "Payer_Id_Bat_fkey" FOREIGN KEY ("Id_Bat") REFERENCES "Batiment"("Id_Bat") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Payer" ADD CONSTRAINT "Payer_Id_Taxe_fkey" FOREIGN KEY ("Id_Taxe") REFERENCES "Taxe_immobiliere"("Id_Taxe") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Limitrophe" ADD CONSTRAINT "Limitrophe_Id_Lotis_fkey" FOREIGN KEY ("Id_Lotis") REFERENCES "Lotissement"("Id_Lotis") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Limitrophe" ADD CONSTRAINT "Limitrophe_Id_Riv_fkey" FOREIGN KEY ("Id_Riv") REFERENCES "Riviere"("Id_Riv") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Alimenter" ADD CONSTRAINT "Alimenter_Id_Bat_fkey" FOREIGN KEY ("Id_Bat") REFERENCES "Batiment"("Id_Bat") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Alimenter" ADD CONSTRAINT "Alimenter_Id_Reseaux_fkey" FOREIGN KEY ("Id_Reseaux") REFERENCES "Reseau_energetique"("Id_Reseaux") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Contenir" ADD CONSTRAINT "Contenir_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Contenir" ADD CONSTRAINT "Contenir_Id_Borne_fkey" FOREIGN KEY ("Id_Borne") REFERENCES "Borne"("Id_Borne") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Trouver" ADD CONSTRAINT "Trouver_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Trouver" ADD CONSTRAINT "Trouver_Id_Infras_fkey" FOREIGN KEY ("Id_Infras") REFERENCES "Infrastructure"("Id_Infras") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Eclairer" ADD CONSTRAINT "Eclairer_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Eclairer" ADD CONSTRAINT "Eclairer_Id_Equip_fkey" FOREIGN KEY ("Id_Equip") REFERENCES "Equipement"("Id_Equip") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Desservir" ADD CONSTRAINT "Desservir_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Desservir" ADD CONSTRAINT "Desservir_Id_Rte_fkey" FOREIGN KEY ("Id_Rte") REFERENCES "Route"("Id_Rte") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Approvisionner" ADD CONSTRAINT "Approvisionner_Id_Bat_fkey" FOREIGN KEY ("Id_Bat") REFERENCES "Batiment"("Id_Bat") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Approvisionner" ADD CONSTRAINT "Approvisionner_Id_Reseaux_fkey" FOREIGN KEY ("Id_Reseaux") REFERENCES "Reseau_en_eau"("Id_Reseaux") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Property" ADD CONSTRAINT "Property_parcelleId_fkey" FOREIGN KEY ("parcelleId") REFERENCES "Parcelle"("Id_Parcel") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Property" ADD CONSTRAINT "Property_batimentId_fkey" FOREIGN KEY ("batimentId") REFERENCES "Batiment"("Id_Bat") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Media" ADD CONSTRAINT "Media_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "Property"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Media" ADD CONSTRAINT "Media_lotissementId_fkey" FOREIGN KEY ("lotissementId") REFERENCES "Lotissement"("Id_Lotis") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Media" ADD CONSTRAINT "Media_parcelleId_fkey" FOREIGN KEY ("parcelleId") REFERENCES "Parcelle"("Id_Parcel") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Media" ADD CONSTRAINT "Media_batimentId_fkey" FOREIGN KEY ("batimentId") REFERENCES "Batiment"("Id_Bat") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Media" ADD CONSTRAINT "Media_infrastructureId_fkey" FOREIGN KEY ("infrastructureId") REFERENCES "Infrastructure"("Id_Infras") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payer" ADD CONSTRAINT "Payer_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payer" ADD CONSTRAINT "Payer_Id_Bat_fkey" FOREIGN KEY ("Id_Bat") REFERENCES "Batiment"("Id_Bat") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payer" ADD CONSTRAINT "Payer_Id_Taxe_fkey" FOREIGN KEY ("Id_Taxe") REFERENCES "Taxe_immobiliere"("Id_Taxe") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Limitrophe" ADD CONSTRAINT "Limitrophe_Id_Lotis_fkey" FOREIGN KEY ("Id_Lotis") REFERENCES "Lotissement"("Id_Lotis") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Limitrophe" ADD CONSTRAINT "Limitrophe_Id_Riv_fkey" FOREIGN KEY ("Id_Riv") REFERENCES "Riviere"("Id_Riv") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Alimenter" ADD CONSTRAINT "Alimenter_Id_Bat_fkey" FOREIGN KEY ("Id_Bat") REFERENCES "Batiment"("Id_Bat") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Alimenter" ADD CONSTRAINT "Alimenter_Id_Reseaux_fkey" FOREIGN KEY ("Id_Reseaux") REFERENCES "Reseau_energetique"("Id_Reseaux") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Contenir" ADD CONSTRAINT "Contenir_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Contenir" ADD CONSTRAINT "Contenir_Id_Borne_fkey" FOREIGN KEY ("Id_Borne") REFERENCES "Borne"("Id_Borne") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Trouver" ADD CONSTRAINT "Trouver_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Trouver" ADD CONSTRAINT "Trouver_Id_Infras_fkey" FOREIGN KEY ("Id_Infras") REFERENCES "Infrastructure"("Id_Infras") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Eclairer" ADD CONSTRAINT "Eclairer_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Eclairer" ADD CONSTRAINT "Eclairer_Id_Equip_fkey" FOREIGN KEY ("Id_Equip") REFERENCES "Equipement"("Id_Equip") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Desservir" ADD CONSTRAINT "Desservir_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Desservir" ADD CONSTRAINT "Desservir_Id_Rte_fkey" FOREIGN KEY ("Id_Rte") REFERENCES "Route"("Id_Rte") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Approvisionner" ADD CONSTRAINT "Approvisionner_Id_Bat_fkey" FOREIGN KEY ("Id_Bat") REFERENCES "Batiment"("Id_Bat") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Approvisionner" ADD CONSTRAINT "Approvisionner_Id_Reseaux_fkey" FOREIGN KEY ("Id_Reseaux") REFERENCES "Reseau_en_eau"("Id_Reseaux") ON DELETE CASCADE ON UPDATE CASCADE;

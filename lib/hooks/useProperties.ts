@@ -1,10 +1,7 @@
 // lib/hooks/useProperties.ts
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-// Property source types
-export type PropertySource = "lotissement" | "parcelle" | "batiment";
-
-// Property types
+// Property types - MUST match Prisma enum
 export const PropertyTypes = [
   "Apartment",
   "House",
@@ -15,66 +12,92 @@ export const PropertyTypes = [
   "Building",
   "Studio",
   "Duplex",
+  "ChambreModerne",
+  "Chambre",
 ] as const;
 
 export type PropertyType = (typeof PropertyTypes)[number];
 
-// Unified Property interface
-export interface UnifiedProperty {
-  id: string; // "source-numericId" format
-  numericId: number;
-  source: PropertySource;
+// Media item from the Media model
+export interface PropertyMedia {
+  id: number;
+  url: string;
+  type: "image" | "video";
+  order: number;
+}
+
+// Unified Property interface - matches schema
+export interface Property {
+  id: number;
   title: string;
   shortDescription: string | null;
   description: string | null;
+
+  // Pricing
   price: number | null;
+  priceMin: number | null;
+  priceMax: number | null;
   pricePerSqM: number | null;
   currency: string;
+
+  // Type & listing
   type: PropertyType;
   forSale: boolean;
   forRent: boolean;
   rentPrice: number | null;
+
+  // Land specifics
   isLandForDevelopment: boolean;
   approvedForApartments: boolean | null;
+
+  // Unit features
   bedrooms: number | null;
   bathrooms: number | null;
   kitchens: number | null;
   livingRooms: number | null;
-  hasGenerator: boolean;
-  hasParking: boolean;
-  parkingSpaces: number | null; // NEW: for Batiment
-  hasElevator: boolean | null; // NEW: for Batiment
-  totalUnits: number | null; // NEW: for Batiment (apartment buildings)
+  surfaceArea: number | null;
   floorLevel: number | null;
   totalFloors: number | null;
-  surface: number | null;
-  nbreLots: number | null;
+  doorNumber: string | null;
+
+  // Amenities
+  hasGenerator: boolean | null;
+  hasParking: boolean | null;
+  parkingSpaces: number | null;
+  hasElevator: boolean | null; // From Batiment
+  totalUnits: number | null; // From Batiment
+  amenities: string | null;
+
+  // Location
+  address: string | null;
   location: {
     lieudit: string | null;
     arrondissement: string | null;
     departement: string | null;
     region: string | null;
   };
-  imageUrl1: string | null;
-  imageUrl2: string | null;
-  imageUrl3: string | null;
-  imageUrl4: string | null;
-  imageUrl5: string | null;
-  imageUrl6: string | null;
-  videoUrl: string | null;
+
+  // Relations
+  parcelleId: number;
+  batimentId: number | null;
+
+  // Media (from Media relation)
+  media: PropertyMedia[];
+
+  // Status
   published: boolean;
   featured: boolean;
+
+  // Timestamps
   createdAt: string;
   updatedAt: string;
-  _meta?: Record<string, any>;
 }
 
-// Keep Property as alias
-export type Property = UnifiedProperty;
+// Keep UnifiedProperty as alias for backwards compatibility
+export type UnifiedProperty = Property;
 
 // Filter options
 export interface PropertyFilters {
-  source?: PropertySource | "all";
   type?: PropertyType | "all";
   forSale?: boolean;
   forRent?: boolean;
@@ -82,14 +105,16 @@ export interface PropertyFilters {
   maxPrice?: number;
   minBedrooms?: number;
   maxBedrooms?: number;
+  minSurfaceArea?: number;
+  maxSurfaceArea?: number;
   hasParking?: boolean;
   hasGenerator?: boolean;
-  hasElevator?: boolean; // NEW: filter option
+  hasElevator?: boolean;
   isLandForDevelopment?: boolean;
   published?: boolean;
   featured?: boolean;
   region?: string;
-  department?: string;
+  departement?: string;
   arrondissement?: string;
 }
 
@@ -117,23 +142,17 @@ export interface PropertyStats {
   landForDevelopment: number;
   averagePrice: number;
   byType: Record<PropertyType, number>;
-  bySource: Record<PropertySource, number>;
   byRegion: Record<string, number>;
   withParking: number;
   withGenerator: number;
-  withElevator: number; // NEW: stat
+  withElevator: number;
 }
 
 // Main hook
 export function useProperties() {
-  const [properties, setProperties] = useState<UnifiedProperty[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [breakdown, setBreakdown] = useState({
-    lotissements: 0,
-    parcelles: 0,
-    batiments: 0,
-  });
 
   const fetchProperties = useCallback(async () => {
     setLoading(true);
@@ -153,9 +172,6 @@ export function useProperties() {
       }
 
       setProperties(data.data || []);
-      setBreakdown(
-        data.breakdown || { lotissements: 0, parcelles: 0, batiments: 0 },
-      );
     } catch (err) {
       console.error("Error fetching properties:", err);
       setError(
@@ -170,44 +186,142 @@ export function useProperties() {
     fetchProperties();
   }, [fetchProperties]);
 
-  return { properties, loading, error, refetch: fetchProperties, breakdown };
+  return { properties, loading, error, refetch: fetchProperties };
 }
 
 // Single property hook
-export function useProperty(id: string | null) {
-  const [property, setProperty] = useState<UnifiedProperty | null>(null);
+// Single property hook - accepts string or number ID
+// Single property hook - accepts string or number ID
+// Single property hook - accepts string or number ID
+// In lib/hooks/useProperties.ts
+
+// Replace your useProperty hook in lib/hooks/useProperties.ts
+// Starting at line ~197
+
+export function useProperty(id: number | string | null | undefined) {
+  const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) {
+    // Handle null, undefined, or empty
+    if (id === null || id === undefined || id === "") {
+      setProperty(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Convert string to number
+    const numericId = typeof id === "string" ? parseInt(id, 10) : id;
+
+    // Validate
+    if (isNaN(numericId) || numericId <= 0) {
+      setError("Invalid property ID");
       setProperty(null);
       setLoading(false);
       return;
     }
 
     setLoading(true);
-    fetch(`/api/properties/${id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          setProperty(data.data);
-        } else {
-          setError(data.error);
+    setError(null);
+
+    // ⭐ Fetch both property and media in parallel
+    Promise.all([
+      fetch(`/api/properties/${numericId}`).then((res) => res.json()),
+      fetch(`/api/data/Media?entityType=PROPERTY&entityId=${numericId}`).then(
+        (res) => res.json(),
+      ),
+    ])
+      .then(([propertyData, mediaData]) => {
+        // Check if property fetch was successful
+        if (!propertyData.success) {
+          if (propertyData.error === "Property not found") {
+            throw new Error("Property not found");
+          }
+          throw new Error(propertyData.error || "Failed to fetch property");
         }
+
+        // Extract property and media
+        const baseProperty = propertyData.data;
+        const mediaItems = mediaData.data || mediaData || [];
+
+        console.log("✅ Property loaded:", baseProperty.id, baseProperty.title);
+        console.log(
+          "✅ Media fetched:",
+          Array.isArray(mediaItems) ? mediaItems.length : 0,
+          "items",
+        );
+
+        // Normalize media items
+        const normalizedMedia = Array.isArray(mediaItems)
+          ? mediaItems.map((m: any) => ({
+              id: m.id,
+              url: m.url,
+              type: String(m.type).toLowerCase() as "image" | "video",
+              order: m.order || 0,
+            }))
+          : [];
+
+        // Combine property with media
+        const propertyWithMedia: Property = {
+          ...baseProperty,
+          media: normalizedMedia,
+        };
+
+        console.log("✅ Final property with media:", {
+          id: propertyWithMedia.id,
+          title: propertyWithMedia.title,
+          mediaCount: propertyWithMedia.media.length,
+          images: propertyWithMedia.media.filter((m) => m.type === "image")
+            .length,
+          videos: propertyWithMedia.media.filter((m) => m.type === "video")
+            .length,
+        });
+
+        setProperty(propertyWithMedia);
+        setError(null);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        console.error("❌ useProperty error:", err);
+        setError(err.message || "Failed to load property");
+        setProperty(null);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
   return { property, loading, error };
 }
 
+// Add these at the end of useProperties.ts
+
+// Source labels (for backwards compatibility - now all properties come from "property" table)
+export function getSourceLabel(source?: string): string {
+  // Since we now have a unified Property model, this is simplified
+  const labels: Record<string, string> = {
+    property: "Property",
+    batiment: "Building",
+    parcelle: "Land",
+    lotissement: "Development",
+  };
+  return labels[source || "property"] || "Property";
+}
+
+// Source colors
+export function getSourceColor(source?: string): string {
+  const colors: Record<string, string> = {
+    property: "#10b981", // emerald
+    batiment: "#6366f1", // indigo
+    parcelle: "#f59e0b", // amber
+    lotissement: "#ec4899", // pink
+  };
+  return colors[source || "property"] || "#10b981";
+}
 // Search function
 export function searchProperties(
-  properties: UnifiedProperty[],
+  properties: Property[],
   query: string,
-): UnifiedProperty[] {
+): Property[] {
   if (!query.trim()) return properties;
 
   const terms = query.toLowerCase().split(/\s+/);
@@ -218,7 +332,7 @@ export function searchProperties(
       p.shortDescription,
       p.description,
       p.type,
-      p.source,
+      p.address,
       p.location.lieudit,
       p.location.arrondissement,
       p.location.departement,
@@ -234,16 +348,10 @@ export function searchProperties(
 
 // Filter function
 export function filterProperties(
-  properties: UnifiedProperty[],
+  properties: Property[],
   filters: PropertyFilters,
-): UnifiedProperty[] {
+): Property[] {
   return properties.filter((p) => {
-    if (
-      filters.source &&
-      filters.source !== "all" &&
-      p.source !== filters.source
-    )
-      return false;
     if (filters.type && filters.type !== "all" && p.type !== filters.type)
       return false;
     if (filters.forSale !== undefined && p.forSale !== filters.forSale)
@@ -267,18 +375,29 @@ export function filterProperties(
       (p.bedrooms ?? 0) < filters.minBedrooms
     )
       return false;
-    if (filters.hasParking !== undefined && p.hasParking !== filters.hasParking)
-      return false;
     if (
-      filters.hasGenerator !== undefined &&
-      p.hasGenerator !== filters.hasGenerator
+      filters.maxBedrooms !== undefined &&
+      (p.bedrooms ?? 0) > filters.maxBedrooms
     )
       return false;
     if (
-      filters.hasElevator !== undefined &&
-      p.hasElevator !== filters.hasElevator
+      filters.minSurfaceArea !== undefined &&
+      (p.surfaceArea ?? 0) < filters.minSurfaceArea
     )
-      return false; // NEW
+      return false;
+    if (
+      filters.maxSurfaceArea !== undefined &&
+      (p.surfaceArea ?? 0) > filters.maxSurfaceArea
+    )
+      return false;
+    if (filters.hasParking === true && !p.hasParking) return false;
+    if (filters.hasGenerator === true && !p.hasGenerator) return false;
+    if (filters.hasElevator === true && !p.hasElevator) return false;
+    if (
+      filters.isLandForDevelopment !== undefined &&
+      p.isLandForDevelopment !== filters.isLandForDevelopment
+    )
+      return false;
     if (filters.published !== undefined && p.published !== filters.published)
       return false;
     if (filters.featured !== undefined && p.featured !== filters.featured)
@@ -288,15 +407,29 @@ export function filterProperties(
       !p.location.region?.toLowerCase().includes(filters.region.toLowerCase())
     )
       return false;
+    if (
+      filters.departement &&
+      !p.location.departement
+        ?.toLowerCase()
+        .includes(filters.departement.toLowerCase())
+    )
+      return false;
+    if (
+      filters.arrondissement &&
+      !p.location.arrondissement
+        ?.toLowerCase()
+        .includes(filters.arrondissement.toLowerCase())
+    )
+      return false;
     return true;
   });
 }
 
 // Sort function
 export function sortProperties(
-  properties: UnifiedProperty[],
+  properties: Property[],
   sortBy: SortOption,
-): UnifiedProperty[] {
+): Property[] {
   const sorted = [...properties];
   switch (sortBy) {
     case "newest":
@@ -313,17 +446,25 @@ export function sortProperties(
       return sorted.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
     case "price-desc":
       return sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+    case "bedrooms-asc":
+      return sorted.sort((a, b) => (a.bedrooms ?? 0) - (b.bedrooms ?? 0));
     case "bedrooms-desc":
       return sorted.sort((a, b) => (b.bedrooms ?? 0) - (a.bedrooms ?? 0));
+    case "surface-asc":
+      return sorted.sort((a, b) => (a.surfaceArea ?? 0) - (b.surfaceArea ?? 0));
     case "surface-desc":
-      return sorted.sort((a, b) => (b.surface ?? 0) - (a.surface ?? 0));
+      return sorted.sort((a, b) => (b.surfaceArea ?? 0) - (a.surfaceArea ?? 0));
+    case "title-asc":
+      return sorted.sort((a, b) => a.title.localeCompare(b.title));
+    case "title-desc":
+      return sorted.sort((a, b) => b.title.localeCompare(a.title));
     default:
       return sorted;
   }
 }
 
 // Calculate stats
-export function calculateStats(properties: UnifiedProperty[]): PropertyStats {
+export function calculateStats(properties: Property[]): PropertyStats {
   const published = properties.filter((p) => p.published);
   const forSale = published.filter((p) => p.forSale);
   const forRent = published.filter((p) => p.forRent);
@@ -333,12 +474,6 @@ export function calculateStats(properties: UnifiedProperty[]): PropertyStats {
   PropertyTypes.forEach((t) => {
     byType[t] = published.filter((p) => p.type === t).length;
   });
-
-  const bySource: Record<PropertySource, number> = {
-    lotissement: published.filter((p) => p.source === "lotissement").length,
-    parcelle: published.filter((p) => p.source === "parcelle").length,
-    batiment: published.filter((p) => p.source === "batiment").length,
-  };
 
   const byRegion: Record<string, number> = {};
   published.forEach((p) => {
@@ -359,19 +494,17 @@ export function calculateStats(properties: UnifiedProperty[]): PropertyStats {
     saleAndRent: dual.length,
     landForDevelopment: published.filter((p) => p.isLandForDevelopment).length,
     averagePrice: prices.length
-      ? Math.round(
-          prices.reduce((a: number, b: number) => a + b, 0) / prices.length,
-        )
+      ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length)
       : 0,
     byType,
-    bySource,
     byRegion,
     withParking: published.filter((p) => p.hasParking).length,
     withGenerator: published.filter((p) => p.hasGenerator).length,
-    withElevator: published.filter((p) => p.hasElevator).length, // NEW
+    withElevator: published.filter((p) => p.hasElevator).length,
   };
 }
 
+// Format price
 export function formatPrice(
   price: number | null | undefined,
   currency = "XAF",
@@ -380,7 +513,6 @@ export function formatPrice(
     return "Prix sur demande";
   }
   if (typeof price === "number" && price > 0) {
-    // Use abbreviations for large numbers
     if (price >= 1e9) return `${(price / 1e9).toFixed(1)}B ${currency}`;
     if (price >= 1e6) return `${(price / 1e6).toFixed(0)}M ${currency}`;
     if (price >= 1e3) return `${(price / 1e3).toFixed(0)}K ${currency}`;
@@ -397,11 +529,9 @@ export function formatPriceCompact(
   price: number | null | undefined,
   currency = "XAF",
 ): string {
-  // Explicitly check for null, undefined, or 0
   if (price === null || price === undefined || price === 0) {
     return "N/A";
   }
-  // Only format if price is a valid positive number
   if (typeof price === "number" && price > 0) {
     if (price >= 1e9) return `${(price / 1e9).toFixed(1)}B ${currency}`;
     if (price >= 1e6) return `${(price / 1e6).toFixed(0)}M ${currency}`;
@@ -416,18 +546,93 @@ export function formatArea(area: number | null): string {
   return `${area.toLocaleString("fr-CM")} m²`;
 }
 
-export function getPropertyImages(property: UnifiedProperty): string[] {
-  return [
-    property.imageUrl1,
-    property.imageUrl2,
-    property.imageUrl3,
-    property.imageUrl4,
-    property.imageUrl5,
-    property.imageUrl6,
-  ].filter((url): url is string => !!url);
+// Get property images from media array
+// Replace your getPropertyImages function in lib/hooks/useProperties.ts
+// with this heavily debugged version
+
+export function getPropertyImages(property: Property): string[] {
+  console.group("🖼️ getPropertyImages called");
+
+  if (!property) {
+    console.error("❌ property is null/undefined");
+    console.groupEnd();
+    return [];
+  }
+
+  if (!property.media) {
+    console.error("❌ property.media is null/undefined");
+    console.groupEnd();
+    return [];
+  }
+
+  if (!Array.isArray(property.media)) {
+    console.error("❌ property.media is not an array:", typeof property.media);
+    console.groupEnd();
+    return [];
+  }
+
+  console.log(
+    "✅ property.media is valid array with",
+    property.media.length,
+    "items",
+  );
+
+  // Log each item
+  property.media.forEach((item, idx) => {
+    console.log(`  [${idx}]:`, {
+      id: item.id,
+      type: item.type,
+      url: item.url?.substring(0, 50) + "...",
+    });
+  });
+
+  // Filter for images
+  const images = property.media.filter((m) => {
+    const isImage = m.type === "image";
+    console.log(`    ${m.id}: type="${m.type}" === "image"? ${isImage}`);
+    return isImage;
+  });
+
+  console.log("After filter: found", images.length, "images");
+
+  // Sort by order
+  const sorted = images.sort((a, b) => a.order - b.order);
+  console.log("After sort:", sorted.length, "images");
+
+  // Extract URLs
+  const urls = sorted.map((m) => m.url);
+  console.log("URLs:", urls);
+
+  console.groupEnd();
+  return urls;
 }
 
-export function getPropertyLocation(property: UnifiedProperty): string {
+export function getPropertyVideo(property: Property): string | null {
+  console.group("🎬 getPropertyVideo called");
+
+  if (!property?.media || !Array.isArray(property.media)) {
+    console.log("❌ No valid media array");
+    console.groupEnd();
+    return null;
+  }
+
+  const video = property.media.find((m) => {
+    const isVideo = m.type === "video";
+    console.log(`  ${m.id}: type="${m.type}" === "video"? ${isVideo}`);
+    return isVideo;
+  });
+
+  if (video) {
+    console.log("✅ Found video:", video.url);
+  } else {
+    console.log("❌ No video found");
+  }
+
+  console.groupEnd();
+  return video?.url ?? null;
+}
+
+export function getPropertyLocation(property: Property): string {
   return (
     [
       property.location.lieudit,
@@ -436,100 +641,96 @@ export function getPropertyLocation(property: UnifiedProperty): string {
       property.location.region,
     ]
       .filter(Boolean)
-      .join(", ") || "Location not specified"
+      .join(", ") ||
+    property.address ||
+    "Location not specified"
   );
 }
 
 export function getFeaturedProperties(
-  properties: UnifiedProperty[],
+  properties: Property[],
   limit = 10,
-): UnifiedProperty[] {
+): Property[] {
   return properties.filter((p) => p.featured && p.published).slice(0, limit);
 }
 
-export function getSourceLabel(source: PropertySource): string {
-  return {
-    lotissement: "Lotissement",
-    parcelle: "Parcelle",
-    batiment: "Bâtiment",
-  }[source];
+export function getTypeLabel(type: PropertyType): string {
+  const labels: Record<PropertyType, string> = {
+    Apartment: "Appartement",
+    House: "Maison",
+    Villa: "Villa",
+    Office: "Bureau",
+    Commercial: "Commercial",
+    Land: "Terrain",
+    Building: "Immeuble",
+    Studio: "Studio",
+    Duplex: "Duplex",
+    ChambreModerne: "Chambre Moderne",
+    Chambre: "Chambre",
+  };
+  return labels[type] || type;
 }
 
-export function getSourceColor(source: PropertySource): string {
-  return { lotissement: "#22c55e", parcelle: "#3b82f6", batiment: "#f59e0b" }[
-    source
-  ];
-}
-
-// Get similar properties based on type, location, price range
+// Get similar properties
+// Get similar properties
 export function getSimilarProperties(
-  property: UnifiedProperty,
-  allProperties: UnifiedProperty[],
+  property: Property,
+  allProperties: Property[],
   limit = 6,
-): UnifiedProperty[] {
-  // Filter out the current property and unpublished properties
+): Property[] {
+  // Filter out the current property and unpublished ones
   const candidates = allProperties.filter(
     (p) => p.id !== property.id && p.published,
   );
 
-  // Score each property based on similarity
   const scored = candidates.map((p) => {
     let score = 0;
 
-    // Same type gets highest score
+    // Same type is a strong match
     if (p.type === property.type) score += 50;
 
-    // Same source
-    if (p.source === property.source) score += 20;
-
-    // Same sale/rent status
+    // Same listing type
     if (p.forSale === property.forSale) score += 15;
     if (p.forRent === property.forRent) score += 15;
 
-    // Similar price (within 30%)
-    if (
-      property.price !== null &&
-      property.price > 0 &&
-      p.price !== null &&
-      p.price > 0
-    ) {
-      const priceDiff = Math.abs(p.price - property.price) / property.price;
-      if (priceDiff < 0.3) score += 30;
-      else if (priceDiff < 0.5) score += 15;
+    // Similar price range
+    if (property.price && p.price) {
+      const propertyPrice = Number(property.price);
+      const pPrice = Number(p.price);
+      if (propertyPrice > 0 && pPrice > 0) {
+        const priceDiff = Math.abs(pPrice - propertyPrice) / propertyPrice;
+        if (priceDiff < 0.3) score += 30;
+        else if (priceDiff < 0.5) score += 15;
+      }
     }
 
-    // Same region
+    // Same location
     if (p.location.region === property.location.region) score += 25;
-
-    // Same department
     if (p.location.departement === property.location.departement) score += 15;
-
-    // Same arrondissement (very similar location)
     if (p.location.arrondissement === property.location.arrondissement)
       score += 10;
 
-    // Similar surface area (within 30%)
-    if (property.surface && p.surface) {
+    // Similar surface area
+    if (property.surfaceArea && p.surfaceArea) {
       const surfaceDiff =
-        Math.abs(p.surface - property.surface) / property.surface;
+        Math.abs(p.surfaceArea - property.surfaceArea) / property.surfaceArea;
       if (surfaceDiff < 0.3) score += 20;
       else if (surfaceDiff < 0.5) score += 10;
     }
 
-    // Similar bedrooms (for buildings)
+    // Similar bedrooms
     if (property.bedrooms && p.bedrooms) {
       const bedroomDiff = Math.abs(p.bedrooms - property.bedrooms);
       if (bedroomDiff === 0) score += 15;
       else if (bedroomDiff === 1) score += 8;
     }
 
-    // Featured properties get slight boost
+    // Featured properties get a small boost
     if (p.featured) score += 5;
 
     return { property: p, score };
   });
 
-  // Sort by score descending and return top matches
   return scored
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)

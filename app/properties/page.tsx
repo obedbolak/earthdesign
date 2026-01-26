@@ -57,7 +57,7 @@ import Footer from "@/components/Footer";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 
 // Placeholder images by property type
-const PLACEHOLDER_IMAGES: Record<PropertyType | "default", string> = {
+const PLACEHOLDER_IMAGES: Record<PropertyType | any, string> = {
   Villa:
     "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop&q=80",
   Apartment:
@@ -90,6 +90,8 @@ const TYPE_ICONS: Record<PropertyType, React.ComponentType<any>> = {
   Building: Building2,
   Studio: Home,
   Duplex: Home,
+  ChambreModerne: Home,
+  Chambre: Home,
 };
 
 // Get property status
@@ -468,7 +470,7 @@ export default function AllPropertiesPage() {
                   style={{ color: COLORS.primary[400] }}
                 />
                 <span className="font-semibold text-xs sm:text-sm text-white">
-                  {formatArea(property.surface)}
+                  {formatArea(property.surfaceArea)}
                 </span>
               </div>
               <div className="text-right">
@@ -646,7 +648,7 @@ export default function AllPropertiesPage() {
               className="flex items-center gap-3 sm:gap-4 md:gap-6 pt-3 sm:pt-4 border-t flex-wrap"
               style={{ borderColor: `${COLORS.primary[600]}40` }}
             >
-              {property.surface && (
+              {property.surfaceArea && (
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <Square
                     className="w-4 h-4 sm:w-5 sm:h-5"
@@ -660,7 +662,7 @@ export default function AllPropertiesPage() {
                       Area
                     </p>
                     <p className="font-semibold text-xs sm:text-sm text-white">
-                      {formatArea(property.surface)}
+                      {formatArea(property.surfaceArea)}
                     </p>
                   </div>
                 </div>
@@ -811,12 +813,12 @@ export default function AllPropertiesPage() {
             >
               {property.type}
             </span>
-            {property.surface && (
+            {property.surfaceArea && (
               <span
                 className="text-[10px] sm:text-xs"
                 style={{ color: COLORS.primary[400] }}
               >
-                {formatArea(property.surface)}
+                {formatArea(property.surfaceArea)}
               </span>
             )}
           </div>

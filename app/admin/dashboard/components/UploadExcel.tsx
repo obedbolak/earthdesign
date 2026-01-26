@@ -28,14 +28,25 @@ type TabKey = "overview" | "data" | "upload" | "images" | "video" | "clear";
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 interface ImportResults {
-  totalRows?: number;
-  imported?: number;
-  updated?: number;
-  skipped?: number;
-  failed?: number;
+  totalSheets?: number;
+  processedSheets?: number;
+  summary?: {
+    totalImported: number;
+    totalDuplicates: number;
+    totalSkipped: number;
+    totalErrors: number;
+  };
+  sheets?: Array<{
+    name: string;
+    status: string;
+    imported: number;
+    duplicates: number;
+    skipped: number;
+    errorCount: number;
+    warningCount: number;
+  }>;
   [key: string]: any;
 }
-
 export default function UploadExcel({
   onTabChange,
 }: { onTabChange?: Dispatch<SetStateAction<TabKey>> } = {}) {
@@ -49,7 +60,6 @@ export default function UploadExcel({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-
   const handleFile = async (file?: File) => {
     setMessage(null);
     setErrors(null);
@@ -93,26 +103,92 @@ export default function UploadExcel({
       clearInterval(progressInterval);
       setUploadProgress(100);
 
+      // Debug: Log full response
+      console.log("=== API Response ===");
+      console.log("Status:", res.status);
+      console.log("Response:", JSON.stringify(json, null, 2));
+
+      // Collect all errors from various response formats
+      const allErrors: string[] = [];
+
+      // Add global errors
+      if (json?.errors && Array.isArray(json.errors)) {
+        allErrors.push(...json.errors);
+      }
+
+      // Add sheet-specific errors
+      if (json?.sheetErrors && Array.isArray(json.sheetErrors)) {
+        json.sheetErrors.forEach(
+          (sheetError: { sheet: string; errors: string[] }) => {
+            if (sheetError.errors && Array.isArray(sheetError.errors)) {
+              allErrors.push(`[${sheetError.sheet}]:`);
+              allErrors.push(
+                ...sheetError.errors.slice(0, 5).map((e) => `  • ${e}`),
+              );
+              if (sheetError.errors.length > 5) {
+                allErrors.push(
+                  `  ... and ${sheetError.errors.length - 5} more errors`,
+                );
+              }
+            }
+          },
+        );
+      }
+
+      // Add details errors if present
+      if (json?.details?.sheets && Array.isArray(json.details.sheets)) {
+        json.details.sheets.forEach((sheet: any) => {
+          if (sheet.status === "failed" || sheet.errorCount > 0) {
+            allErrors.push(
+              `Sheet "${sheet.name}": ${sheet.status} (${sheet.errorCount} errors)`,
+            );
+          }
+        });
+      }
+
       if (!res.ok) {
-        if (json?.errors) setErrors(json.errors);
-        else if (json?.error) setMessage(json.error);
-        else setMessage("Upload failed");
+        // Set main error message
+        if (json?.error) {
+          setMessage(
+            `${json.error}${json.details ? `: ${typeof json.details === "string" ? json.details : ""}` : ""}`,
+          );
+        } else if (json?.message) {
+          setMessage(json.message);
+        } else {
+          setMessage(`Upload failed with status ${res.status}`);
+        }
+
+        // Set collected errors
+        if (allErrors.length > 0) {
+          setErrors(allErrors);
+        }
+
+        // Still show results if available (for partial failures)
+        if (json?.details && typeof json.details === "object") {
+          setResults(json.details);
+        }
+
         setIsSuccess(false);
         return;
       }
 
+      // Success case
       if (json.success) {
         setMessage(json.message || "Import successful");
-        setResults(json.details ?? json.imported ?? null);
+        setResults(json.details ?? null);
         setIsSuccess(true);
       } else {
+        // Partial success
         setMessage(json.message || "Import completed with issues");
-        if (json.errors) setErrors(json.errors);
-        setResults(json.imported ?? json.details ?? null);
+        if (allErrors.length > 0) {
+          setErrors(allErrors);
+        }
+        setResults(json.details ?? null);
         setIsSuccess(false);
       }
     } catch (e) {
       clearInterval(progressInterval);
+      console.error("Upload error:", e);
       setMessage((e as Error).message || "Network error");
       setIsSuccess(false);
     } finally {
@@ -208,8 +284,8 @@ export default function UploadExcel({
                 isDragging
                   ? "border-emerald-500 bg-emerald-50"
                   : selectedFile
-                  ? "border-emerald-300 bg-emerald-50/50"
-                  : "border-gray-200 bg-gradient-to-b from-gray-50 to-white hover:border-emerald-300 hover:bg-emerald-50/30"
+                    ? "border-emerald-300 bg-emerald-50/50"
+                    : "border-gray-200 bg-gradient-to-b from-gray-50 to-white hover:border-emerald-300 hover:bg-emerald-50/30"
               }
             `}
             >
@@ -464,33 +540,40 @@ export default function UploadExcel({
                 </div>
 
                 {/* Results Summary */}
+                {/* Results Summary */}
                 {results && (
                   <div className="mt-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {[
                         {
-                          label: "Total Rows",
-                          value: results.totalRows || results.total || "-",
-                          icon: Layers,
-                          color: "from-blue-500 to-cyan-500",
-                        },
-                        {
                           label: "Imported",
-                          value: results.imported || results.created || "-",
+                          value:
+                            results.summary?.totalImported ??
+                            results.imported ??
+                            "-",
                           icon: CheckCircle2,
                           color: "from-emerald-500 to-teal-500",
                         },
                         {
-                          label: "Updated",
-                          value: results.updated || "-",
-                          icon: BarChart3,
-                          color: "from-amber-500 to-orange-500",
+                          label: "Duplicates",
+                          value: results.summary?.totalDuplicates ?? "-",
+                          icon: Layers,
+                          color: "from-blue-500 to-cyan-500",
                         },
                         {
                           label: "Skipped",
-                          value: results.skipped || results.failed || "-",
+                          value:
+                            results.summary?.totalSkipped ??
+                            results.skipped ??
+                            "-",
                           icon: XCircle,
-                          color: "from-gray-400 to-gray-500",
+                          color: "from-amber-500 to-orange-500",
+                        },
+                        {
+                          label: "Errors",
+                          value: results.summary?.totalErrors ?? "-",
+                          icon: AlertCircle,
+                          color: "from-red-400 to-rose-500",
                         },
                       ].map((stat, index) => (
                         <div
@@ -514,6 +597,64 @@ export default function UploadExcel({
                       ))}
                     </div>
 
+                    {/* Sheet-by-sheet breakdown */}
+                    {results.sheets && results.sheets.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <h4 className="font-medium text-gray-700 mb-2">
+                          Sheet Details:
+                        </h4>
+                        {results.sheets.map((sheet, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex items-center justify-between p-3 rounded-lg border ${
+                              sheet.status === "success"
+                                ? "bg-emerald-50 border-emerald-200"
+                                : sheet.status === "partial"
+                                  ? "bg-amber-50 border-amber-200"
+                                  : sheet.status === "failed"
+                                    ? "bg-red-50 border-red-200"
+                                    : "bg-gray-50 border-gray-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {sheet.status === "success" ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                              ) : sheet.status === "failed" ? (
+                                <XCircle className="w-4 h-4 text-red-500" />
+                              ) : (
+                                <AlertCircle className="w-4 h-4 text-amber-500" />
+                              )}
+                              <span className="font-medium text-gray-800">
+                                {sheet.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              {sheet.imported > 0 && (
+                                <span className="text-emerald-600">
+                                  {sheet.imported} imported
+                                </span>
+                              )}
+                              {sheet.duplicates > 0 && (
+                                <span className="text-blue-600">
+                                  {sheet.duplicates} duplicates
+                                </span>
+                              )}
+                              {sheet.skipped > 0 && (
+                                <span className="text-amber-600">
+                                  {sheet.skipped} skipped
+                                </span>
+                              )}
+                              {sheet.errorCount > 0 && (
+                                <span className="text-red-600">
+                                  {sheet.errorCount} errors
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Detailed Results Toggle */}
                     <button
                       onClick={() => setShowDetails(!showDetails)}
@@ -522,12 +663,12 @@ export default function UploadExcel({
                       {showDetails ? (
                         <>
                           <ChevronUp className="w-4 h-4" />
-                          Hide Details
+                          Hide Raw Details
                         </>
                       ) : (
                         <>
                           <ChevronDown className="w-4 h-4" />
-                          View Details
+                          View Raw Details
                         </>
                       )}
                     </button>
@@ -537,7 +678,7 @@ export default function UploadExcel({
                         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                           <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                             <h4 className="font-medium text-gray-700">
-                              Import Details
+                              Raw Response
                             </h4>
                           </div>
                           <div className="p-4 max-h-64 overflow-auto">
