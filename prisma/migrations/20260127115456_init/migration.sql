@@ -1,5 +1,14 @@
 -- CreateEnum
-CREATE TYPE "PropertyType" AS ENUM ('Apartment', 'House', 'Villa', 'Office', 'Commercial', 'Land', 'Building', 'Studio', 'Duplex', 'ChambreModerne', 'Chambre');
+CREATE TYPE "ListingType" AS ENUM ('SALE', 'RENT', 'BOTH');
+
+-- CreateEnum
+CREATE TYPE "ListingStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'SOLD', 'RENTED', 'ARCHIVED');
+
+-- CreateEnum
+CREATE TYPE "PropertyCategory" AS ENUM ('LAND', 'RESIDENTIAL', 'COMMERCIAL', 'INDUSTRIAL', 'MIXED');
+
+-- CreateEnum
+CREATE TYPE "PropertyType" AS ENUM ('APARTMENT', 'HOUSE', 'VILLA', 'STUDIO', 'DUPLEX', 'TRIPLEX', 'PENTHOUSE', 'CHAMBRE_MODERNE', 'CHAMBRE', 'OFFICE', 'SHOP', 'RESTAURANT', 'HOTEL', 'WAREHOUSE', 'COMMERCIAL_SPACE', 'INDUSTRIAL', 'FACTORY', 'BUILDING', 'MIXED_USE');
 
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('USER', 'AGENT', 'ADMIN');
@@ -8,7 +17,10 @@ CREATE TYPE "UserRole" AS ENUM ('USER', 'AGENT', 'ADMIN');
 CREATE TYPE "OTPType" AS ENUM ('EMAIL_VERIFICATION', 'PASSWORD_RESET', 'LOGIN_VERIFICATION');
 
 -- CreateEnum
-CREATE TYPE "MediaEntityType" AS ENUM ('PROPERTY', 'LOTISSEMENT', 'PARCELLE', 'BATIMENT', 'INFRASTRUCTURE');
+CREATE TYPE "MediaEntityType" AS ENUM ('LOTISSEMENT', 'PARCELLE', 'BATIMENT', 'INFRASTRUCTURE');
+
+-- CreateEnum
+CREATE TYPE "EntityType" AS ENUM ('LOTISSEMENT', 'PARCELLE', 'BATIMENT');
 
 -- CreateTable
 CREATE TABLE "OTPToken" (
@@ -30,7 +42,13 @@ CREATE TABLE "User" (
     "password" TEXT,
     "emailVerified" TIMESTAMP(3),
     "image" TEXT,
+    "phone" TEXT,
     "role" "UserRole" NOT NULL DEFAULT 'USER',
+    "agencyName" TEXT,
+    "agencyLogo" TEXT,
+    "bio" TEXT,
+    "whatsapp" TEXT,
+    "isVerified" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -131,6 +149,26 @@ CREATE TABLE "Lotissement" (
     "Ccp" TEXT,
     "Id_Arrond" INTEGER,
     "WKT_Geometry" TEXT,
+    "slug" TEXT,
+    "title" TEXT,
+    "shortDescription" VARCHAR(500),
+    "description" TEXT,
+    "category" "PropertyCategory" NOT NULL DEFAULT 'LAND',
+    "listingType" "ListingType",
+    "listingStatus" "ListingStatus" NOT NULL DEFAULT 'DRAFT',
+    "price" DECIMAL(15,2),
+    "pricePerSqM" DECIMAL(15,2),
+    "currency" TEXT NOT NULL DEFAULT 'XAF',
+    "featured" BOOLEAN NOT NULL DEFAULT false,
+    "viewCount" INTEGER NOT NULL DEFAULT 0,
+    "favoriteCount" INTEGER NOT NULL DEFAULT 0,
+    "shareCount" INTEGER NOT NULL DEFAULT 0,
+    "totalParcels" INTEGER,
+    "availableParcels" INTEGER,
+    "hasRoadAccess" BOOLEAN DEFAULT false,
+    "hasElectricity" BOOLEAN DEFAULT false,
+    "hasWater" BOOLEAN DEFAULT false,
+    "createdById" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -160,6 +198,24 @@ CREATE TABLE "Parcelle" (
     "Cloture" BOOLEAN,
     "Id_Lotis" INTEGER,
     "WKT_Geometry" TEXT,
+    "slug" TEXT,
+    "title" TEXT,
+    "shortDescription" VARCHAR(500),
+    "description" TEXT,
+    "category" "PropertyCategory" NOT NULL DEFAULT 'LAND',
+    "listingType" "ListingType",
+    "listingStatus" "ListingStatus" NOT NULL DEFAULT 'DRAFT',
+    "price" DECIMAL(15,2),
+    "pricePerSqM" DECIMAL(15,2),
+    "currency" TEXT NOT NULL DEFAULT 'XAF',
+    "featured" BOOLEAN NOT NULL DEFAULT false,
+    "viewCount" INTEGER NOT NULL DEFAULT 0,
+    "favoriteCount" INTEGER NOT NULL DEFAULT 0,
+    "shareCount" INTEGER NOT NULL DEFAULT 0,
+    "isForDevelopment" BOOLEAN DEFAULT false,
+    "approvedForBuilding" BOOLEAN,
+    "zoningType" TEXT,
+    "createdById" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -169,7 +225,6 @@ CREATE TABLE "Parcelle" (
 -- CreateTable
 CREATE TABLE "Batiment" (
     "Id_Bat" SERIAL NOT NULL,
-    "Type_Usage" TEXT,
     "Cat_Bat" TEXT,
     "Status" TEXT,
     "Standing" TEXT,
@@ -179,14 +234,47 @@ CREATE TABLE "Batiment" (
     "Etat_Bat" TEXT,
     "Nom" TEXT,
     "Mat_Bati" TEXT,
+    "Id_Parcel" INTEGER,
+    "WKT_Geometry" TEXT,
+    "propertyType" "PropertyType",
+    "slug" TEXT,
+    "title" TEXT,
+    "shortDescription" VARCHAR(500),
+    "description" TEXT,
+    "category" "PropertyCategory" NOT NULL DEFAULT 'RESIDENTIAL',
+    "listingType" "ListingType",
+    "listingStatus" "ListingStatus" NOT NULL DEFAULT 'DRAFT',
+    "price" DECIMAL(15,2),
+    "rentPrice" DECIMAL(15,2),
+    "pricePerSqM" DECIMAL(15,2),
+    "currency" TEXT NOT NULL DEFAULT 'XAF',
+    "featured" BOOLEAN NOT NULL DEFAULT false,
+    "viewCount" INTEGER NOT NULL DEFAULT 0,
+    "favoriteCount" INTEGER NOT NULL DEFAULT 0,
+    "shareCount" INTEGER NOT NULL DEFAULT 0,
     "totalFloors" INTEGER,
     "totalUnits" INTEGER,
     "hasElevator" BOOLEAN DEFAULT false,
     "surfaceArea" DOUBLE PRECISION,
     "doorNumber" TEXT,
     "address" TEXT,
-    "Id_Parcel" INTEGER,
-    "WKT_Geometry" TEXT,
+    "bedrooms" INTEGER,
+    "bathrooms" INTEGER,
+    "kitchens" INTEGER,
+    "livingRooms" INTEGER,
+    "floorLevel" INTEGER,
+    "hasGenerator" BOOLEAN DEFAULT false,
+    "hasParking" BOOLEAN DEFAULT false,
+    "parkingSpaces" INTEGER,
+    "hasPool" BOOLEAN DEFAULT false,
+    "hasGarden" BOOLEAN DEFAULT false,
+    "hasSecurity" BOOLEAN DEFAULT false,
+    "hasAirConditioning" BOOLEAN DEFAULT false,
+    "hasFurnished" BOOLEAN DEFAULT false,
+    "hasBalcony" BOOLEAN DEFAULT false,
+    "hasTerrace" BOOLEAN DEFAULT false,
+    "amenities" TEXT,
+    "createdById" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -194,56 +282,58 @@ CREATE TABLE "Batiment" (
 );
 
 -- CreateTable
-CREATE TABLE "Property" (
+CREATE TABLE "Favorite" (
     "id" SERIAL NOT NULL,
-    "title" TEXT NOT NULL,
-    "shortDescription" VARCHAR(500),
-    "description" TEXT,
-    "price" DECIMAL(15,2),
-    "priceMin" DECIMAL(15,2),
-    "priceMax" DECIMAL(15,2),
-    "pricePerSqM" DECIMAL(15,2),
-    "currency" TEXT NOT NULL DEFAULT 'XAF',
-    "type" "PropertyType" NOT NULL,
-    "forSale" BOOLEAN NOT NULL DEFAULT true,
-    "forRent" BOOLEAN NOT NULL DEFAULT false,
-    "rentPrice" DECIMAL(15,2),
-    "isLandForDevelopment" BOOLEAN NOT NULL DEFAULT false,
-    "approvedForApartments" BOOLEAN,
-    "bedrooms" INTEGER,
-    "bathrooms" INTEGER,
-    "kitchens" INTEGER,
-    "livingRooms" INTEGER,
-    "surfaceArea" DOUBLE PRECISION,
-    "floorLevel" INTEGER,
-    "totalFloors" INTEGER,
-    "doorNumber" TEXT,
-    "hasGenerator" BOOLEAN DEFAULT false,
-    "hasParking" BOOLEAN DEFAULT false,
-    "parkingSpaces" INTEGER,
-    "amenities" TEXT,
-    "address" TEXT,
-    "parcelleId" INTEGER NOT NULL,
+    "userId" TEXT NOT NULL,
+    "entityType" "EntityType" NOT NULL,
+    "lotissementId" INTEGER,
+    "parcelleId" INTEGER,
     "batimentId" INTEGER,
-    "published" BOOLEAN NOT NULL DEFAULT false,
-    "featured" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Property_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Favorite_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Share" (
+    "id" SERIAL NOT NULL,
+    "userId" TEXT,
+    "entityType" "EntityType" NOT NULL,
+    "platform" TEXT,
+    "lotissementId" INTEGER,
+    "parcelleId" INTEGER,
+    "batimentId" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Share_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "View" (
+    "id" SERIAL NOT NULL,
+    "userId" TEXT,
+    "entityType" "EntityType" NOT NULL,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "lotissementId" INTEGER,
+    "parcelleId" INTEGER,
+    "batimentId" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "View_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "Media" (
     "id" SERIAL NOT NULL,
     "entityType" "MediaEntityType" NOT NULL,
-    "entityId" INTEGER NOT NULL,
     "url" TEXT NOT NULL,
     "type" TEXT NOT NULL,
     "order" INTEGER NOT NULL DEFAULT 0,
+    "caption" TEXT,
+    "isPrimary" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "propertyId" INTEGER,
     "lotissementId" INTEGER,
     "parcelleId" INTEGER,
     "batimentId" INTEGER,
@@ -466,6 +556,9 @@ CREATE INDEX "User_email_idx" ON "User"("email");
 CREATE INDEX "User_role_idx" ON "User"("role");
 
 -- CreateIndex
+CREATE INDEX "User_isVerified_idx" ON "User"("isVerified");
+
+-- CreateIndex
 CREATE INDEX "Account_userId_idx" ON "Account"("userId");
 
 -- CreateIndex
@@ -499,6 +592,9 @@ CREATE INDEX "Arrondissement_Id_Dept_idx" ON "Arrondissement"("Id_Dept");
 CREATE INDEX "Arrondissement_Nom_Arrond_idx" ON "Arrondissement"("Nom_Arrond");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Lotissement_slug_key" ON "Lotissement"("slug");
+
+-- CreateIndex
 CREATE INDEX "Lotissement_Id_Arrond_idx" ON "Lotissement"("Id_Arrond");
 
 -- CreateIndex
@@ -506,6 +602,27 @@ CREATE INDEX "Lotissement_Num_TF_idx" ON "Lotissement"("Num_TF");
 
 -- CreateIndex
 CREATE INDEX "Lotissement_Statut_idx" ON "Lotissement"("Statut");
+
+-- CreateIndex
+CREATE INDEX "Lotissement_listingStatus_idx" ON "Lotissement"("listingStatus");
+
+-- CreateIndex
+CREATE INDEX "Lotissement_listingType_idx" ON "Lotissement"("listingType");
+
+-- CreateIndex
+CREATE INDEX "Lotissement_price_idx" ON "Lotissement"("price");
+
+-- CreateIndex
+CREATE INDEX "Lotissement_featured_idx" ON "Lotissement"("featured");
+
+-- CreateIndex
+CREATE INDEX "Lotissement_createdById_idx" ON "Lotissement"("createdById");
+
+-- CreateIndex
+CREATE INDEX "Lotissement_createdAt_idx" ON "Lotissement"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Parcelle_slug_key" ON "Parcelle"("slug");
 
 -- CreateIndex
 CREATE INDEX "Parcelle_Id_Lotis_idx" ON "Parcelle"("Id_Lotis");
@@ -517,46 +634,118 @@ CREATE INDEX "Parcelle_TF_Cree_idx" ON "Parcelle"("TF_Cree");
 CREATE INDEX "Parcelle_Num_lot_idx" ON "Parcelle"("Num_lot");
 
 -- CreateIndex
+CREATE INDEX "Parcelle_listingStatus_idx" ON "Parcelle"("listingStatus");
+
+-- CreateIndex
+CREATE INDEX "Parcelle_listingType_idx" ON "Parcelle"("listingType");
+
+-- CreateIndex
+CREATE INDEX "Parcelle_price_idx" ON "Parcelle"("price");
+
+-- CreateIndex
+CREATE INDEX "Parcelle_featured_idx" ON "Parcelle"("featured");
+
+-- CreateIndex
+CREATE INDEX "Parcelle_category_idx" ON "Parcelle"("category");
+
+-- CreateIndex
+CREATE INDEX "Parcelle_createdById_idx" ON "Parcelle"("createdById");
+
+-- CreateIndex
+CREATE INDEX "Parcelle_createdAt_idx" ON "Parcelle"("createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Batiment_slug_key" ON "Batiment"("slug");
+
+-- CreateIndex
 CREATE INDEX "Batiment_Id_Parcel_idx" ON "Batiment"("Id_Parcel");
 
 -- CreateIndex
-CREATE INDEX "Batiment_Type_Usage_idx" ON "Batiment"("Type_Usage");
+CREATE INDEX "Batiment_propertyType_idx" ON "Batiment"("propertyType");
 
 -- CreateIndex
 CREATE INDEX "Batiment_Standing_idx" ON "Batiment"("Standing");
 
 -- CreateIndex
-CREATE INDEX "Property_parcelleId_idx" ON "Property"("parcelleId");
+CREATE INDEX "Batiment_listingStatus_idx" ON "Batiment"("listingStatus");
 
 -- CreateIndex
-CREATE INDEX "Property_batimentId_idx" ON "Property"("batimentId");
+CREATE INDEX "Batiment_listingType_idx" ON "Batiment"("listingType");
 
 -- CreateIndex
-CREATE INDEX "Property_type_idx" ON "Property"("type");
+CREATE INDEX "Batiment_price_idx" ON "Batiment"("price");
 
 -- CreateIndex
-CREATE INDEX "Property_price_idx" ON "Property"("price");
+CREATE INDEX "Batiment_rentPrice_idx" ON "Batiment"("rentPrice");
 
 -- CreateIndex
-CREATE INDEX "Property_priceMin_priceMax_idx" ON "Property"("priceMin", "priceMax");
+CREATE INDEX "Batiment_featured_idx" ON "Batiment"("featured");
 
 -- CreateIndex
-CREATE INDEX "Property_published_featured_idx" ON "Property"("published", "featured");
+CREATE INDEX "Batiment_bedrooms_idx" ON "Batiment"("bedrooms");
 
 -- CreateIndex
-CREATE INDEX "Property_forSale_forRent_idx" ON "Property"("forSale", "forRent");
+CREATE INDEX "Batiment_category_idx" ON "Batiment"("category");
 
 -- CreateIndex
-CREATE INDEX "Property_createdAt_idx" ON "Property"("createdAt");
+CREATE INDEX "Batiment_createdById_idx" ON "Batiment"("createdById");
 
 -- CreateIndex
-CREATE INDEX "Media_entityType_entityId_idx" ON "Media"("entityType", "entityId");
+CREATE INDEX "Batiment_createdAt_idx" ON "Batiment"("createdAt");
 
 -- CreateIndex
-CREATE INDEX "Media_propertyId_idx" ON "Media"("propertyId");
+CREATE INDEX "Favorite_userId_idx" ON "Favorite"("userId");
+
+-- CreateIndex
+CREATE INDEX "Favorite_entityType_idx" ON "Favorite"("entityType");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Favorite_userId_entityType_lotissementId_key" ON "Favorite"("userId", "entityType", "lotissementId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Favorite_userId_entityType_parcelleId_key" ON "Favorite"("userId", "entityType", "parcelleId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Favorite_userId_entityType_batimentId_key" ON "Favorite"("userId", "entityType", "batimentId");
+
+-- CreateIndex
+CREATE INDEX "Share_userId_idx" ON "Share"("userId");
+
+-- CreateIndex
+CREATE INDEX "Share_entityType_idx" ON "Share"("entityType");
+
+-- CreateIndex
+CREATE INDEX "Share_platform_idx" ON "Share"("platform");
+
+-- CreateIndex
+CREATE INDEX "Share_createdAt_idx" ON "Share"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "View_userId_idx" ON "View"("userId");
+
+-- CreateIndex
+CREATE INDEX "View_entityType_idx" ON "View"("entityType");
+
+-- CreateIndex
+CREATE INDEX "View_createdAt_idx" ON "View"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "Media_entityType_idx" ON "Media"("entityType");
+
+-- CreateIndex
+CREATE INDEX "Media_lotissementId_idx" ON "Media"("lotissementId");
+
+-- CreateIndex
+CREATE INDEX "Media_parcelleId_idx" ON "Media"("parcelleId");
+
+-- CreateIndex
+CREATE INDEX "Media_batimentId_idx" ON "Media"("batimentId");
 
 -- CreateIndex
 CREATE INDEX "Media_order_idx" ON "Media"("order");
+
+-- CreateIndex
+CREATE INDEX "Media_isPrimary_idx" ON "Media"("isPrimary");
 
 -- CreateIndex
 CREATE INDEX "Route_Type_Rte_idx" ON "Route"("Type_Rte");
@@ -610,22 +799,58 @@ ALTER TABLE "Departement" ADD CONSTRAINT "Departement_Id_Reg_fkey" FOREIGN KEY (
 ALTER TABLE "Arrondissement" ADD CONSTRAINT "Arrondissement_Id_Dept_fkey" FOREIGN KEY ("Id_Dept") REFERENCES "Departement"("Id_Dept") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Lotissement" ADD CONSTRAINT "Lotissement_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Lotissement" ADD CONSTRAINT "Lotissement_Id_Arrond_fkey" FOREIGN KEY ("Id_Arrond") REFERENCES "Arrondissement"("Id_Arrond") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Parcelle" ADD CONSTRAINT "Parcelle_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Parcelle" ADD CONSTRAINT "Parcelle_Id_Lotis_fkey" FOREIGN KEY ("Id_Lotis") REFERENCES "Lotissement"("Id_Lotis") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Batiment" ADD CONSTRAINT "Batiment_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Batiment" ADD CONSTRAINT "Batiment_Id_Parcel_fkey" FOREIGN KEY ("Id_Parcel") REFERENCES "Parcelle"("Id_Parcel") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Property" ADD CONSTRAINT "Property_parcelleId_fkey" FOREIGN KEY ("parcelleId") REFERENCES "Parcelle"("Id_Parcel") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Favorite" ADD CONSTRAINT "Favorite_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Property" ADD CONSTRAINT "Property_batimentId_fkey" FOREIGN KEY ("batimentId") REFERENCES "Batiment"("Id_Bat") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "Favorite" ADD CONSTRAINT "Favorite_lotissementId_fkey" FOREIGN KEY ("lotissementId") REFERENCES "Lotissement"("Id_Lotis") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Media" ADD CONSTRAINT "Media_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "Property"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Favorite" ADD CONSTRAINT "Favorite_parcelleId_fkey" FOREIGN KEY ("parcelleId") REFERENCES "Parcelle"("Id_Parcel") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Favorite" ADD CONSTRAINT "Favorite_batimentId_fkey" FOREIGN KEY ("batimentId") REFERENCES "Batiment"("Id_Bat") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Share" ADD CONSTRAINT "Share_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Share" ADD CONSTRAINT "Share_lotissementId_fkey" FOREIGN KEY ("lotissementId") REFERENCES "Lotissement"("Id_Lotis") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Share" ADD CONSTRAINT "Share_parcelleId_fkey" FOREIGN KEY ("parcelleId") REFERENCES "Parcelle"("Id_Parcel") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Share" ADD CONSTRAINT "Share_batimentId_fkey" FOREIGN KEY ("batimentId") REFERENCES "Batiment"("Id_Bat") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "View" ADD CONSTRAINT "View_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "View" ADD CONSTRAINT "View_lotissementId_fkey" FOREIGN KEY ("lotissementId") REFERENCES "Lotissement"("Id_Lotis") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "View" ADD CONSTRAINT "View_parcelleId_fkey" FOREIGN KEY ("parcelleId") REFERENCES "Parcelle"("Id_Parcel") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "View" ADD CONSTRAINT "View_batimentId_fkey" FOREIGN KEY ("batimentId") REFERENCES "Batiment"("Id_Bat") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Media" ADD CONSTRAINT "Media_lotissementId_fkey" FOREIGN KEY ("lotissementId") REFERENCES "Lotissement"("Id_Lotis") ON DELETE CASCADE ON UPDATE CASCADE;

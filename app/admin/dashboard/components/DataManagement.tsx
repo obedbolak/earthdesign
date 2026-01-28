@@ -33,9 +33,18 @@ import {
   Play,
   Images,
   LucideIcon,
+  Eye,
+  Heart,
+  Share2,
+  User,
+  Star,
+  Tag,
 } from "lucide-react";
 
-// Define the type for table config
+// ============================================
+// TYPES & INTERFACES
+// ============================================
+
 interface TableConfig {
   icon: LucideIcon;
   color: string;
@@ -48,10 +57,16 @@ interface TableConfig {
   hasMedia: boolean;
   mediaEntityType?: string;
   mediaForeignKey?: string;
+  isListing?: boolean; // For lotissement, parcelle, batiment
+  primaryKey: string;
 }
 
-// Table configurations matching the Prisma schema
+// ============================================
+// TABLE CONFIGURATIONS - Updated for new schema
+// ============================================
+
 const tableConfigs: Record<string, TableConfig> = {
+  // Geographic Tables
   Region: {
     icon: Map,
     color: "bg-gradient-to-br from-blue-500 to-blue-600",
@@ -60,6 +75,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-blue-300",
     hoverBg: "hover:bg-blue-50",
     label: "Régions",
+    primaryKey: "Id_Reg",
     fields: ["Id_Reg", "Nom_Reg", "Sup_Reg", "Chef_lieu_Reg", "WKT_Geometry"],
     hasMedia: false,
   },
@@ -71,6 +87,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-green-300",
     hoverBg: "hover:bg-green-50",
     label: "Départements",
+    primaryKey: "Id_Dept",
     fields: [
       "Id_Dept",
       "Nom_Dept",
@@ -89,6 +106,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-yellow-300",
     hoverBg: "hover:bg-yellow-50",
     label: "Arrondissements",
+    primaryKey: "Id_Arrond",
     fields: [
       "Id_Arrond",
       "Nom_Arrond",
@@ -100,6 +118,8 @@ const tableConfigs: Record<string, TableConfig> = {
     ],
     hasMedia: false,
   },
+
+  // Main Listing Tables
   Lotissement: {
     icon: Layers,
     color: "bg-gradient-to-br from-purple-500 to-purple-600",
@@ -108,7 +128,10 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-purple-300",
     hoverBg: "hover:bg-purple-50",
     label: "Lotissements",
+    primaryKey: "Id_Lotis",
+    isListing: true,
     fields: [
+      // Cadastral
       "Id_Lotis",
       "Nom_proprio",
       "Num_TF",
@@ -124,6 +147,29 @@ const tableConfigs: Record<string, TableConfig> = {
       "Ccp",
       "Id_Arrond",
       "WKT_Geometry",
+      // Listing
+      "slug",
+      "title",
+      "shortDescription",
+      "description",
+      "category",
+      "listingType",
+      "listingStatus",
+      "price",
+      "pricePerSqM",
+      "currency",
+      "featured",
+      "viewCount",
+      "favoriteCount",
+      "shareCount",
+      // Development
+      "totalParcels",
+      "availableParcels",
+      "hasRoadAccess",
+      "hasElectricity",
+      "hasWater",
+      // Owner
+      "createdById",
     ],
     hasMedia: true,
     mediaEntityType: "LOTISSEMENT",
@@ -137,7 +183,10 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-orange-300",
     hoverBg: "hover:bg-orange-50",
     label: "Parcelles",
+    primaryKey: "Id_Parcel",
+    isListing: true,
     fields: [
+      // Cadastral
       "Id_Parcel",
       "Nom_Prop",
       "TF_Mere",
@@ -159,6 +208,27 @@ const tableConfigs: Record<string, TableConfig> = {
       "Cloture",
       "Id_Lotis",
       "WKT_Geometry",
+      // Listing
+      "slug",
+      "title",
+      "shortDescription",
+      "description",
+      "category",
+      "listingType",
+      "listingStatus",
+      "price",
+      "pricePerSqM",
+      "currency",
+      "featured",
+      "viewCount",
+      "favoriteCount",
+      "shareCount",
+      // Land specifics
+      "isForDevelopment",
+      "approvedForBuilding",
+      "zoningType",
+      // Owner
+      "createdById",
     ],
     hasMedia: true,
     mediaEntityType: "PARCELLE",
@@ -172,9 +242,11 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-red-300",
     hoverBg: "hover:bg-red-50",
     label: "Bâtiments",
+    primaryKey: "Id_Bat",
+    isListing: true,
     fields: [
+      // Cadastral
       "Id_Bat",
-      "Type_Usage",
       "Cat_Bat",
       "Status",
       "Standing",
@@ -184,65 +256,60 @@ const tableConfigs: Record<string, TableConfig> = {
       "Etat_Bat",
       "Nom",
       "Mat_Bati",
+      "Id_Parcel",
+      "WKT_Geometry",
+      // Property type
+      "propertyType",
+      // Listing
+      "slug",
+      "title",
+      "shortDescription",
+      "description",
+      "category",
+      "listingType",
+      "listingStatus",
+      "price",
+      "rentPrice",
+      "pricePerSqM",
+      "currency",
+      "featured",
+      "viewCount",
+      "favoriteCount",
+      "shareCount",
+      // Building characteristics
       "totalFloors",
       "totalUnits",
       "hasElevator",
       "surfaceArea",
       "doorNumber",
       "address",
-      "Id_Parcel",
-      "WKT_Geometry",
+      // Unit features
+      "bedrooms",
+      "bathrooms",
+      "kitchens",
+      "livingRooms",
+      "floorLevel",
+      // Amenities
+      "hasGenerator",
+      "hasParking",
+      "parkingSpaces",
+      "hasPool",
+      "hasGarden",
+      "hasSecurity",
+      "hasAirConditioning",
+      "hasFurnished",
+      "hasBalcony",
+      "hasTerrace",
+      "amenities",
+      // Owner
+      "createdById",
     ],
     hasMedia: true,
     mediaEntityType: "BATIMENT",
     mediaForeignKey: "batimentId",
   },
-  Property: {
-    icon: Home,
-    color: "bg-gradient-to-br from-teal-500 to-emerald-600",
-    lightColor: "bg-teal-50",
-    textColor: "text-teal-600",
-    borderColor: "border-teal-300",
-    hoverBg: "hover:bg-teal-50",
-    label: "Properties",
-    fields: [
-      "id",
-      "title",
-      "shortDescription",
-      "description",
-      "price",
-      "priceMin",
-      "priceMax",
-      "pricePerSqM",
-      "currency",
-      "type",
-      "forSale",
-      "forRent",
-      "rentPrice",
-      "isLandForDevelopment",
-      "approvedForApartments",
-      "bedrooms",
-      "bathrooms",
-      "kitchens",
-      "livingRooms",
-      "surfaceArea",
-      "floorLevel",
-      "totalFloors",
-      "doorNumber",
-      "hasGenerator",
-      "hasParking",
-      "parkingSpaces",
-      "amenities",
-      "address",
-      "parcelleId",
-      "batimentId",
-      "published",
-      "featured",
-    ],
-    hasMedia: true,
-    mediaEntityType: "PROPERTY",
-    mediaForeignKey: "propertyId",
-  },
+
+  // Media
   Media: {
     icon: ImageIcon,
     color: "bg-gradient-to-br from-pink-500 to-rose-600",
@@ -251,14 +318,15 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-pink-300",
     hoverBg: "hover:bg-pink-50",
     label: "Media",
+    primaryKey: "id",
     fields: [
       "id",
       "entityType",
-      "entityId",
       "url",
       "type",
       "order",
-      "propertyId",
+      "caption",
+      "isPrimary",
       "lotissementId",
       "parcelleId",
       "batimentId",
@@ -266,6 +334,8 @@ const tableConfigs: Record<string, TableConfig> = {
     ],
     hasMedia: false,
   },
+
+  // Infrastructure Tables
   Route: {
     icon: Route,
     color: "bg-gradient-to-br from-gray-500 to-gray-600",
@@ -274,6 +344,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-gray-300",
     hoverBg: "hover:bg-gray-100",
     label: "Routes",
+    primaryKey: "Id_Rte",
     fields: [
       "Id_Rte",
       "Cat_Rte",
@@ -293,6 +364,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-cyan-300",
     hoverBg: "hover:bg-cyan-50",
     label: "Rivières",
+    primaryKey: "Id_Riv",
     fields: [
       "Id_Riv",
       "Nom_Riv",
@@ -311,6 +383,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-emerald-300",
     hoverBg: "hover:bg-emerald-50",
     label: "Taxes Immobilières",
+    primaryKey: "Id_Taxe",
     fields: [
       "Id_Taxe",
       "Num_TF",
@@ -331,6 +404,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-amber-300",
     hoverBg: "hover:bg-amber-50",
     label: "Équipements",
+    primaryKey: "Id_Equip",
     fields: [
       "Id_Equip",
       "Type_Equip",
@@ -349,6 +423,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-yellow-300",
     hoverBg: "hover:bg-yellow-50",
     label: "Réseau Énergétique",
+    primaryKey: "Id_Reseaux",
     fields: [
       "Id_Reseaux",
       "Source_Res",
@@ -367,6 +442,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-sky-300",
     hoverBg: "hover:bg-sky-50",
     label: "Réseau en Eau",
+    primaryKey: "Id_Reseaux",
     fields: [
       "Id_Reseaux",
       "Source_Res",
@@ -385,6 +461,7 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-indigo-300",
     hoverBg: "hover:bg-indigo-50",
     label: "Infrastructures",
+    primaryKey: "Id_Infras",
     fields: [
       "Id_Infras",
       "Nom_infras",
@@ -407,32 +484,40 @@ const tableConfigs: Record<string, TableConfig> = {
     borderColor: "border-pink-300",
     hoverBg: "hover:bg-pink-50",
     label: "Bornes",
+    primaryKey: "Id_Borne",
     fields: ["Id_Borne", "coord_x", "coord_y", "coord_z", "WKT_Geometry"],
+    hasMedia: false,
+  },
+
+  // User Management (Admin only)
+  User: {
+    icon: User,
+    color: "bg-gradient-to-br from-slate-600 to-slate-700",
+    lightColor: "bg-slate-50",
+    textColor: "text-slate-600",
+    borderColor: "border-slate-300",
+    hoverBg: "hover:bg-slate-50",
+    label: "Utilisateurs",
+    primaryKey: "id",
+    fields: [
+      "id",
+      "email",
+      "name",
+      "phone",
+      "role",
+      "agencyName",
+      "isVerified",
+      "emailVerified",
+    ],
     hasMedia: false,
   },
 };
 
 type TableName = keyof typeof tableConfigs;
 
-// ID field mapping for each table
-const idFieldMap: Record<TableName, string> = {
-  Region: "Id_Reg",
-  Departement: "Id_Dept",
-  Arrondissement: "Id_Arrond",
-  Lotissement: "Id_Lotis",
-  Parcelle: "Id_Parcel",
-  Batiment: "Id_Bat",
-  Property: "id",
-  Media: "id",
-  Route: "Id_Rte",
-  Riviere: "Id_Riv",
-  Taxe_immobiliere: "Id_Taxe",
-  Equipement: "Id_Equip",
-  Reseau_energetique: "Id_Reseaux",
-  Reseau_en_eau: "Id_Reseaux",
-  Infrastructure: "Id_Infras",
-  Borne: "Id_Borne",
-};
+// ============================================
+// FIELD TYPE CONFIGURATIONS
+// ============================================
 
 // Numeric fields
 const numericFields = new Set([
@@ -449,8 +534,6 @@ const numericFields = new Set([
   "coord_y",
   "coord_z",
   "price",
-  "priceMin",
-  "priceMax",
   "pricePerSqM",
   "rentPrice",
   "bedrooms",
@@ -463,17 +546,20 @@ const numericFields = new Set([
   "totalUnits",
   "parkingSpaces",
   "order",
-  "entityId",
-  "parcelleId",
-  "batimentId",
-  "propertyId",
-  "lotissementId",
-  "infrastructureId",
+  "viewCount",
+  "favoriteCount",
+  "shareCount",
+  "totalParcels",
+  "availableParcels",
   "Id_Arrond",
   "Id_Dept",
   "Id_Reg",
   "Id_Lotis",
   "Id_Parcel",
+  "lotissementId",
+  "parcelleId",
+  "batimentId",
+  "infrastructureId",
 ]);
 
 // Boolean fields
@@ -481,39 +567,55 @@ const booleanFields = new Set([
   "Taxe_Payee",
   "Mise_Val",
   "Cloture",
-  "forSale",
-  "forRent",
-  "published",
   "featured",
   "hasElevator",
   "hasGenerator",
   "hasParking",
-  "isLandForDevelopment",
-  "approvedForApartments",
+  "hasPool",
+  "hasGarden",
+  "hasSecurity",
+  "hasAirConditioning",
+  "hasFurnished",
+  "hasBalcony",
+  "hasTerrace",
+  "isForDevelopment",
+  "approvedForBuilding",
+  "hasRoadAccess",
+  "hasElectricity",
+  "hasWater",
+  "isPrimary",
+  "isVerified",
 ]);
 
 // Enum fields with their values
 const enumFields: Record<string, string[]> = {
-  type: [
-    "Apartment",
-    "House",
-    "Villa",
-    "Office",
-    "Commercial",
-    "Land",
-    "Building",
-    "Studio",
-    "Duplex",
-    "ChambreModerne",
-    "Chambre",
+  propertyType: [
+    "APARTMENT",
+    "HOUSE",
+    "VILLA",
+    "STUDIO",
+    "DUPLEX",
+    "TRIPLEX",
+    "PENTHOUSE",
+    "CHAMBRE_MODERNE",
+    "CHAMBRE",
+    "OFFICE",
+    "SHOP",
+    "RESTAURANT",
+    "HOTEL",
+    "WAREHOUSE",
+    "COMMERCIAL_SPACE",
+    "INDUSTRIAL",
+    "FACTORY",
+    "BUILDING",
+    "MIXED_USE",
   ],
-  entityType: [
-    "PROPERTY",
-    "LOTISSEMENT",
-    "PARCELLE",
-    "BATIMENT",
-    "INFRASTRUCTURE",
-  ],
+  category: ["LAND", "RESIDENTIAL", "COMMERCIAL", "INDUSTRIAL", "MIXED"],
+  listingType: ["SALE", "RENT", "BOTH"],
+  listingStatus: ["DRAFT", "PUBLISHED", "SOLD", "RENTED", "ARCHIVED"],
+  entityType: ["LOTISSEMENT", "PARCELLE", "BATIMENT", "INFRASTRUCTURE"],
+  type: ["image", "video"],
+  role: ["USER", "AGENT", "ADMIN"],
 };
 
 // Date fields
@@ -524,14 +626,26 @@ const dateFields = new Set([
   "Date_declaree",
   "createdAt",
   "updatedAt",
+  "emailVerified",
 ]);
 
-// URL fields (for images/videos)
-const urlFields = new Set(["url"]);
+// URL fields
+const urlFields = new Set(["url", "image", "agencyLogo"]);
+
+// Read-only fields
+const readOnlyFields = new Set([
+  "createdAt",
+  "updatedAt",
+  "viewCount",
+  "favoriteCount",
+  "shareCount",
+  "createdById",
+]);
 
 // ============================================
-// MEDIA MODAL COMPONENT WITH ADD/DELETE
+// MEDIA MODAL COMPONENT
 // ============================================
+
 interface MediaModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -553,12 +667,12 @@ function MediaModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
-
-  // Add media form state
   const [showAddForm, setShowAddForm] = useState(false);
   const [addingMedia, setAddingMedia] = useState(false);
   const [newMediaUrl, setNewMediaUrl] = useState("");
   const [newMediaType, setNewMediaType] = useState<"image" | "video">("image");
+  const [newMediaCaption, setNewMediaCaption] = useState("");
+  const [newMediaIsPrimary, setNewMediaIsPrimary] = useState(false);
 
   useEffect(() => {
     if (isOpen && entityType && entityId) {
@@ -566,12 +680,13 @@ function MediaModal({
     }
   }, [isOpen, entityType, entityId]);
 
-  // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
       setShowAddForm(false);
       setNewMediaUrl("");
       setNewMediaType("image");
+      setNewMediaCaption("");
+      setNewMediaIsPrimary(false);
     }
   }, [isOpen]);
 
@@ -579,8 +694,10 @@ function MediaModal({
     setLoading(true);
     setError(null);
     try {
+      // Use the foreign key to filter
+      const fkParam = foreignKey ? `&${foreignKey}=${entityId}` : "";
       const res = await fetch(
-        `/api/data/Media?entityType=${entityType}&entityId=${entityId}`,
+        `/api/data/media?entityType=${entityType}${fkParam}`,
       );
       if (!res.ok) throw new Error("Failed to fetch media");
       const json = await res.json();
@@ -599,7 +716,7 @@ function MediaModal({
 
     setDeleting(mediaId);
     try {
-      const res = await fetch(`/api/data/Media/${mediaId}`, {
+      const res = await fetch(`/api/data/media/${mediaId}`, {
         method: "DELETE",
       });
 
@@ -608,7 +725,6 @@ function MediaModal({
         throw new Error(error.error || "Failed to delete");
       }
 
-      // Remove from local state
       setMedia((prev) => prev.filter((m) => m.id !== mediaId));
     } catch (err) {
       console.error("Error deleting media:", err);
@@ -626,7 +742,6 @@ function MediaModal({
       return;
     }
 
-    // Basic URL validation
     try {
       new URL(newMediaUrl);
     } catch {
@@ -636,20 +751,20 @@ function MediaModal({
 
     setAddingMedia(true);
     try {
-      // Build the request body with the correct foreign key
       const body: any = {
         entityType,
-        entityId,
         url: newMediaUrl.trim(),
         type: newMediaType,
+        caption: newMediaCaption || null,
+        isPrimary: newMediaIsPrimary,
+        order: media.length,
       };
 
-      // Add the specific foreign key based on entity type
       if (foreignKey) {
         body[foreignKey] = entityId;
       }
 
-      const res = await fetch("/api/data/Media", {
+      const res = await fetch("/api/data/media", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -661,13 +776,12 @@ function MediaModal({
       }
 
       const json = await res.json();
-
-      // Add to local state
       setMedia((prev) => [...prev, json.data]);
 
-      // Reset form
       setNewMediaUrl("");
       setNewMediaType("image");
+      setNewMediaCaption("");
+      setNewMediaIsPrimary(false);
       setShowAddForm(false);
     } catch (err) {
       console.error("Error adding media:", err);
@@ -684,13 +798,11 @@ function MediaModal({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
-      {/* Modal */}
       <div className="relative min-h-screen flex items-center justify-center p-4">
         <div
           className="relative bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden"
@@ -710,7 +822,6 @@ function MediaModal({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {/* Add Media Button */}
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
@@ -745,9 +856,8 @@ function MediaModal({
           {showAddForm && (
             <div className="bg-purple-50 border-b border-purple-100 px-6 py-4">
               <form onSubmit={handleAddMedia} className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  {/* URL Input */}
-                  <div className="flex-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Media URL
                     </label>
@@ -763,8 +873,7 @@ function MediaModal({
                     />
                   </div>
 
-                  {/* Type Selection */}
-                  <div className="sm:w-40">
+                  <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Type
                     </label>
@@ -797,38 +906,36 @@ function MediaModal({
                       </button>
                     </div>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Caption (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={newMediaCaption}
+                      onChange={(e) => setNewMediaCaption(e.target.value)}
+                      placeholder="Enter caption..."
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg 
+                               focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500
+                               text-gray-800 text-sm"
+                    />
+                  </div>
                 </div>
 
-                {/* Preview & Submit */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-                  {/* URL Preview */}
-                  {newMediaUrl && (
-                    <div className="flex-1">
-                      <p className="text-xs text-gray-500 mb-1">Preview:</p>
-                      {newMediaType === "image" ? (
-                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-purple-200 bg-gray-100">
-                          <img
-                            src={newMediaUrl}
-                            alt="Preview"
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display =
-                                "none";
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm">
-                          <Play className="w-4 h-4" />
-                          <span className="truncate max-w-[200px]">
-                            {newMediaUrl}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newMediaIsPrimary}
+                      onChange={(e) => setNewMediaIsPrimary(e.target.checked)}
+                      className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                    />
+                    <span className="text-sm text-gray-700">
+                      Set as primary image
+                    </span>
+                  </label>
 
-                  {/* Submit Button */}
                   <button
                     type="submit"
                     disabled={addingMedia || !newMediaUrl.trim()}
@@ -880,8 +987,7 @@ function MediaModal({
                   No Media Found
                 </h3>
                 <p className="text-gray-500 text-sm mt-1 text-center max-w-sm">
-                  No images or videos have been added to this{" "}
-                  {entityType.toLowerCase()} yet.
+                  No images or videos have been added yet.
                 </p>
                 <button
                   onClick={() => setShowAddForm(true)}
@@ -919,12 +1025,11 @@ function MediaModal({
                           >
                             <img
                               src={img.url}
-                              alt={`Image ${idx + 1}`}
+                              alt={img.caption || `Image ${idx + 1}`}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           </a>
 
-                          {/* Overlay with actions */}
                           <div
                             className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent 
                                       opacity-0 group-hover:opacity-100 transition-opacity"
@@ -959,12 +1064,12 @@ function MediaModal({
                             </div>
                           </div>
 
-                          {idx === 0 && (
+                          {img.isPrimary && (
                             <div
                               className="absolute top-2 left-2 px-2 py-0.5 bg-purple-600 text-white 
                                         text-[10px] font-bold rounded-full shadow"
                             >
-                              COVER
+                              PRIMARY
                             </div>
                           )}
                         </div>
@@ -1001,7 +1106,7 @@ function MediaModal({
                           </a>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-gray-800">
-                              Video {idx + 1}
+                              {vid.caption || `Video ${idx + 1}`}
                             </p>
                             <p className="text-xs text-gray-500 truncate mt-0.5">
                               {vid.url}
@@ -1058,8 +1163,42 @@ function MediaModal({
 }
 
 // ============================================
+// LISTING STATS COMPONENT
+// ============================================
+
+interface ListingStatsProps {
+  item: any;
+}
+
+function ListingStats({ item }: ListingStatsProps) {
+  return (
+    <div className="flex items-center gap-3 text-xs text-gray-500">
+      <span className="inline-flex items-center gap-1">
+        <Eye className="w-3.5 h-3.5" />
+        {item.viewCount || 0}
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <Heart className="w-3.5 h-3.5" />
+        {item.favoriteCount || 0}
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <Share2 className="w-3.5 h-3.5" />
+        {item.shareCount || 0}
+      </span>
+      {item.featured && (
+        <span className="inline-flex items-center gap-1 text-amber-600">
+          <Star className="w-3.5 h-3.5 fill-amber-400" />
+          Featured
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ============================================
 // MAIN COMPONENT
 // ============================================
+
 export default function DataManagement() {
   const [selectedTable, setSelectedTable] = useState<TableName | null>(null);
   const [data, setData] = useState<any[]>([]);
@@ -1104,10 +1243,10 @@ export default function DataManagement() {
     const results = await Promise.all(
       tables.map(async (table) => {
         try {
-          const res = await fetch(`/api/data/${table}`);
+          const res = await fetch(`/api/data/${table.toLowerCase()}?limit=1`);
           if (res.ok) {
             const json = await res.json();
-            return { table, count: (json.data || []).length };
+            return { table, count: json.total || json.count || 0 };
           }
           return { table, count: 0 };
         } catch (err) {
@@ -1131,7 +1270,7 @@ export default function DataManagement() {
   const fetchData = async (table: TableName) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/data/${table}`);
+      const res = await fetch(`/api/data/${table.toLowerCase()}`);
       if (!res.ok) throw new Error("Failed to load");
       const json = await res.json();
       setData(json.data || []);
@@ -1144,21 +1283,20 @@ export default function DataManagement() {
     }
   };
 
-  const getRowId = (item: any): number | null => {
+  const getRowId = (item: any): number | string | null => {
     if (!selectedTable) return null;
-    const idField = idFieldMap[selectedTable];
-    const id = item[idField];
-    return id != null ? Number(id) : null;
+    const primaryKey = tableConfigs[selectedTable].primaryKey;
+    const id = item[primaryKey];
+    return id != null ? id : null;
   };
 
-  // Get display name for an entity
   const getEntityName = (item: any, table: TableName): string => {
     const nameFields: Record<string, string[]> = {
-      Lotissement: ["Nom_proprio", "Lieudit", "Num_TF"],
-      Parcelle: ["Nom_Prop", "Lieu_dit", "Num_lot"],
-      Batiment: ["Nom", "Type_Usage", "Cat_Bat"],
-      Property: ["title", "shortDescription"],
+      Lotissement: ["title", "Nom_proprio", "Lieudit", "Num_TF"],
+      Parcelle: ["title", "Nom_Prop", "Lieu_dit", "Num_lot"],
+      Batiment: ["title", "Nom", "propertyType", "Cat_Bat"],
       Infrastructure: ["Nom_infras", "Type_Infraas"],
+      User: ["name", "email"],
     };
 
     const fields = nameFields[table] || [];
@@ -1170,7 +1308,6 @@ export default function DataManagement() {
     return `${table} #${id}`;
   };
 
-  // Open media modal
   const handleOpenMedia = (item: any) => {
     if (!selectedTable) return;
 
@@ -1185,9 +1322,9 @@ export default function DataManagement() {
 
     setMediaModalData({
       entityType: config.mediaEntityType,
-      entityId: id,
+      entityId: Number(id),
       entityName: getEntityName(item, selectedTable),
-      foreignKey: config.mediaForeignKey, // Add this
+      foreignKey: config.mediaForeignKey,
     });
     setMediaModalOpen(true);
   };
@@ -1215,10 +1352,13 @@ export default function DataManagement() {
       return;
     }
 
+    const config = tableConfigs[selectedTable];
     const processedForm: Record<string, any> = {};
-    const fields = tableConfigs[selectedTable].fields;
 
-    for (const field of fields) {
+    for (const field of config.fields) {
+      // Skip read-only fields
+      if (readOnlyFields.has(field) || field === config.primaryKey) continue;
+
       const value = editForm[field];
 
       if (value === "" || value == null) {
@@ -1236,15 +1376,15 @@ export default function DataManagement() {
       }
     }
 
-    const idField = idFieldMap[selectedTable];
-    const { [idField]: _, createdAt, updatedAt, ...updateData } = processedForm;
-
     try {
-      const res = await fetch(`/api/data/${selectedTable}/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
-      });
+      const res = await fetch(
+        `/api/data/${selectedTable.toLowerCase()}/${id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(processedForm),
+        },
+      );
       if (res.ok) {
         await fetchData(selectedTable);
         setEditingRowIndex(null);
@@ -1274,9 +1414,12 @@ export default function DataManagement() {
       return;
     }
     try {
-      const res = await fetch(`/api/data/${selectedTable!}/${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `/api/data/${selectedTable!.toLowerCase()}/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (res.ok) {
         setData((prev) => prev.filter((_, i) => i !== index));
       } else {
@@ -1312,6 +1455,7 @@ export default function DataManagement() {
 
     const fieldType = getFieldType(field);
 
+    // URL/Image
     if (
       fieldType === "url" &&
       typeof value === "string" &&
@@ -1328,15 +1472,9 @@ export default function DataManagement() {
             <img
               src={value}
               alt={field}
-              className="w-14 h-14 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-cover rounded-lg border-2 border-gray-200 
+              className="w-14 h-14 object-cover rounded-lg border-2 border-gray-200 
                          group-hover:border-teal-400 transition-all shadow-sm"
             />
-            <div
-              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 
-                            transition-opacity rounded-lg flex items-center justify-center"
-            >
-              <ExternalLink className="w-4 h-4 text-white" />
-            </div>
           </a>
         );
       }
@@ -1354,6 +1492,7 @@ export default function DataManagement() {
       );
     }
 
+    // Boolean
     if (fieldType === "boolean") {
       const isTrue =
         value === true || value === "true" || value === "1" || value === 1;
@@ -1368,6 +1507,7 @@ export default function DataManagement() {
       );
     }
 
+    // Date
     if (fieldType === "date" && value) {
       try {
         return (
@@ -1380,7 +1520,56 @@ export default function DataManagement() {
       }
     }
 
+    // Enum
     if (fieldType === "enum") {
+      // Status badges
+      if (field === "listingStatus") {
+        const statusColors: Record<string, string> = {
+          DRAFT: "bg-gray-100 text-gray-700",
+          PUBLISHED: "bg-green-100 text-green-700",
+          SOLD: "bg-blue-100 text-blue-700",
+          RENTED: "bg-purple-100 text-purple-700",
+          ARCHIVED: "bg-red-100 text-red-700",
+        };
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColors[value] || "bg-gray-100 text-gray-700"}`}
+          >
+            {value}
+          </span>
+        );
+      }
+
+      if (field === "listingType") {
+        const typeColors: Record<string, string> = {
+          SALE: "bg-emerald-100 text-emerald-700",
+          RENT: "bg-orange-100 text-orange-700",
+          BOTH: "bg-violet-100 text-violet-700",
+        };
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[value] || "bg-gray-100 text-gray-700"}`}
+          >
+            {value}
+          </span>
+        );
+      }
+
+      if (field === "role") {
+        const roleColors: Record<string, string> = {
+          USER: "bg-gray-100 text-gray-700",
+          AGENT: "bg-blue-100 text-blue-700",
+          ADMIN: "bg-red-100 text-red-700",
+        };
+        return (
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${roleColors[value] || "bg-gray-100 text-gray-700"}`}
+          >
+            {value}
+          </span>
+        );
+      }
+
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
           {String(value)}
@@ -1388,18 +1577,26 @@ export default function DataManagement() {
       );
     }
 
+    // Number
     if (fieldType === "number" && typeof value === "number") {
-      if (value >= 1000000) {
+      if (field === "price" || field === "rentPrice") {
+        if (value >= 1000000) {
+          return (
+            <span className="text-gray-800 text-sm font-semibold">
+              {(value / 1000000).toFixed(1)}M XAF
+            </span>
+          );
+        }
+        if (value >= 1000) {
+          return (
+            <span className="text-gray-800 text-sm font-semibold">
+              {(value / 1000).toFixed(0)}K XAF
+            </span>
+          );
+        }
         return (
-          <span className="text-gray-800 text-sm font-medium">
-            {(value / 1000000).toFixed(1)}M
-          </span>
-        );
-      }
-      if (value >= 1000) {
-        return (
-          <span className="text-gray-800 text-sm font-medium">
-            {(value / 1000).toFixed(1)}K
+          <span className="text-gray-800 text-sm font-semibold">
+            {value.toLocaleString()} XAF
           </span>
         );
       }
@@ -1425,6 +1622,23 @@ export default function DataManagement() {
   // TABLE SELECTION VIEW
   // ------------------------------------------------
   if (!selectedTable) {
+    // Group tables by category
+    const tableGroups = {
+      Listings: ["Lotissement", "Parcelle", "Batiment"],
+      Geographic: ["Region", "Departement", "Arrondissement"],
+      Media: ["Media"],
+      Infrastructure: [
+        "Route",
+        "Riviere",
+        "Infrastructure",
+        "Equipement",
+        "Reseau_energetique",
+        "Reseau_en_eau",
+        "Borne",
+      ],
+      Other: ["Taxe_immobiliere", "User"],
+    };
+
     return (
       <div className="flex flex-col h-full w-full">
         <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0">
@@ -1447,48 +1661,78 @@ export default function DataManagement() {
         </div>
 
         <div className="flex-1 overflow-auto p-4 sm:p-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3 sm:gap-4">
-            {Object.entries(tableConfigs).map(([key, cfg]) => {
-              const Icon = cfg.icon;
-              const count = tableCounts[key as TableName] ?? 0;
+          <div className="space-y-8">
+            {Object.entries(tableGroups).map(([groupName, tables]) => (
+              <div key={groupName}>
+                <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  {groupName === "Listings" && (
+                    <Home className="w-5 h-5 text-teal-600" />
+                  )}
+                  {groupName === "Geographic" && (
+                    <Map className="w-5 h-5 text-blue-600" />
+                  )}
+                  {groupName === "Media" && (
+                    <ImageIcon className="w-5 h-5 text-pink-600" />
+                  )}
+                  {groupName === "Infrastructure" && (
+                    <Building2 className="w-5 h-5 text-indigo-600" />
+                  )}
+                  {groupName === "Other" && (
+                    <Database className="w-5 h-5 text-gray-600" />
+                  )}
+                  {groupName}
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                  {tables.map((key) => {
+                    const cfg = tableConfigs[key as TableName];
+                    if (!cfg) return null;
+                    const Icon = cfg.icon;
+                    const count = tableCounts[key as TableName] ?? 0;
 
-              return (
-                <button
-                  key={key}
-                  onClick={() => setSelectedTable(key as TableName)}
-                  className="group bg-white rounded-xl shadow-sm hover:shadow-lg 
-                             transition-all duration-200 text-left overflow-hidden
-                             border border-gray-100 hover:border-gray-200
-                             hover:-translate-y-0.5 active:translate-y-0
-                             flex flex-col"
-                >
-                  <div className={`${cfg.color} p-3 sm:p-4 relative`}>
-                    <div
-                      className="w-9 h-9 sm:w-11 sm:h-11 bg-white/20 backdrop-blur-sm 
-                                    rounded-lg flex items-center justify-center
-                                    group-hover:scale-110 transition-transform"
-                    >
-                      <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                    </div>
-                    {/* Media indicator */}
-                    {cfg.hasMedia && (
-                      <div className="absolute top-2 right-2">
-                        <Images className="w-3.5 h-3.5 text-white/70" />
-                      </div>
-                    )}
-                  </div>
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedTable(key as TableName)}
+                        className="group bg-white rounded-xl shadow-sm hover:shadow-lg 
+                                   transition-all duration-200 text-left overflow-hidden
+                                   border border-gray-100 hover:border-gray-200
+                                   hover:-translate-y-0.5 active:translate-y-0
+                                   flex flex-col"
+                      >
+                        <div className={`${cfg.color} p-3 sm:p-4 relative`}>
+                          <div
+                            className="w-9 h-9 sm:w-11 sm:h-11 bg-white/20 backdrop-blur-sm 
+                                          rounded-lg flex items-center justify-center
+                                          group-hover:scale-110 transition-transform"
+                          >
+                            <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                          </div>
+                          {cfg.hasMedia && (
+                            <div className="absolute top-2 right-2">
+                              <Images className="w-3.5 h-3.5 text-white/70" />
+                            </div>
+                          )}
+                          {cfg.isListing && (
+                            <div className="absolute bottom-2 right-2">
+                              <Tag className="w-3.5 h-3.5 text-white/70" />
+                            </div>
+                          )}
+                        </div>
 
-                  <div className="p-3 sm:p-4 flex-1 flex flex-col">
-                    <h3 className="text-xs sm:text-sm font-semibold text-gray-800 line-clamp-2 leading-tight">
-                      {cfg.label}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
-                      {count} record{count !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
+                        <div className="p-3 sm:p-4 flex-1 flex flex-col">
+                          <h3 className="text-xs sm:text-sm font-semibold text-gray-800 line-clamp-2 leading-tight">
+                            {cfg.label}
+                          </h3>
+                          <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
+                            {count} record{count !== 1 ? "s" : ""}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -1503,7 +1747,6 @@ export default function DataManagement() {
   // ------------------------------------------------
   return (
     <div className="flex flex-col h-full w-full">
-      {/* Media Modal */}
       {/* Media Modal */}
       {mediaModalData && (
         <MediaModal
@@ -1541,14 +1784,20 @@ export default function DataManagement() {
                 <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 truncate">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">
                     {config.label}
                   </h1>
                   {config.hasMedia && (
                     <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-[10px] font-medium rounded-full flex items-center gap-1">
                       <Images className="w-3 h-3" />
                       Media
+                    </span>
+                  )}
+                  {config.isListing && (
+                    <span className="px-2 py-0.5 bg-teal-100 text-teal-600 text-[10px] font-medium rounded-full flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
+                      Listing
                     </span>
                   )}
                 </div>
@@ -1596,15 +1845,6 @@ export default function DataManagement() {
                   />
                   <span className="hidden sm:inline">Refresh</span>
                 </button>
-                <button
-                  disabled
-                  className="inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 
-                           bg-gray-100 text-gray-400 rounded-lg text-sm font-medium
-                           cursor-not-allowed whitespace-nowrap"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Add New</span>
-                </button>
               </div>
             </div>
           </div>
@@ -1631,16 +1871,8 @@ export default function DataManagement() {
             <p className="text-gray-500 text-sm max-w-sm mx-auto">
               {searchQuery
                 ? "Try adjusting your search query"
-                : "This table is empty. Add some records to get started."}
+                : "This table is empty."}
             </p>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="mt-4 text-teal-600 hover:text-teal-700 text-sm font-medium"
-              >
-                Clear search
-              </button>
-            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -1648,7 +1880,12 @@ export default function DataManagement() {
               const id = getRowId(item);
               const isExpanded = expandedRow === index;
               const isEditing = editingRowIndex === index;
-              const idField = idFieldMap[selectedTable];
+              const primaryKey = config.primaryKey;
+
+              // Get preview fields (first 4-6 non-geometry fields)
+              const previewFields = config.fields
+                .filter((f) => f !== "WKT_Geometry" && f !== "description")
+                .slice(0, 6);
 
               return (
                 <div
@@ -1665,8 +1902,15 @@ export default function DataManagement() {
                     <div className="p-3 sm:p-4 lg:p-5">
                       <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4">
                         <div className="flex-1 min-w-0">
+                          {/* Listing stats for listing tables */}
+                          {config.isListing && (
+                            <div className="mb-2">
+                              <ListingStats item={item} />
+                            </div>
+                          )}
+
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-2">
-                            {config.fields.slice(0, 6).map((f, fIndex) => (
+                            {previewFields.map((f, fIndex) => (
                               <div
                                 key={f}
                                 className={`min-w-0 ${
@@ -1690,7 +1934,6 @@ export default function DataManagement() {
 
                         {/* Actions */}
                         <div className="flex items-center justify-between lg:justify-end gap-2 pt-2 lg:pt-0 border-t lg:border-0 border-gray-100 shrink-0">
-                          {/* MEDIA BUTTON - Only for tables with media */}
                           {config.hasMedia && config.mediaEntityType && (
                             <button
                               onClick={() => handleOpenMedia(item)}
@@ -1826,6 +2069,8 @@ export default function DataManagement() {
                             const isGeometry = field === "WKT_Geometry";
                             const isLongText =
                               fieldType === "text" || isGeometry;
+                            const isReadOnly =
+                              readOnlyFields.has(field) || field === primaryKey;
 
                             let colSpan = "";
                             if (isLongText) {
@@ -1848,19 +2093,16 @@ export default function DataManagement() {
                                   <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
                                     {field.replace(/_/g, " ")}
                                   </p>
-                                  {field === idField && (
+                                  {field === primaryKey && (
                                     <span className="text-[9px] px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded font-bold">
-                                      ID
+                                      PK
                                     </span>
                                   )}
                                 </div>
 
                                 <div className="w-full">
-                                  {isEditing &&
-                                  field !== idField &&
-                                  !["createdAt", "updatedAt"].includes(
-                                    field,
-                                  ) ? (
+                                  {isEditing && !isReadOnly ? (
+                                    // EDIT MODE INPUTS
                                     booleanFields.has(field) ? (
                                       <button
                                         type="button"
@@ -1870,15 +2112,19 @@ export default function DataManagement() {
                                             [field]: !editForm[field],
                                           })
                                         }
-                                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all
-                                          ${editForm[field] ? "bg-green-100 text-green-700 ring-2 ring-green-200" : "bg-gray-100 text-gray-600"}`}
+                                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all w-full justify-center
+                                          ${
+                                            editForm[field]
+                                              ? "bg-green-100 text-green-700 ring-2 ring-green-200"
+                                              : "bg-gray-100 text-gray-600"
+                                          }`}
                                       >
                                         {editForm[field] ? (
                                           <Check className="w-4 h-4" />
                                         ) : (
                                           <X className="w-4 h-4" />
                                         )}
-                                        {editForm[field] ? "Yes" : "No"}
+                                        {editForm[field] ? "True" : "False"}
                                       </button>
                                     ) : enumFields[field] ? (
                                       <select
@@ -1889,7 +2135,7 @@ export default function DataManagement() {
                                             [field]: e.target.value,
                                           })
                                         }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-800 text-sm"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-800 text-sm bg-white"
                                       >
                                         <option value="">Select...</option>
                                         {enumFields[field].map((opt) => (
@@ -1909,7 +2155,11 @@ export default function DataManagement() {
                                           })
                                         }
                                         className={`w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-gray-800 text-sm resize-y
-                                          ${isGeometry ? "font-mono text-xs bg-gray-50" : ""}`}
+                                          ${
+                                            isGeometry
+                                              ? "font-mono text-xs bg-gray-50"
+                                              : ""
+                                          }`}
                                       />
                                     ) : dateFields.has(field) ? (
                                       <input
@@ -1952,8 +2202,14 @@ export default function DataManagement() {
                                       />
                                     )
                                   ) : (
+                                    // READ ONLY MODE
                                     <div
-                                      className={`w-full ${isGeometry ? "font-mono text-xs bg-gray-100 p-3 rounded-lg overflow-x-auto max-h-32" : ""}`}
+                                      className={`w-full min-h-[38px] flex items-center
+                                        ${
+                                          isGeometry
+                                            ? "font-mono text-xs bg-gray-100 p-3 rounded-lg overflow-x-auto max-h-32 block"
+                                            : "text-gray-800 text-sm"
+                                        }`}
                                     >
                                       {renderCellValue(item[field], field)}
                                     </div>

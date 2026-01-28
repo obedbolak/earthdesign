@@ -7,30 +7,62 @@ import { z } from "zod";
  * ========================================================= */
 
 export const PROPERTY_TYPES = [
-  "Apartment",
-  "House",
-  "Villa",
-  "Office",
-  "Commercial",
-  "Land",
-  "Building",
-  "Studio",
-  "Duplex",
-  "ChambreModerne",
-  "Chambre",
+  "APARTMENT",
+  "HOUSE",
+  "VILLA",
+  "STUDIO",
+  "DUPLEX",
+  "TRIPLEX",
+  "PENTHOUSE",
+  "CHAMBRE_MODERNE",
+  "CHAMBRE",
+  "OFFICE",
+  "SHOP",
+  "RESTAURANT",
+  "HOTEL",
+  "WAREHOUSE",
+  "COMMERCIAL_SPACE",
+  "INDUSTRIAL",
+  "FACTORY",
+  "BUILDING",
+  "MIXED_USE",
+] as const;
+
+export const PROPERTY_CATEGORIES = [
+  "LAND",
+  "RESIDENTIAL",
+  "COMMERCIAL",
+  "INDUSTRIAL",
+  "MIXED",
+] as const;
+
+export const LISTING_TYPES = ["SALE", "RENT", "BOTH"] as const;
+
+export const LISTING_STATUS = [
+  "DRAFT",
+  "PUBLISHED",
+  "SOLD",
+  "RENTED",
+  "ARCHIVED",
 ] as const;
 
 export const MEDIA_ENTITY_TYPES = [
-  "PROPERTY",
   "LOTISSEMENT",
   "PARCELLE",
   "BATIMENT",
   "INFRASTRUCTURE",
 ] as const;
 
-export type PropertyTypeValue = (typeof PROPERTY_TYPES)[number];
-export type MediaEntityTypeValue = (typeof MEDIA_ENTITY_TYPES)[number];
+export const ENTITY_TYPES = ["LOTISSEMENT", "PARCELLE", "BATIMENT"] as const;
 
+export type PropertyTypeValue = (typeof PROPERTY_TYPES)[number];
+export type PropertyCategoryValue = (typeof PROPERTY_CATEGORIES)[number];
+export type ListingTypeValue = (typeof LISTING_TYPES)[number];
+export type ListingStatusValue = (typeof LISTING_STATUS)[number];
+export type MediaEntityTypeValue = (typeof MEDIA_ENTITY_TYPES)[number];
+export type EntityTypeValue = (typeof ENTITY_TYPES)[number];
+
+// PrismaModelName - matches Prisma client accessor names (camelCase)
 export type PrismaModelName =
   | "route"
   | "riviere"
@@ -46,7 +78,6 @@ export type PrismaModelName =
   | "lotissement"
   | "parcelle"
   | "batiment"
-  | "property"
   | "media"
   | "payer"
   | "limitrophe"
@@ -71,19 +102,237 @@ export interface TransformResult<T> {
   warning?: string;
 }
 
+// Composite key type for junction tables
+export type CompositeKey = {
+  fields: string[];
+};
+
 export interface SheetConfig<T = Record<string, unknown>> {
   sheetName: string;
   model: PrismaModelName;
   columnCount: number;
   mappers: ColumnMapper[];
   transform: (mappedValues: unknown[], ctx?: TransformContext) => T | null;
-  // Optional: Zod schema for validation
   schema?: z.ZodSchema<T>;
-  // Optional: unique key for upsert operations
   uniqueKey?: string;
-  // Optional: dependencies that must exist
+  compositeKey?: CompositeKey;
+  primaryKey?: string;
   dependencies?: PrismaModelName[];
 }
+
+/* =========================================================
+ * FOREIGN KEY CONFIGURATION
+ * ========================================================= */
+
+export interface ForeignKeyConfig {
+  field: string;
+  referencedModel: PrismaModelName;
+  referencedField: string;
+  required: boolean;
+}
+
+export const FOREIGN_KEY_MAP: Record<PrismaModelName, ForeignKeyConfig[]> = {
+  // Independent tables (no FKs)
+  route: [],
+  riviere: [],
+  equipement: [],
+  infrastructure: [],
+  borne: [],
+  taxe_immobiliere: [],
+  reseau_energetique: [],
+  reseau_en_eau: [],
+  region: [],
+
+  // Hierarchical geo tables - FKs are OPTIONAL per Prisma schema
+  departement: [
+    {
+      field: "Id_Reg",
+      referencedModel: "region",
+      referencedField: "Id_Reg",
+      required: false, // Prisma: Id_Reg Int?
+    },
+  ],
+  arrondissement: [
+    {
+      field: "Id_Dept",
+      referencedModel: "departement",
+      referencedField: "Id_Dept",
+      required: false, // Prisma: Id_Dept Int?
+    },
+  ],
+  lotissement: [
+    {
+      field: "Id_Arrond",
+      referencedModel: "arrondissement",
+      referencedField: "Id_Arrond",
+      required: false, // Prisma: Id_Arrond Int?
+    },
+  ],
+  parcelle: [
+    {
+      field: "Id_Lotis",
+      referencedModel: "lotissement",
+      referencedField: "Id_Lotis",
+      required: false, // Prisma: Id_Lotis Int?
+    },
+  ],
+  batiment: [
+    {
+      field: "Id_Parcel",
+      referencedModel: "parcelle",
+      referencedField: "Id_Parcel",
+      required: false, // Prisma: Id_Parcel Int?
+    },
+  ],
+
+  // Media - FKs are optional
+  media: [
+    {
+      field: "lotissementId",
+      referencedModel: "lotissement",
+      referencedField: "Id_Lotis",
+      required: false,
+    },
+    {
+      field: "parcelleId",
+      referencedModel: "parcelle",
+      referencedField: "Id_Parcel",
+      required: false,
+    },
+    {
+      field: "batimentId",
+      referencedModel: "batiment",
+      referencedField: "Id_Bat",
+      required: false,
+    },
+    {
+      field: "infrastructureId",
+      referencedModel: "infrastructure",
+      referencedField: "Id_Infras",
+      required: false,
+    },
+  ],
+
+  // Junction tables - ALL FKs are required (they form composite PK)
+  payer: [
+    {
+      field: "Id_Parcel",
+      referencedModel: "parcelle",
+      referencedField: "Id_Parcel",
+      required: true,
+    },
+    {
+      field: "Id_Bat",
+      referencedModel: "batiment",
+      referencedField: "Id_Bat",
+      required: true,
+    },
+    {
+      field: "Id_Taxe",
+      referencedModel: "taxe_immobiliere",
+      referencedField: "Id_Taxe",
+      required: true,
+    },
+  ],
+  limitrophe: [
+    {
+      field: "Id_Lotis",
+      referencedModel: "lotissement",
+      referencedField: "Id_Lotis",
+      required: true,
+    },
+    {
+      field: "Id_Riv",
+      referencedModel: "riviere",
+      referencedField: "Id_Riv",
+      required: true,
+    },
+  ],
+  alimenter: [
+    {
+      field: "Id_Bat",
+      referencedModel: "batiment",
+      referencedField: "Id_Bat",
+      required: true,
+    },
+    {
+      field: "Id_Reseaux",
+      referencedModel: "reseau_energetique",
+      referencedField: "Id_Reseaux",
+      required: true,
+    },
+  ],
+  contenir: [
+    {
+      field: "Id_Parcel",
+      referencedModel: "parcelle",
+      referencedField: "Id_Parcel",
+      required: true,
+    },
+    {
+      field: "Id_Borne",
+      referencedModel: "borne",
+      referencedField: "Id_Borne",
+      required: true,
+    },
+  ],
+  trouver: [
+    {
+      field: "Id_Parcel",
+      referencedModel: "parcelle",
+      referencedField: "Id_Parcel",
+      required: true,
+    },
+    {
+      field: "Id_Infras",
+      referencedModel: "infrastructure",
+      referencedField: "Id_Infras",
+      required: true,
+    },
+  ],
+  eclairer: [
+    {
+      field: "Id_Parcel",
+      referencedModel: "parcelle",
+      referencedField: "Id_Parcel",
+      required: true,
+    },
+    {
+      field: "Id_Equip",
+      referencedModel: "equipement",
+      referencedField: "Id_Equip",
+      required: true,
+    },
+  ],
+  desservir: [
+    {
+      field: "Id_Parcel",
+      referencedModel: "parcelle",
+      referencedField: "Id_Parcel",
+      required: true,
+    },
+    {
+      field: "Id_Rte",
+      referencedModel: "route",
+      referencedField: "Id_Rte",
+      required: true,
+    },
+  ],
+  approvisionner: [
+    {
+      field: "Id_Bat",
+      referencedModel: "batiment",
+      referencedField: "Id_Bat",
+      required: true,
+    },
+    {
+      field: "Id_Reseaux",
+      referencedModel: "reseau_en_eau",
+      referencedField: "Id_Reseaux",
+      required: true,
+    },
+  ],
+};
 
 /* =========================================================
  * MAPPER FUNCTIONS
@@ -120,9 +369,7 @@ export const toDate = (v: unknown): Date | null => {
   if (v === undefined || v === null || v === "") return null;
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
 
-  // Handle Excel serial date numbers
   if (typeof v === "number") {
-    // Excel dates are days since 1900-01-01 (with a bug for 1900 leap year)
     const excelEpoch = new Date(1899, 11, 30);
     const date = new Date(excelEpoch.getTime() + v * 24 * 60 * 60 * 1000);
     return isNaN(date.getTime()) ? null : date;
@@ -201,6 +448,33 @@ export const isValidPropertyType = (
   );
 };
 
+export const isValidPropertyCategory = (
+  value: unknown,
+): value is PropertyCategoryValue => {
+  return (
+    typeof value === "string" &&
+    PROPERTY_CATEGORIES.includes(value as PropertyCategoryValue)
+  );
+};
+
+export const isValidListingType = (
+  value: unknown,
+): value is ListingTypeValue => {
+  return (
+    typeof value === "string" &&
+    LISTING_TYPES.includes(value as ListingTypeValue)
+  );
+};
+
+export const isValidListingStatus = (
+  value: unknown,
+): value is ListingStatusValue => {
+  return (
+    typeof value === "string" &&
+    LISTING_STATUS.includes(value as ListingStatusValue)
+  );
+};
+
 export const isValidMediaEntityType = (
   value: unknown,
 ): value is MediaEntityTypeValue => {
@@ -210,7 +484,6 @@ export const isValidMediaEntityType = (
   );
 };
 
-// Check if ID is valid (not null, undefined, or explicitly checking for 0 if needed)
 export const isValidId = (id: unknown, allowZero = false): id is number => {
   if (id === null || id === undefined) return false;
   const num = Number(id);
@@ -219,7 +492,7 @@ export const isValidId = (id: unknown, allowZero = false): id is number => {
 };
 
 /* =========================================================
- * ZOD SCHEMAS (for critical tables)
+ * ZOD SCHEMAS
  * ========================================================= */
 
 const DecimalSchema = z
@@ -229,49 +502,69 @@ const DecimalSchema = z
   )
   .nullable();
 
-export const PropertySchema = z.object({
-  id: z.number().int().positive().optional(),
-  title: z.string().min(1, "Title is required"),
+export const LotissementSchema = z.object({
+  Id_Lotis: z.number().int().positive().optional(),
+  Nom_proprio: z.string().nullable(),
+  Num_TF: z.string().nullable(),
+  Statut: z.string().nullable(),
+  Surface: z.number().nullable(),
+  Id_Arrond: z.number().int().nullable(),
+  slug: z.string().nullable(),
+  title: z.string().nullable(),
   shortDescription: z.string().nullable(),
   description: z.string().nullable(),
+  category: z.enum(PROPERTY_CATEGORIES).default("LAND"),
+  listingType: z.enum(LISTING_TYPES).nullable(),
+  listingStatus: z.enum(LISTING_STATUS).default("DRAFT"),
   price: DecimalSchema,
-  priceMin: DecimalSchema,
-  priceMax: DecimalSchema,
   pricePerSqM: DecimalSchema,
   currency: z.string().default("XAF"),
-  type: z.enum(PROPERTY_TYPES).default("House"),
-  forSale: z.boolean().default(true),
-  forRent: z.boolean().default(false),
+  featured: z.boolean().default(false),
+  createdById: z.string().nullable(),
+});
+
+export const ParcelleSchema = z.object({
+  Id_Parcel: z.number().int().positive().optional(),
+  Nom_Prop: z.string().nullable(),
+  TF_Cree: z.string().nullable(),
+  Sup: z.number().nullable(),
+  Id_Lotis: z.number().int().nullable(),
+  slug: z.string().nullable(),
+  title: z.string().nullable(),
+  description: z.string().nullable(),
+  category: z.enum(PROPERTY_CATEGORIES).default("LAND"),
+  listingType: z.enum(LISTING_TYPES).nullable(),
+  listingStatus: z.enum(LISTING_STATUS).default("DRAFT"),
+  price: DecimalSchema,
+  createdById: z.string().nullable(),
+});
+
+export const BatimentSchema = z.object({
+  Id_Bat: z.number().int().positive().optional(),
+  propertyType: z.enum(PROPERTY_TYPES).nullable(),
+  Id_Parcel: z.number().int().nullable(),
+  slug: z.string().nullable(),
+  title: z.string().nullable(),
+  description: z.string().nullable(),
+  category: z.enum(PROPERTY_CATEGORIES).default("RESIDENTIAL"),
+  listingType: z.enum(LISTING_TYPES).nullable(),
+  listingStatus: z.enum(LISTING_STATUS).default("DRAFT"),
+  price: DecimalSchema,
   rentPrice: DecimalSchema,
-  isLandForDevelopment: z.boolean().default(false),
-  approvedForApartments: z.boolean().nullable(),
   bedrooms: z.number().int().nullable(),
   bathrooms: z.number().int().nullable(),
-  kitchens: z.number().int().nullable(),
-  livingRooms: z.number().int().nullable(),
   surfaceArea: z.number().nullable(),
-  floorLevel: z.number().int().nullable(),
-  totalFloors: z.number().int().nullable(),
-  doorNumber: z.string().nullable(),
-  hasGenerator: z.boolean().default(false),
-  hasParking: z.boolean().default(false),
-  parkingSpaces: z.number().int().nullable(),
-  amenities: z.string().nullable(),
-  address: z.string().nullable(),
-  parcelleId: z.number().int().positive("parcelleId is required"),
-  batimentId: z.number().int().positive().nullable(),
-  published: z.boolean().default(false),
-  featured: z.boolean().default(false),
+  createdById: z.string().nullable(),
 });
 
 export const MediaSchema = z.object({
   id: z.number().int().positive().optional(),
   entityType: z.enum(MEDIA_ENTITY_TYPES),
-  entityId: z.number().int().positive(),
   url: z.string().url("Invalid URL format"),
   type: z.string().default("image"),
   order: z.number().int().default(0),
-  propertyId: z.number().int().positive().nullable().optional(),
+  caption: z.string().nullable(),
+  isPrimary: z.boolean().default(false),
   lotissementId: z.number().int().positive().nullable().optional(),
   parcelleId: z.number().int().positive().nullable().optional(),
   batimentId: z.number().int().positive().nullable().optional(),
@@ -284,18 +577,19 @@ export const MediaSchema = z.object({
 
 export const excelImportConfig: SheetConfig[] = [
   /* =========================================================
-   * INDEPENDENT TABLES (no FK) - Import FIRST
+   * INDEPENDENT TABLES (no FK)
    * ========================================================= */
   {
     sheetName: "Route",
     model: "route",
     columnCount: 7,
     uniqueKey: "Id_Rte",
+    primaryKey: "Id_Rte",
     mappers: [toInt, toStr, toStr, toStr, toStr, toStr, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Rte");
+        ctx?.addError("Missing or invalid Id_Rte");
         return null;
       }
       return {
@@ -315,11 +609,12 @@ export const excelImportConfig: SheetConfig[] = [
     model: "riviere",
     columnCount: 6,
     uniqueKey: "Id_Riv",
+    primaryKey: "Id_Riv",
     mappers: [toInt, toStr, toStr, toStr, toStr, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Riv");
+        ctx?.addError("Missing or invalid Id_Riv");
         return null;
       }
       return {
@@ -338,11 +633,12 @@ export const excelImportConfig: SheetConfig[] = [
     model: "equipement",
     columnCount: 6,
     uniqueKey: "Id_Equip",
+    primaryKey: "Id_Equip",
     mappers: [toInt, toStr, toStr, toStr, toStr, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Equip");
+        ctx?.addError("Missing or invalid Id_Equip");
         return null;
       }
       return {
@@ -361,11 +657,12 @@ export const excelImportConfig: SheetConfig[] = [
     model: "infrastructure",
     columnCount: 8,
     uniqueKey: "Id_Infras",
+    primaryKey: "Id_Infras",
     mappers: [toInt, toStr, toStr, toStr, toStr, toStr, toStr, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Infras");
+        ctx?.addError("Missing or invalid Id_Infras");
         return null;
       }
       return {
@@ -386,11 +683,12 @@ export const excelImportConfig: SheetConfig[] = [
     model: "borne",
     columnCount: 5,
     uniqueKey: "Id_Borne",
+    primaryKey: "Id_Borne",
     mappers: [toInt, toNum, toNum, toNum, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Borne");
+        ctx?.addError("Missing or invalid Id_Borne");
         return null;
       }
       return {
@@ -408,11 +706,12 @@ export const excelImportConfig: SheetConfig[] = [
     model: "taxe_immobiliere",
     columnCount: 8,
     uniqueKey: "Id_Taxe",
+    primaryKey: "Id_Taxe",
     mappers: [toInt, toStr, toStr, toStr, toNum, toBool, toDate, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Taxe");
+        ctx?.addError("Missing or invalid Id_Taxe");
         return null;
       }
       return {
@@ -433,16 +732,17 @@ export const excelImportConfig: SheetConfig[] = [
     model: "reseau_energetique",
     columnCount: 6,
     uniqueKey: "Id_Reseaux",
-    mappers: [toInt, toInt, toStr, toStr, toStr, toStr],
+    primaryKey: "Id_Reseaux",
+    mappers: [toInt, toNum, toStr, toStr, toStr, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Reseaux");
+        ctx?.addError("Missing or invalid Id_Reseaux");
         return null;
       }
       return {
         Id_Reseaux: id,
-        Source_Res: defInt(row[1]),
+        Source_Res: defNum(row[1]),
         Type_Reseau: defStr(row[2]),
         Etat_Res: defStr(row[3]),
         Materiau: defStr(row[4]),
@@ -456,16 +756,17 @@ export const excelImportConfig: SheetConfig[] = [
     model: "reseau_en_eau",
     columnCount: 6,
     uniqueKey: "Id_Reseaux",
-    mappers: [toInt, toInt, toStr, toStr, toStr, toStr],
+    primaryKey: "Id_Reseaux",
+    mappers: [toInt, toNum, toStr, toStr, toStr, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Reseaux");
+        ctx?.addError("Missing or invalid Id_Reseaux");
         return null;
       }
       return {
         Id_Reseaux: id,
-        Source_Res: defInt(row[1]),
+        Source_Res: defNum(row[1]),
         Type_Res: defStr(row[2]),
         Etat_Res: defStr(row[3]),
         Mat_Res: defStr(row[4]),
@@ -475,18 +776,19 @@ export const excelImportConfig: SheetConfig[] = [
   },
 
   /* =========================================================
-   * HIERARCHICAL GEO (order matters: Region → Departement → Arrondissement)
+   * HIERARCHICAL GEO
    * ========================================================= */
   {
     sheetName: "Region",
     model: "region",
     columnCount: 5,
     uniqueKey: "Id_Reg",
+    primaryKey: "Id_Reg",
     mappers: [toInt, toStr, toNum, toStr, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Reg");
+        ctx?.addError("Missing or invalid Id_Reg");
         return null;
       }
       return {
@@ -504,20 +806,25 @@ export const excelImportConfig: SheetConfig[] = [
     model: "departement",
     columnCount: 6,
     uniqueKey: "Id_Dept",
+    primaryKey: "Id_Dept",
     dependencies: ["region"],
     mappers: [toInt, toStr, toNum, toStr, toInt, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Dept");
+        ctx?.addError("Missing or invalid Id_Dept");
         return null;
       }
+
+      // Id_Reg is OPTIONAL per Prisma schema
+      const idReg = defInt(row[4]);
+
       return {
         Id_Dept: id,
         Nom_Dept: defStr(row[1]),
         Sup_Dept: defNum(row[2]),
         Chef_lieu_Dept: defStr(row[3]),
-        Id_Reg: defInt(row[4]),
+        Id_Reg: isValidId(idReg) ? idReg : null,
         WKT_Geometry: defStr(row[5]),
       };
     },
@@ -528,35 +835,42 @@ export const excelImportConfig: SheetConfig[] = [
     model: "arrondissement",
     columnCount: 7,
     uniqueKey: "Id_Arrond",
+    primaryKey: "Id_Arrond",
     dependencies: ["departement"],
     mappers: [toInt, toStr, toNum, toStr, toStr, toInt, toStr],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Arrond");
+        ctx?.addError("Missing or invalid Id_Arrond");
         return null;
       }
+
+      // Id_Dept is OPTIONAL per Prisma schema
+      const idDept = defInt(row[5]);
+
       return {
         Id_Arrond: id,
         Nom_Arrond: defStr(row[1]),
         Sup_Arrond: defNum(row[2]),
         Chef_lieu_Arrond: defStr(row[3]),
         Commune: defStr(row[4]),
-        Id_Dept: defInt(row[5]),
+        Id_Dept: isValidId(idDept) ? idDept : null,
         WKT_Geometry: defStr(row[6]),
       };
     },
   },
 
   /* =========================================================
-   * LOTISSEMENT (15 columns)
-   * Depends on: Arrondissement
+   * LOTISSEMENT
+   * Columns: 0-14 cadastral, 15-31 listing fields
+   * Fixed: Echelle now uses toInt (Prisma: Int?)
    * ========================================================= */
   {
     sheetName: "Lotissement",
     model: "lotissement",
-    columnCount: 15,
+    columnCount: 32,
     uniqueKey: "Id_Lotis",
+    primaryKey: "Id_Lotis",
     dependencies: ["arrondissement"],
     mappers: [
       toInt, // 0: Id_Lotis
@@ -564,23 +878,58 @@ export const excelImportConfig: SheetConfig[] = [
       toStr, // 2: Num_TF
       toStr, // 3: Statut
       toStr, // 4: Nom_cons
-      toNum, // 5: Surface
+      toNum, // 5: Surface (Float?)
       toStr, // 6: Nom_visa_lotis
       toDate, // 7: Date_approb
       toStr, // 8: Geo_exe
-      toInt, // 9: Nbre_lots
+      toInt, // 9: Nbre_lots (Int?)
       toStr, // 10: Lieudit
-      toNum, // 11: Echelle
+      toInt, // 11: Echelle (Int?) - FIXED: was toNum
       toStr, // 12: Ccp
-      toInt, // 13: Id_Arrond (FK)
+      toInt, // 13: Id_Arrond
       toStr, // 14: WKT_Geometry
+      toStr, // 15: slug
+      toStr, // 16: title
+      toStr, // 17: shortDescription
+      toStr, // 18: description
+      toStr, // 19: category
+      toStr, // 20: listingType
+      toStr, // 21: listingStatus
+      toDecimal, // 22: price
+      toDecimal, // 23: pricePerSqM
+      toStr, // 24: currency
+      toBool, // 25: featured
+      toInt, // 26: totalParcels
+      toInt, // 27: availableParcels
+      toBool, // 28: hasRoadAccess
+      toBool, // 29: hasElectricity
+      toBool, // 30: hasWater
+      toStr, // 31: createdById
     ],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Lotis");
+        ctx?.addError("Missing or invalid Id_Lotis");
         return null;
       }
+
+      const idArrond = defInt(row[13]);
+
+      const rawCategory = row[19] as string | null;
+      const category = isValidPropertyCategory(rawCategory)
+        ? rawCategory
+        : "LAND";
+
+      const rawListingType = row[20] as string | null;
+      const listingType = isValidListingType(rawListingType)
+        ? rawListingType
+        : null;
+
+      const rawStatus = row[21] as string | null;
+      const listingStatus = isValidListingStatus(rawStatus)
+        ? rawStatus
+        : "DRAFT";
+
       return {
         Id_Lotis: id,
         Nom_proprio: defStr(row[1]),
@@ -593,23 +942,41 @@ export const excelImportConfig: SheetConfig[] = [
         Geo_exe: defStr(row[8]),
         Nbre_lots: defInt(row[9]),
         Lieudit: defStr(row[10]),
-        Echelle: defNum(row[11]),
+        Echelle: defInt(row[11]), // FIXED: was defNum
         Ccp: defStr(row[12]),
-        Id_Arrond: defInt(row[13]),
+        Id_Arrond: isValidId(idArrond) ? idArrond : null,
         WKT_Geometry: defStr(row[14]),
+        slug: defStr(row[15]),
+        title: defStr(row[16]),
+        shortDescription: defStr(row[17]),
+        description: defStr(row[18]),
+        category,
+        listingType,
+        listingStatus,
+        price: defDecimal(row[22]),
+        pricePerSqM: defDecimal(row[23]),
+        currency: defStr(row[24], "XAF"),
+        featured: defBool(row[25], false),
+        totalParcels: defInt(row[26]),
+        availableParcels: defInt(row[27]),
+        hasRoadAccess: defBool(row[28], false),
+        hasElectricity: defBool(row[29], false),
+        hasWater: defBool(row[30], false),
+        createdById: defStr(row[31]),
       };
     },
   },
 
   /* =========================================================
-   * PARCELLE (21 columns)
-   * Depends on: Lotissement
+   * PARCELLE
+   * Fixed: Echelle now uses toInt (Prisma: Int?)
    * ========================================================= */
   {
     sheetName: "Parcelle",
     model: "parcelle",
-    columnCount: 21,
+    columnCount: 34,
     uniqueKey: "Id_Parcel",
+    primaryKey: "Id_Parcel",
     dependencies: ["lotissement"],
     mappers: [
       toInt, // 0: Id_Parcel
@@ -618,7 +985,7 @@ export const excelImportConfig: SheetConfig[] = [
       toStr, // 3: Mode_Obtent
       toStr, // 4: TF_Cree
       toStr, // 5: Nom_Cons
-      toNum, // 6: Sup
+      toNum, // 6: Sup (Float?)
       toStr, // 7: Nom_Visa_Cad
       toDate, // 8: Date_visa
       toStr, // 9: Geometre
@@ -627,19 +994,50 @@ export const excelImportConfig: SheetConfig[] = [
       toStr, // 12: Num_bloc
       toStr, // 13: Lieu_dit
       toStr, // 14: Largeur_Rte
-      toNum, // 15: Echelle
+      toInt, // 15: Echelle (Int?) - FIXED: was toNum
       toStr, // 16: Ccp_N
       toBool, // 17: Mise_Val
       toBool, // 18: Cloture
-      toInt, // 19: Id_Lotis (FK)
+      toInt, // 19: Id_Lotis
       toStr, // 20: WKT_Geometry
+      toStr, // 21: slug
+      toStr, // 22: title
+      toStr, // 23: shortDescription
+      toStr, // 24: description
+      toStr, // 25: category
+      toStr, // 26: listingType
+      toStr, // 27: listingStatus
+      toDecimal, // 28: price
+      toDecimal, // 29: pricePerSqM
+      toStr, // 30: currency
+      toBool, // 31: featured
+      toBool, // 32: isForDevelopment
+      toStr, // 33: createdById
     ],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Parcel");
+        ctx?.addError("Missing or invalid Id_Parcel");
         return null;
       }
+
+      const idLotis = defInt(row[19]);
+
+      const rawCategory = row[25] as string | null;
+      const category = isValidPropertyCategory(rawCategory)
+        ? rawCategory
+        : "LAND";
+
+      const rawListingType = row[26] as string | null;
+      const listingType = isValidListingType(rawListingType)
+        ? rawListingType
+        : null;
+
+      const rawStatus = row[27] as string | null;
+      const listingStatus = isValidListingStatus(rawStatus)
+        ? rawStatus
+        : "DRAFT";
+
       return {
         Id_Parcel: id,
         Nom_Prop: defStr(row[1]),
@@ -656,240 +1054,230 @@ export const excelImportConfig: SheetConfig[] = [
         Num_bloc: defStr(row[12]),
         Lieu_dit: defStr(row[13]),
         Largeur_Rte: defStr(row[14]),
-        Echelle: defNum(row[15]),
+        Echelle: defInt(row[15]), // FIXED: was defNum
         Ccp_N: defStr(row[16]),
         Mise_Val: defBool(row[17]),
         Cloture: defBool(row[18]),
-        Id_Lotis: defInt(row[19]),
+        Id_Lotis: isValidId(idLotis) ? idLotis : null,
         WKT_Geometry: defStr(row[20]),
+        slug: defStr(row[21]),
+        title: defStr(row[22]),
+        shortDescription: defStr(row[23]),
+        description: defStr(row[24]),
+        category,
+        listingType,
+        listingStatus,
+        price: defDecimal(row[28]),
+        pricePerSqM: defDecimal(row[29]),
+        currency: defStr(row[30], "XAF"),
+        featured: defBool(row[31], false),
+        isForDevelopment: defBool(row[32], false),
+        createdById: defStr(row[33]),
       };
     },
   },
 
   /* =========================================================
-   * BATIMENT (19 columns)
-   * Depends on: Parcelle
+   * BATIMENT
+   * Added: hasBalcony, hasTerrace, amenities fields
    * ========================================================= */
   {
     sheetName: "Batiment",
     model: "batiment",
-    columnCount: 19,
+    columnCount: 48, // INCREASED from 45
     uniqueKey: "Id_Bat",
+    primaryKey: "Id_Bat",
     dependencies: ["parcelle"],
     mappers: [
       toInt, // 0: Id_Bat
-      toStr, // 1: Type_Usage
-      toStr, // 2: Cat_Bat
-      toStr, // 3: Status
-      toStr, // 4: Standing
-      toBool, // 5: Cloture
-      toStr, // 6: No_Permis
-      toStr, // 7: Type_Lodg
-      toStr, // 8: Etat_Bat
-      toStr, // 9: Nom
-      toStr, // 10: Mat_Bati
-      toInt, // 11: totalFloors
-      toInt, // 12: totalUnits
-      toBool, // 13: hasElevator
-      toNum, // 14: surfaceArea
-      toStr, // 15: doorNumber
-      toStr, // 16: address
-      toInt, // 17: Id_Parcel (FK)
-      toStr, // 18: WKT_Geometry
+      toStr, // 1: Cat_Bat
+      toStr, // 2: Status
+      toStr, // 3: Standing
+      toBool, // 4: Cloture
+      toStr, // 5: No_Permis
+      toStr, // 6: Type_Lodg
+      toStr, // 7: Etat_Bat
+      toStr, // 8: Nom
+      toStr, // 9: Mat_Bati
+      toInt, // 10: Id_Parcel
+      toStr, // 11: WKT_Geometry
+      toStr, // 12: propertyType
+      toStr, // 13: slug
+      toStr, // 14: title
+      toStr, // 15: shortDescription
+      toStr, // 16: description
+      toStr, // 17: category
+      toStr, // 18: listingType
+      toStr, // 19: listingStatus
+      toDecimal, // 20: price
+      toDecimal, // 21: rentPrice
+      toDecimal, // 22: pricePerSqM
+      toStr, // 23: currency
+      toBool, // 24: featured
+      toInt, // 25: totalFloors
+      toInt, // 26: totalUnits
+      toBool, // 27: hasElevator
+      toNum, // 28: surfaceArea
+      toStr, // 29: doorNumber
+      toStr, // 30: address
+      toInt, // 31: bedrooms
+      toInt, // 32: bathrooms
+      toInt, // 33: kitchens
+      toInt, // 34: livingRooms
+      toInt, // 35: floorLevel
+      toBool, // 36: hasGenerator
+      toBool, // 37: hasParking
+      toInt, // 38: parkingSpaces
+      toBool, // 39: hasPool
+      toBool, // 40: hasGarden
+      toBool, // 41: hasSecurity
+      toBool, // 42: hasAirConditioning
+      toBool, // 43: hasFurnished
+      toBool, // 44: hasBalcony (NEW)
+      toBool, // 45: hasTerrace (NEW)
+      toStr, // 46: amenities (NEW)
+      toStr, // 47: createdById
     ],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
       if (!isValidId(id)) {
-        ctx?.addWarning("Missing or invalid Id_Bat");
+        ctx?.addError("Missing or invalid Id_Bat");
         return null;
       }
+
+      const idParcel = defInt(row[10]);
+
+      const rawPropertyType = row[12] as string | null;
+      const propertyType = isValidPropertyType(rawPropertyType)
+        ? rawPropertyType
+        : null;
+
+      const rawCategory = row[17] as string | null;
+      const category = isValidPropertyCategory(rawCategory)
+        ? rawCategory
+        : "RESIDENTIAL";
+
+      const rawListingType = row[18] as string | null;
+      const listingType = isValidListingType(rawListingType)
+        ? rawListingType
+        : null;
+
+      const rawStatus = row[19] as string | null;
+      const listingStatus = isValidListingStatus(rawStatus)
+        ? rawStatus
+        : "DRAFT";
+
       return {
         Id_Bat: id,
-        Type_Usage: defStr(row[1]),
-        Cat_Bat: defStr(row[2]),
-        Status: defStr(row[3]),
-        Standing: defStr(row[4]),
-        Cloture: defBool(row[5]),
-        No_Permis: defStr(row[6]),
-        Type_Lodg: defStr(row[7]),
-        Etat_Bat: defStr(row[8]),
-        Nom: defStr(row[9]),
-        Mat_Bati: defStr(row[10]),
-        totalFloors: defInt(row[11]),
-        totalUnits: defInt(row[12]),
-        hasElevator: defBool(row[13], false),
-        surfaceArea: defNum(row[14]),
-        doorNumber: defStr(row[15]),
-        address: defStr(row[16]),
-        Id_Parcel: defInt(row[17]),
-        WKT_Geometry: defStr(row[18]),
+        Cat_Bat: defStr(row[1]),
+        Status: defStr(row[2]),
+        Standing: defStr(row[3]),
+        Cloture: defBool(row[4]),
+        No_Permis: defStr(row[5]),
+        Type_Lodg: defStr(row[6]),
+        Etat_Bat: defStr(row[7]),
+        Nom: defStr(row[8]),
+        Mat_Bati: defStr(row[9]),
+        Id_Parcel: isValidId(idParcel) ? idParcel : null,
+        WKT_Geometry: defStr(row[11]),
+        propertyType,
+        slug: defStr(row[13]),
+        title: defStr(row[14]),
+        shortDescription: defStr(row[15]),
+        description: defStr(row[16]),
+        category,
+        listingType,
+        listingStatus,
+        price: defDecimal(row[20]),
+        rentPrice: defDecimal(row[21]),
+        pricePerSqM: defDecimal(row[22]),
+        currency: defStr(row[23], "XAF"),
+        featured: defBool(row[24], false),
+        totalFloors: defInt(row[25]),
+        totalUnits: defInt(row[26]),
+        hasElevator: defBool(row[27], false),
+        surfaceArea: defNum(row[28]),
+        doorNumber: defStr(row[29]),
+        address: defStr(row[30]),
+        bedrooms: defInt(row[31]),
+        bathrooms: defInt(row[32]),
+        kitchens: defInt(row[33]),
+        livingRooms: defInt(row[34]),
+        floorLevel: defInt(row[35]),
+        hasGenerator: defBool(row[36], false),
+        hasParking: defBool(row[37], false),
+        parkingSpaces: defInt(row[38]),
+        hasPool: defBool(row[39], false),
+        hasGarden: defBool(row[40], false),
+        hasSecurity: defBool(row[41], false),
+        hasAirConditioning: defBool(row[42], false),
+        hasFurnished: defBool(row[43], false),
+        hasBalcony: defBool(row[44], false), // NEW
+        hasTerrace: defBool(row[45], false), // NEW
+        amenities: defStr(row[46]), // NEW
+        createdById: defStr(row[47]),
       };
     },
   },
 
   /* =========================================================
-   * PROPERTY (32 columns)
-   * Depends on: Parcelle, Batiment (optional)
-   * ========================================================= */
-  {
-    sheetName: "Property",
-    model: "property",
-    columnCount: 32,
-    uniqueKey: "id",
-    dependencies: ["parcelle", "batiment"],
-    schema: PropertySchema,
-    mappers: [
-      toInt, // 0: id
-      toStr, // 1: title
-      toStr, // 2: shortDescription
-      toStr, // 3: description
-      toDecimal, // 4: price
-      toDecimal, // 5: priceMin
-      toDecimal, // 6: priceMax
-      toDecimal, // 7: pricePerSqM
-      toStr, // 8: currency
-      toStr, // 9: type (PropertyType enum)
-      toBool, // 10: forSale
-      toBool, // 11: forRent
-      toDecimal, // 12: rentPrice
-      toBool, // 13: isLandForDevelopment
-      toBool, // 14: approvedForApartments
-      toInt, // 15: bedrooms
-      toInt, // 16: bathrooms
-      toInt, // 17: kitchens
-      toInt, // 18: livingRooms
-      toNum, // 19: surfaceArea
-      toInt, // 20: floorLevel
-      toInt, // 21: totalFloors
-      toStr, // 22: doorNumber
-      toBool, // 23: hasGenerator
-      toBool, // 24: hasParking
-      toInt, // 25: parkingSpaces
-      toStr, // 26: amenities
-      toStr, // 27: address
-      toInt, // 28: parcelleId (REQUIRED)
-      toInt, // 29: batimentId (optional)
-      toBool, // 30: published
-      toBool, // 31: featured
-    ],
-    transform: (row, ctx) => {
-      // parcelleId is required
-      const parcelleId = row[28] as number | null;
-      if (!isValidId(parcelleId)) {
-        ctx?.addWarning("Missing or invalid parcelleId (required)");
-        return null;
-      }
-
-      // Validate PropertyType
-      const rawType = row[9];
-      if (rawType !== null && !isValidPropertyType(rawType)) {
-        ctx?.addWarning(
-          `Invalid PropertyType "${rawType}", defaulting to "House"`,
-        );
-      }
-
-      // Only include batimentId if valid
-      const batimentId = row[29] as number | null;
-      const validBatimentId = isValidId(batimentId) ? batimentId : null;
-
-      // ID is optional - will auto-generate if not provided
-      const id = row[0] as number | null;
-
-      return {
-        ...(isValidId(id) ? { id } : {}),
-        title: defStr(row[1], "Untitled Property") as string,
-        shortDescription: defStr(row[2]),
-        description: defStr(row[3]),
-        price: defDecimal(row[4]),
-        priceMin: defDecimal(row[5]),
-        priceMax: defDecimal(row[6]),
-        pricePerSqM: defDecimal(row[7]),
-        currency: defStr(row[8], "XAF"),
-        type: isValidPropertyType(rawType) ? rawType : "House",
-        forSale: defBool(row[10], true),
-        forRent: defBool(row[11], false),
-        rentPrice: defDecimal(row[12]),
-        isLandForDevelopment: defBool(row[13], false),
-        approvedForApartments: defBool(row[14]) || null,
-        bedrooms: defInt(row[15]),
-        bathrooms: defInt(row[16]),
-        kitchens: defInt(row[17]),
-        livingRooms: defInt(row[18]),
-        surfaceArea: defNum(row[19]),
-        floorLevel: defInt(row[20]),
-        totalFloors: defInt(row[21]),
-        doorNumber: defStr(row[22]),
-        hasGenerator: defBool(row[23], false),
-        hasParking: defBool(row[24], false),
-        parkingSpaces: defInt(row[25]),
-        amenities: defStr(row[26]),
-        address: defStr(row[27]),
-        parcelleId,
-        batimentId: validBatimentId,
-        published: defBool(row[30], false),
-        featured: defBool(row[31], false),
-      };
-    },
-  },
-
-  /* =========================================================
-   * MEDIA (6 columns)
-   * Depends on: Property, Lotissement, Parcelle, Batiment, Infrastructure
+   * MEDIA
    * ========================================================= */
   {
     sheetName: "Media",
     model: "media",
-    columnCount: 6,
+    columnCount: 8,
     schema: MediaSchema,
-    mappers: [toInt, toStr, toInt, toStr, toStr, toInt],
+    mappers: [toInt, toStr, toStr, toStr, toInt, toStr, toBool, toInt],
     transform: (row, ctx) => {
       const entityType = row[1] as string | null;
-      const entityId = row[2] as number | null;
-      const url = row[3] as string | null;
+      const url = row[2] as string | null;
 
-      // Validate required fields
       if (!entityType) {
-        ctx?.addWarning("Missing entityType");
-        return null;
-      }
-      if (!isValidId(entityId)) {
-        ctx?.addWarning("Missing or invalid entityId");
+        ctx?.addError("Missing entityType");
         return null;
       }
       if (!url || url.trim() === "") {
-        ctx?.addWarning("Missing URL");
+        ctx?.addError("Missing URL");
         return null;
       }
-
       if (!isValidMediaEntityType(entityType)) {
-        ctx?.addWarning(`Invalid entityType "${entityType}"`);
+        ctx?.addError(`Invalid entityType "${entityType}"`);
         return null;
       }
 
       const id = row[0] as number | null;
+      const entityId = row[7] as number | null;
 
-      // Build result with appropriate FK based on entityType
       const result: Record<string, unknown> = {
         ...(isValidId(id) ? { id } : {}),
         entityType,
-        entityId,
         url: url.trim(),
-        type: defStr(row[4], "image"),
-        order: defInt(row[5], 0),
+        type: defStr(row[3], "image"),
+        order: defInt(row[4], 0),
+        caption: defStr(row[5]),
+        isPrimary: defBool(row[6], false),
       };
 
-      // Set the polymorphic FK based on entityType
-      const fkMap: Record<MediaEntityTypeValue, string> = {
-        PROPERTY: "propertyId",
-        LOTISSEMENT: "lotissementId",
-        PARCELLE: "parcelleId",
-        BATIMENT: "batimentId",
-        INFRASTRUCTURE: "infrastructureId",
-      };
-
-      const fkField = fkMap[entityType];
-      if (fkField) {
-        result[fkField] = entityId;
+      if (isValidId(entityId)) {
+        switch (entityType) {
+          case "LOTISSEMENT":
+            result.lotissementId = entityId;
+            break;
+          case "PARCELLE":
+            result.parcelleId = entityId;
+            break;
+          case "BATIMENT":
+            result.batimentId = entityId;
+            break;
+          case "INFRASTRUCTURE":
+            result.infrastructureId = entityId;
+            break;
+        }
+      } else {
+        ctx?.addWarning(
+          `Media row missing valid entityId for type ${entityType}`,
+        );
       }
 
       return result;
@@ -897,21 +1285,30 @@ export const excelImportConfig: SheetConfig[] = [
   },
 
   /* =========================================================
-   * RELATIONSHIP TABLES (Junction tables)
+   * JUNCTION TABLES - With Composite Keys
    * ========================================================= */
   {
     sheetName: "Payer",
     model: "payer",
     columnCount: 4,
+    compositeKey: { fields: ["Id_Parcel", "Id_Bat", "Id_Taxe"] },
     dependencies: ["parcelle", "batiment", "taxe_immobiliere"],
-    mappers: [toInt, toInt, toInt, toInt], // Fixed: date_paye should be date
+    mappers: [toInt, toInt, toInt, toInt],
     transform: (row, ctx) => {
       const idParcel = row[0] as number | null;
       const idBat = row[1] as number | null;
       const idTaxe = row[2] as number | null;
 
-      if (!isValidId(idParcel) || !isValidId(idBat) || !isValidId(idTaxe)) {
-        ctx?.addWarning("Missing required FK (Id_Parcel, Id_Bat, or Id_Taxe)");
+      if (!isValidId(idParcel)) {
+        ctx?.addError("Missing required FK: Id_Parcel");
+        return null;
+      }
+      if (!isValidId(idBat)) {
+        ctx?.addError("Missing required FK: Id_Bat");
+        return null;
+      }
+      if (!isValidId(idTaxe)) {
+        ctx?.addError("Missing required FK: Id_Taxe");
         return null;
       }
 
@@ -928,16 +1325,22 @@ export const excelImportConfig: SheetConfig[] = [
     sheetName: "Limitrophe",
     model: "limitrophe",
     columnCount: 2,
+    compositeKey: { fields: ["Id_Lotis", "Id_Riv"] },
     dependencies: ["lotissement", "riviere"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
       const idLotis = row[0] as number | null;
       const idRiv = row[1] as number | null;
 
-      if (!isValidId(idLotis) || !isValidId(idRiv)) {
-        ctx?.addWarning("Missing required FK (Id_Lotis or Id_Riv)");
+      if (!isValidId(idLotis)) {
+        ctx?.addError("Missing required FK: Id_Lotis");
         return null;
       }
+      if (!isValidId(idRiv)) {
+        ctx?.addError("Missing required FK: Id_Riv");
+        return null;
+      }
+
       return { Id_Lotis: idLotis, Id_Riv: idRiv };
     },
   },
@@ -946,16 +1349,22 @@ export const excelImportConfig: SheetConfig[] = [
     sheetName: "Alimenter",
     model: "alimenter",
     columnCount: 2,
-    dependencies: ["batiment", "reseau_en_eau"], // Water network
+    compositeKey: { fields: ["Id_Bat", "Id_Reseaux"] },
+    dependencies: ["batiment", "reseau_energetique"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
       const idBat = row[0] as number | null;
       const idReseaux = row[1] as number | null;
 
-      if (!isValidId(idBat) || !isValidId(idReseaux)) {
-        ctx?.addWarning("Missing required FK (Id_Bat or Id_Reseaux)");
+      if (!isValidId(idBat)) {
+        ctx?.addError("Missing required FK: Id_Bat");
         return null;
       }
+      if (!isValidId(idReseaux)) {
+        ctx?.addError("Missing required FK: Id_Reseaux");
+        return null;
+      }
+
       return { Id_Bat: idBat, Id_Reseaux: idReseaux };
     },
   },
@@ -964,16 +1373,22 @@ export const excelImportConfig: SheetConfig[] = [
     sheetName: "Contenir",
     model: "contenir",
     columnCount: 2,
+    compositeKey: { fields: ["Id_Parcel", "Id_Borne"] },
     dependencies: ["parcelle", "borne"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
       const idParcel = row[0] as number | null;
       const idBorne = row[1] as number | null;
 
-      if (!isValidId(idParcel) || !isValidId(idBorne)) {
-        ctx?.addWarning("Missing required FK (Id_Parcel or Id_Borne)");
+      if (!isValidId(idParcel)) {
+        ctx?.addError("Missing required FK: Id_Parcel");
         return null;
       }
+      if (!isValidId(idBorne)) {
+        ctx?.addError("Missing required FK: Id_Borne");
+        return null;
+      }
+
       return { Id_Parcel: idParcel, Id_Borne: idBorne };
     },
   },
@@ -982,16 +1397,22 @@ export const excelImportConfig: SheetConfig[] = [
     sheetName: "Trouver",
     model: "trouver",
     columnCount: 2,
+    compositeKey: { fields: ["Id_Parcel", "Id_Infras"] },
     dependencies: ["parcelle", "infrastructure"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
       const idParcel = row[0] as number | null;
       const idInfras = row[1] as number | null;
 
-      if (!isValidId(idParcel) || !isValidId(idInfras)) {
-        ctx?.addWarning("Missing required FK (Id_Parcel or Id_Infras)");
+      if (!isValidId(idParcel)) {
+        ctx?.addError("Missing required FK: Id_Parcel");
         return null;
       }
+      if (!isValidId(idInfras)) {
+        ctx?.addError("Missing required FK: Id_Infras");
+        return null;
+      }
+
       return { Id_Parcel: idParcel, Id_Infras: idInfras };
     },
   },
@@ -1000,16 +1421,22 @@ export const excelImportConfig: SheetConfig[] = [
     sheetName: "Eclairer",
     model: "eclairer",
     columnCount: 2,
+    compositeKey: { fields: ["Id_Parcel", "Id_Equip"] },
     dependencies: ["parcelle", "equipement"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
       const idParcel = row[0] as number | null;
       const idEquip = row[1] as number | null;
 
-      if (!isValidId(idParcel) || !isValidId(idEquip)) {
-        ctx?.addWarning("Missing required FK (Id_Parcel or Id_Equip)");
+      if (!isValidId(idParcel)) {
+        ctx?.addError("Missing required FK: Id_Parcel");
         return null;
       }
+      if (!isValidId(idEquip)) {
+        ctx?.addError("Missing required FK: Id_Equip");
+        return null;
+      }
+
       return { Id_Parcel: idParcel, Id_Equip: idEquip };
     },
   },
@@ -1018,16 +1445,22 @@ export const excelImportConfig: SheetConfig[] = [
     sheetName: "Desservir",
     model: "desservir",
     columnCount: 2,
+    compositeKey: { fields: ["Id_Parcel", "Id_Rte"] },
     dependencies: ["parcelle", "route"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
       const idParcel = row[0] as number | null;
       const idRte = row[1] as number | null;
 
-      if (!isValidId(idParcel) || !isValidId(idRte)) {
-        ctx?.addWarning("Missing required FK (Id_Parcel or Id_Rte)");
+      if (!isValidId(idParcel)) {
+        ctx?.addError("Missing required FK: Id_Parcel");
         return null;
       }
+      if (!isValidId(idRte)) {
+        ctx?.addError("Missing required FK: Id_Rte");
+        return null;
+      }
+
       return { Id_Parcel: idParcel, Id_Rte: idRte };
     },
   },
@@ -1036,23 +1469,29 @@ export const excelImportConfig: SheetConfig[] = [
     sheetName: "Approvisionner",
     model: "approvisionner",
     columnCount: 2,
-    dependencies: ["batiment", "reseau_energetique"], // Energy network (different from Alimenter)
+    compositeKey: { fields: ["Id_Bat", "Id_Reseaux"] },
+    dependencies: ["batiment", "reseau_en_eau"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
       const idBat = row[0] as number | null;
       const idReseaux = row[1] as number | null;
 
-      if (!isValidId(idBat) || !isValidId(idReseaux)) {
-        ctx?.addWarning("Missing required FK (Id_Bat or Id_Reseaux)");
+      if (!isValidId(idBat)) {
+        ctx?.addError("Missing required FK: Id_Bat");
         return null;
       }
+      if (!isValidId(idReseaux)) {
+        ctx?.addError("Missing required FK: Id_Reseaux");
+        return null;
+      }
+
       return { Id_Bat: idBat, Id_Reseaux: idReseaux };
     },
   },
 ];
 
 /* =========================================================
- * HELPER: Get sheets by category
+ * HELPERS
  * ========================================================= */
 
 export const OPTIONAL_SHEETS = [
@@ -1075,4 +1514,117 @@ export const getRequiredSheets = (): string[] => {
 
 export const getSheetConfig = (sheetName: string): SheetConfig | undefined => {
   return excelImportConfig.find((config) => config.sheetName === sheetName);
+};
+
+export const getConfigByModel = (
+  model: PrismaModelName,
+): SheetConfig | undefined => {
+  return excelImportConfig.find((config) => config.model === model);
+};
+
+export const getForeignKeyConfig = (
+  model: PrismaModelName,
+): ForeignKeyConfig[] => {
+  return FOREIGN_KEY_MAP[model] || [];
+};
+
+/**
+ * Returns sheets in correct import order based on dependencies
+ */
+export function getImportOrder(): string[] {
+  const visited = new Set<string>();
+  const order: string[] = [];
+
+  function visit(sheetName: string) {
+    if (visited.has(sheetName)) return;
+
+    const config = getSheetConfig(sheetName);
+    if (!config) return;
+
+    if (config.dependencies) {
+      for (const dep of config.dependencies) {
+        const depConfig = excelImportConfig.find((c) => c.model === dep);
+        if (depConfig) {
+          visit(depConfig.sheetName);
+        }
+      }
+    }
+
+    visited.add(sheetName);
+    order.push(sheetName);
+  }
+
+  for (const config of excelImportConfig) {
+    visit(config.sheetName);
+  }
+
+  return order;
+}
+
+/**
+ * Returns the primary key field for a model
+ */
+export function getPrimaryKeyField(model: PrismaModelName): string | undefined {
+  const config = getConfigByModel(model);
+  return config?.primaryKey || config?.uniqueKey;
+}
+
+/**
+ * Check if model has composite key
+ */
+export function hasCompositeKey(model: PrismaModelName): boolean {
+  const config = getConfigByModel(model);
+  return !!config?.compositeKey;
+}
+
+/**
+ * Get composite key config
+ */
+export function getCompositeKey(
+  model: PrismaModelName,
+): CompositeKey | undefined {
+  const config = getConfigByModel(model);
+  return config?.compositeKey;
+}
+
+/* =========================================================
+ * PROPERTY TYPE HELPERS
+ * ========================================================= */
+
+export const PROPERTY_TYPE_CONFIG = {
+  APARTMENT: { label: "Appartement", icon: "🏢", category: "RESIDENTIAL" },
+  HOUSE: { label: "Maison", icon: "🏠", category: "RESIDENTIAL" },
+  VILLA: { label: "Villa", icon: "🏡", category: "RESIDENTIAL" },
+  STUDIO: { label: "Studio", icon: "🛏️", category: "RESIDENTIAL" },
+  DUPLEX: { label: "Duplex", icon: "🏘️", category: "RESIDENTIAL" },
+  TRIPLEX: { label: "Triplex", icon: "🏘️", category: "RESIDENTIAL" },
+  PENTHOUSE: { label: "Penthouse", icon: "✨", category: "RESIDENTIAL" },
+  CHAMBRE_MODERNE: {
+    label: "Chambre Moderne",
+    icon: "🚪",
+    category: "RESIDENTIAL",
+  },
+  CHAMBRE: { label: "Chambre", icon: "🛏️", category: "RESIDENTIAL" },
+  OFFICE: { label: "Bureau", icon: "💼", category: "COMMERCIAL" },
+  SHOP: { label: "Boutique", icon: "🏪", category: "COMMERCIAL" },
+  RESTAURANT: { label: "Restaurant", icon: "🍽️", category: "COMMERCIAL" },
+  HOTEL: { label: "Hôtel", icon: "🏨", category: "COMMERCIAL" },
+  WAREHOUSE: { label: "Entrepôt", icon: "🏭", category: "COMMERCIAL" },
+  COMMERCIAL_SPACE: {
+    label: "Local Commercial",
+    icon: "🏬",
+    category: "COMMERCIAL",
+  },
+  INDUSTRIAL: { label: "Industriel", icon: "🏭", category: "INDUSTRIAL" },
+  FACTORY: { label: "Usine", icon: "🏭", category: "INDUSTRIAL" },
+  BUILDING: { label: "Immeuble", icon: "🏗️", category: "BUILDING" },
+  MIXED_USE: { label: "Usage Mixte", icon: "🏢", category: "MIXED" },
+} as const;
+
+export const getPropertyTypeLabel = (type: PropertyTypeValue): string => {
+  return PROPERTY_TYPE_CONFIG[type]?.label || type;
+};
+
+export const getPropertyTypeIcon = (type: PropertyTypeValue): string => {
+  return PROPERTY_TYPE_CONFIG[type]?.icon || "🏠";
 };

@@ -6,18 +6,59 @@ datasource db {
   provider = "postgresql"
 }
 
+// ============================================
+// ENUMS
+// ============================================
+
+enum ListingType {
+  SALE
+  RENT
+  BOTH
+}
+
+enum ListingStatus {
+  DRAFT
+  PUBLISHED
+  SOLD
+  RENTED
+  ARCHIVED
+}
+
+enum PropertyCategory {
+  LAND
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  MIXED
+}
+
 enum PropertyType {
-  Apartment
-  House
-  Villa
-  Office
-  Commercial
-  Land
-  Building
-  Studio
-  Duplex
-  ChambreModerne
-  Chambre
+  // Residential
+  APARTMENT
+  HOUSE
+  VILLA
+  STUDIO
+  DUPLEX
+  TRIPLEX
+  PENTHOUSE
+  CHAMBRE_MODERNE
+  CHAMBRE
+  
+  // Commercial
+  OFFICE
+  SHOP
+  RESTAURANT
+  HOTEL
+  WAREHOUSE
+  COMMERCIAL_SPACE
+  
+  // Industrial
+  INDUSTRIAL
+  FACTORY
+  
+  // Buildings
+  BUILDING
+  MIXED_USE
 }
 
 enum UserRole {
@@ -33,11 +74,16 @@ enum OTPType {
 }
 
 enum MediaEntityType {
-  PROPERTY
   LOTISSEMENT
   PARCELLE
   BATIMENT
   INFRASTRUCTURE
+}
+
+enum EntityType {
+  LOTISSEMENT
+  PARCELLE
+  BATIMENT
 }
 
 // ============================================
@@ -63,16 +109,35 @@ model User {
   password      String?
   emailVerified DateTime?
   image         String?
+  phone         String?
   role          UserRole  @default(USER)
+  
+  // Agent-specific fields
+  agencyName    String?
+  agencyLogo    String?
+  bio           String?   @db.Text
+  whatsapp      String?
+  isVerified    Boolean   @default(false)
   
   accounts      Account[]
   sessions      Session[]
+  
+  // AGENT/ADMIN: Created Listings
+  lotissements  Lotissement[]
+  parcelles     Parcelle[]
+  batiments     Batiment[]
+  
+  // ALL USERS: Interactions
+  favorites     Favorite[]
+  shares        Share[]
+  views         View[]
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
   @@index([email])
   @@index([role])
+  @@index([isVerified])
 }
 
 model Account {
@@ -114,7 +179,7 @@ model VerificationToken {
 }
 
 // ============================================
-// Geographic Models (Optimized)
+// Geographic Models
 // ============================================
 
 model Region {
@@ -164,11 +229,13 @@ model Arrondissement {
 }
 
 // ============================================
-// Property-Related Models (Optimized)
+// LOTISSEMENT (Subdivision/Estate)
 // ============================================
 
 model Lotissement {
   Id_Lotis       Int             @id @default(autoincrement())
+  
+  // Cadastral Data
   Nom_proprio    String?
   Num_TF         String?
   Statut         String?
@@ -183,6 +250,34 @@ model Lotissement {
   Ccp            String?
   Id_Arrond      Int?
   WKT_Geometry   String?         @db.Text
+  
+  // LISTING FIELDS
+  slug             String?          @unique
+  title            String?
+  shortDescription String?          @db.VarChar(500)
+  description      String?          @db.Text
+  category         PropertyCategory @default(LAND)
+  listingType      ListingType?
+  listingStatus    ListingStatus    @default(DRAFT)
+  price            Decimal?         @db.Decimal(15, 2)
+  pricePerSqM      Decimal?         @db.Decimal(15, 2)
+  currency         String           @default("XAF")
+  featured         Boolean          @default(false)
+  viewCount        Int              @default(0)
+  favoriteCount    Int              @default(0)
+  shareCount       Int              @default(0)
+  
+  // Development info
+  totalParcels       Int?
+  availableParcels   Int?
+  hasRoadAccess      Boolean?  @default(false)
+  hasElectricity     Boolean?  @default(false)
+  hasWater           Boolean?  @default(false)
+  
+  // CREATOR (Optional for imported data)
+  createdById    String?
+  createdBy      User?           @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   
@@ -190,14 +285,29 @@ model Lotissement {
   parcelles      Parcelle[]
   limitrophes    Limitrophe[]
   media          Media[]
+  favorites      Favorite[]
+  shares         Share[]
+  views          View[]
   
   @@index([Id_Arrond])
   @@index([Num_TF])
   @@index([Statut])
+  @@index([listingStatus])
+  @@index([listingType])
+  @@index([price])
+  @@index([featured])
+  @@index([createdById])
+  @@index([createdAt])
 }
+
+// ============================================
+// PARCELLE (Land/Plot)
+// ============================================
 
 model Parcelle {
   Id_Parcel    Int          @id @default(autoincrement())
+  
+  // Cadastral Data
   Nom_Prop     String?
   TF_Mere      String?
   Mode_Obtent  String?
@@ -218,10 +328,35 @@ model Parcelle {
   Cloture      Boolean?
   Id_Lotis     Int?
   WKT_Geometry String?      @db.Text
+  
+  // LISTING FIELDS
+  slug             String?          @unique
+  title            String?
+  shortDescription String?          @db.VarChar(500)
+  description      String?          @db.Text
+  category         PropertyCategory @default(LAND)
+  listingType      ListingType?
+  listingStatus    ListingStatus    @default(DRAFT)
+  price            Decimal?         @db.Decimal(15, 2)
+  pricePerSqM      Decimal?         @db.Decimal(15, 2)
+  currency         String           @default("XAF")
+  featured         Boolean          @default(false)
+  viewCount        Int              @default(0)
+  favoriteCount    Int              @default(0)
+  shareCount       Int              @default(0)
+  
+  // Land specifics
+  isForDevelopment    Boolean?  @default(false)
+  approvedForBuilding Boolean?
+  zoningType          String?
+  
+  // CREATOR (Optional for imported data)
+  createdById  String?
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
   
-  properties   Property[]
   lotissement  Lotissement? @relation(fields: [Id_Lotis], references: [Id_Lotis])
   batiments    Batiment[]
   payers       Payer[]
@@ -230,15 +365,30 @@ model Parcelle {
   eclairers    Eclairer[]
   desservirs   Desservir[]
   media        Media[]
+  favorites    Favorite[]
+  shares       Share[]
+  views        View[]
   
   @@index([Id_Lotis])
   @@index([TF_Cree])
   @@index([Num_lot])
+  @@index([listingStatus])
+  @@index([listingType])
+  @@index([price])
+  @@index([featured])
+  @@index([category])
+  @@index([createdById])
+  @@index([createdAt])
 }
+
+// ============================================
+// BATIMENT (Building/Unit)
+// ============================================
 
 model Batiment {
   Id_Bat       Int       @id @default(autoincrement())
-  Type_Usage   String?
+  
+  // Cadastral Data
   Cat_Bat      String?
   Status       String?
   Standing     String?
@@ -248,8 +398,30 @@ model Batiment {
   Etat_Bat     String?
   Nom          String?
   Mat_Bati     String?
+  Id_Parcel    Int?
+  WKT_Geometry String?   @db.Text
   
-  // Building-level metrics only
+  // PROPERTY TYPE
+  propertyType PropertyType?
+  
+  // LISTING FIELDS
+  slug             String?          @unique
+  title            String?
+  shortDescription String?          @db.VarChar(500)
+  description      String?          @db.Text
+  category         PropertyCategory @default(RESIDENTIAL)
+  listingType      ListingType?
+  listingStatus    ListingStatus    @default(DRAFT)
+  price            Decimal?         @db.Decimal(15, 2)
+  rentPrice        Decimal?         @db.Decimal(15, 2)
+  pricePerSqM      Decimal?         @db.Decimal(15, 2)
+  currency         String           @default("XAF")
+  featured         Boolean          @default(false)
+  viewCount        Int              @default(0)
+  favoriteCount    Int              @default(0)
+  shareCount       Int              @default(0)
+  
+  // Building characteristics
   totalFloors   Int?
   totalUnits    Int?
   hasElevator   Boolean?  @default(false)
@@ -257,122 +429,169 @@ model Batiment {
   doorNumber    String?
   address       String?   @db.Text
   
-  Id_Parcel     Int?
-  WKT_Geometry  String?   @db.Text
+  // Unit features
+  bedrooms      Int?
+  bathrooms     Int?
+  kitchens      Int?
+  livingRooms   Int?
+  floorLevel    Int?
+  
+  // Amenities
+  hasGenerator       Boolean?  @default(false)
+  hasParking         Boolean?  @default(false)
+  parkingSpaces      Int?
+  hasPool            Boolean?  @default(false)
+  hasGarden          Boolean?  @default(false)
+  hasSecurity        Boolean?  @default(false)
+  hasAirConditioning Boolean?  @default(false)
+  hasFurnished       Boolean?  @default(false)
+  hasBalcony         Boolean?  @default(false)
+  hasTerrace         Boolean?  @default(false)
+  amenities          String?   @db.Text
+  
+  // CREATOR (Optional for imported data)
+  createdById   String?
+  createdBy     User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
-  properties      Property[]
   parcelle        Parcelle?        @relation(fields: [Id_Parcel], references: [Id_Parcel])
   payers          Payer[]
   alimenters      Alimenter[]
   approvisionners Approvisionner[]
   media           Media[]
+  favorites       Favorite[]
+  shares          Share[]
+  views           View[]
   
   @@index([Id_Parcel])
-  @@index([Type_Usage])
+  @@index([propertyType])
   @@index([Standing])
-}
-
-// ============================================
-// Centralized Property Model (Main Listing)
-// ============================================
-
-model Property {
-  id                    Int          @id @default(autoincrement())
-  title                 String
-  shortDescription      String?      @db.VarChar(500)
-  description           String?      @db.Text
-  
-  // Pricing - ONLY HERE, not duplicated
-  price                 Decimal?     @db.Decimal(15, 2)
-  priceMin              Decimal?     @db.Decimal(15, 2)
-  priceMax              Decimal?     @db.Decimal(15, 2)
-  pricePerSqM           Decimal?     @db.Decimal(15, 2)
-  currency              String       @default("XAF")
-  
-  // Listing type
-  type                  PropertyType
-  forSale               Boolean      @default(true)
-  forRent               Boolean      @default(false)
-  rentPrice             Decimal?     @db.Decimal(15, 2)
-  
-  // Land specifics
-  isLandForDevelopment  Boolean      @default(false)
-  approvedForApartments Boolean?
-  
-  // Unit features (apartment/house specific)
-  bedrooms              Int?
-  bathrooms             Int?
-  kitchens              Int?
-  livingRooms           Int?
-  surfaceArea           Float?
-  floorLevel            Int?
-  totalFloors           Int?
-  doorNumber            String?
-  
-  // Amenities
-  hasGenerator          Boolean?     @default(false)
-  hasParking            Boolean?     @default(false)
-  parkingSpaces         Int?
-  amenities             String?      @db.Text
-  
-  // Location
-  address               String?      @db.Text
-  parcelleId            Int
-  batimentId            Int?
-  
-  // Relations
-  parcelle              Parcelle     @relation(fields: [parcelleId], references: [Id_Parcel])
-  batiment              Batiment?    @relation(fields: [batimentId], references: [Id_Bat])
-  media                 Media[]
-  
-  // Status
-  published             Boolean      @default(false)
-  featured              Boolean      @default(false)
-  
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
-  
-  @@index([parcelleId])
-  @@index([batimentId])
-  @@index([type])
+  @@index([listingStatus])
+  @@index([listingType])
   @@index([price])
-  @@index([priceMin, priceMax])
-  @@index([published, featured])
-  @@index([forSale, forRent])
+  @@index([rentPrice])
+  @@index([featured])
+  @@index([bedrooms])
+  @@index([category])
+  @@index([createdById])
   @@index([createdAt])
 }
 
 // ============================================
-// Centralized Media Model
+// FAVORITES
+// ============================================
+
+model Favorite {
+  id          Int        @id @default(autoincrement())
+  userId      String
+  entityType  EntityType
+  
+  lotissementId Int?
+  parcelleId    Int?
+  batimentId    Int?
+  
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lotissement Lotissement? @relation(fields: [lotissementId], references: [Id_Lotis], onDelete: Cascade)
+  parcelle    Parcelle?    @relation(fields: [parcelleId], references: [Id_Parcel], onDelete: Cascade)
+  batiment    Batiment?    @relation(fields: [batimentId], references: [Id_Bat], onDelete: Cascade)
+  
+  createdAt   DateTime     @default(now())
+  
+  @@unique([userId, entityType, lotissementId])
+  @@unique([userId, entityType, parcelleId])
+  @@unique([userId, entityType, batimentId])
+  
+  @@index([userId])
+  @@index([entityType])
+}
+
+// ============================================
+// SHARES
+// ============================================
+
+model Share {
+  id          Int        @id @default(autoincrement())
+  userId      String?
+  entityType  EntityType
+  platform    String?
+  
+  lotissementId Int?
+  parcelleId    Int?
+  batimentId    Int?
+  
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lotissement Lotissement? @relation(fields: [lotissementId], references: [Id_Lotis], onDelete: Cascade)
+  parcelle    Parcelle?    @relation(fields: [parcelleId], references: [Id_Parcel], onDelete: Cascade)
+  batiment    Batiment?    @relation(fields: [batimentId], references: [Id_Bat], onDelete: Cascade)
+  
+  createdAt   DateTime     @default(now())
+  
+  @@index([userId])
+  @@index([entityType])
+  @@index([platform])
+  @@index([createdAt])
+}
+
+// ============================================
+// VIEWS
+// ============================================
+
+model View {
+  id          Int        @id @default(autoincrement())
+  userId      String?
+  entityType  EntityType
+  ipAddress   String?
+  userAgent   String?
+  
+  lotissementId Int?
+  parcelleId    Int?
+  batimentId    Int?
+  
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lotissement Lotissement? @relation(fields: [lotissementId], references: [Id_Lotis], onDelete: Cascade)
+  parcelle    Parcelle?    @relation(fields: [parcelleId], references: [Id_Parcel], onDelete: Cascade)
+  batiment    Batiment?    @relation(fields: [batimentId], references: [Id_Bat], onDelete: Cascade)
+  
+  createdAt   DateTime     @default(now())
+  
+  @@index([userId])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+// ============================================
+// Media Model
 // ============================================
 
 model Media {
   id          Int              @id @default(autoincrement())
   entityType  MediaEntityType
-  entityId    Int
   url         String
-  type        String           // 'image' or 'video'
+  type        String           // 'image', 'video', 'document'
   order       Int              @default(0)
+  caption     String?
+  isPrimary   Boolean          @default(false)
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   
-  // Polymorphic relations
-  property       Property?       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  propertyId     Int?
-  lotissement    Lotissement?    @relation(fields: [lotissementId], references: [Id_Lotis], onDelete: Cascade)
-  lotissementId  Int?
-  parcelle       Parcelle?       @relation(fields: [parcelleId], references: [Id_Parcel], onDelete: Cascade)
-  parcelleId     Int?
-  batiment       Batiment?       @relation(fields: [batimentId], references: [Id_Bat], onDelete: Cascade)
-  batimentId     Int?
-  infrastructure Infrastructure? @relation(fields: [infrastructureId], references: [Id_Infras], onDelete: Cascade)
+  lotissementId    Int?
+  parcelleId       Int?
+  batimentId       Int?
   infrastructureId Int?
   
-  @@index([entityType, entityId])
-  @@index([propertyId])
+  lotissement    Lotissement?    @relation(fields: [lotissementId], references: [Id_Lotis], onDelete: Cascade)
+  parcelle       Parcelle?       @relation(fields: [parcelleId], references: [Id_Parcel], onDelete: Cascade)
+  batiment       Batiment?       @relation(fields: [batimentId], references: [Id_Bat], onDelete: Cascade)
+  infrastructure Infrastructure? @relation(fields: [infrastructureId], references: [Id_Infras], onDelete: Cascade)
+  
+  @@index([entityType])
+  @@index([lotissementId])
+  @@index([parcelleId])
+  @@index([batimentId])
   @@index([order])
+  @@index([isPrimary])
 }
 
 // ============================================
@@ -489,7 +708,7 @@ model Borne {
 }
 
 // ============================================
-// Relationship Models (with optimized indexes)
+// Relationship Models
 // ============================================
 
 model Payer {

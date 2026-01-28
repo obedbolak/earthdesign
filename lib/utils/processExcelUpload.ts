@@ -1,27 +1,27 @@
 // lib/utils/processExcelUpload.ts
-import { Workbook, Worksheet } from "exceljs";
-import { PrismaClient } from "@prisma/client";
-import prisma from "@/lib/prisma";
+import ExcelJS from "exceljs";
+import { Prisma, PrismaClient } from "@prisma/client";
 import {
   excelImportConfig,
-  OPTIONAL_SHEETS,
   SheetConfig,
   TransformContext,
+  PrismaModelName,
+  getImportOrder,
+  getSheetConfig,
+  getForeignKeyConfig,
+  OPTIONAL_SHEETS,
+  getRequiredSheets,
+  isValidId,
 } from "@/lib/config/excel-import-config";
 
 /* =========================================================
  * TYPES
  * ========================================================= */
 
-type PrismaTransactionClient = Omit<
-  PrismaClient,
-  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
->;
-
 export interface SheetResult {
   sheetName: string;
+  model: PrismaModelName;
   status: "success" | "partial" | "failed" | "skipped";
-  totalRows: number;
   imported: number;
   duplicates: number;
   skipped: number;
@@ -43,201 +43,427 @@ export interface ImportResult {
   };
 }
 
+export interface WorkbookValidation {
+  valid: boolean;
+  found: string[];
+  missingRequired: string[];
+  missingOptional: string[];
+}
+
+type PrismaTransactionClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>;
+
 /* =========================================================
- * CONSTANTS
+ * WORKBOOK VALIDATION
  * ========================================================= */
 
-const BATCH_SIZE = 100;
-const MAX_ERRORS_PER_SHEET = 50; // Limit error messages to prevent flooding
-const MAX_WARNINGS_PER_SHEET = 20;
+export function validateWorkbookStructure(
+  workbook: ExcelJS.Workbook,
+): WorkbookValidation {
+  const sheetNames = workbook.worksheets.map((ws) => ws.name);
+  const requiredSheets = getRequiredSheets();
 
-/* =========================================================
- * HELPER FUNCTIONS
- * ========================================================= */
+  const found = sheetNames.filter((name) =>
+    excelImportConfig.some((c) => c.sheetName === name),
+  );
 
-function createTransformContext(
-  sheetName: string,
-  rowNumber: number,
-  warnings: string[],
-  errors: string[],
-): TransformContext {
+  const missingRequired = requiredSheets.filter(
+    (name) => !sheetNames.includes(name),
+  );
+
+  const missingOptional = OPTIONAL_SHEETS.filter(
+    (name) => !sheetNames.includes(name),
+  );
+
   return {
-    sheetName,
-    rowNumber,
-    addWarning: (message: string) => {
-      if (warnings.length < MAX_WARNINGS_PER_SHEET) {
-        warnings.push(`Row ${rowNumber}: ${message}`);
-      }
-    },
-    addError: (message: string) => {
-      if (errors.length < MAX_ERRORS_PER_SHEET) {
-        errors.push(`Row ${rowNumber}: ${message}`);
-      }
-    },
+    valid: missingRequired.length === 0,
+    found,
+    missingRequired,
+    missingOptional,
   };
 }
 
-function processSheet(
-  sheet: Worksheet,
-  config: SheetConfig,
-): {
-  data: Record<string, unknown>[];
-  totalRows: number;
-  skipped: number;
-  warnings: string[];
-  errors: string[];
-} {
-  const data: Record<string, unknown>[] = [];
-  const warnings: string[] = [];
-  const errors: string[] = [];
-  let totalRows = 0;
-  let skipped = 0;
+/* =========================================================
+ * FK CACHE - Tracks all valid IDs (from DB + imported)
+ * ========================================================= */
 
-  sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-    // Skip header row
-    if (rowNumber === 1) return;
-    totalRows++;
+class ForeignKeyCache {
+  private cache = new Map<string, Set<number>>();
 
-    const values = row.values as unknown[];
-    // ExcelJS row values are 1-indexed, slice from 1
-    const cells = values.slice(1, config.columnCount + 1);
+  private getKey(model: PrismaModelName, field: string): string {
+    return `${model}:${field}`;
+  }
 
-    // Check column count
-    if (cells.length < config.columnCount) {
-      if (errors.length < MAX_ERRORS_PER_SHEET) {
-        errors.push(
-          `Row ${rowNumber}: Expected ${config.columnCount} columns, got ${cells.length}`,
-        );
-      }
-      skipped++;
-      return;
-    }
+  async preload(
+    tx: PrismaTransactionClient,
+    model: PrismaModelName,
+    field: string,
+  ): Promise<void> {
+    const key = this.getKey(model, field);
+    if (this.cache.has(key)) return;
 
     try {
-      // Apply mappers
-      const mappedValues = config.mappers.map((mapper, index) => {
-        try {
-          return mapper(cells[index]);
-        } catch (mapError) {
-          if (warnings.length < MAX_WARNINGS_PER_SHEET) {
-            warnings.push(
-              `Row ${rowNumber}, Col ${index + 1}: Mapping failed - ${(mapError as Error).message}`,
-            );
-          }
-          return null;
-        }
+      const prismaModel = tx[model as keyof typeof tx] as any;
+      if (!prismaModel?.findMany) {
+        this.cache.set(key, new Set());
+        return;
+      }
+
+      const records = await prismaModel.findMany({
+        select: { [field]: true },
       });
 
-      // Create transform context
-      const ctx = createTransformContext(
-        config.sheetName,
-        rowNumber,
-        warnings,
-        errors,
-      );
-
-      // Transform row data
-      const item = config.transform(mappedValues, ctx);
-
-      if (item !== null) {
-        // Optional: Validate with Zod schema
-        if (config.schema) {
-          const validation = config.schema.safeParse(item);
-          if (!validation.success) {
-            if (errors.length < MAX_ERRORS_PER_SHEET) {
-              const zodErrors = validation.error.issues
-                .map((e: any) => `${e.path.join(".")}: ${e.message}`)
-                .join("; ");
-              errors.push(`Row ${rowNumber}: Validation failed - ${zodErrors}`);
-            }
-            skipped++;
-            return;
-          }
+      const ids = new Set<number>();
+      for (const record of records) {
+        const id = record[field];
+        if (typeof id === "number") {
+          ids.add(id);
         }
-        data.push(item);
-      } else {
-        skipped++;
       }
-    } catch (transformError) {
-      if (errors.length < MAX_ERRORS_PER_SHEET) {
-        errors.push(
-          `Row ${rowNumber}: Transform error - ${(transformError as Error).message}`,
-        );
-      }
-      skipped++;
+
+      this.cache.set(key, ids);
+      console.log(`Preloaded ${ids.size} IDs for ${model}.${field}`);
+    } catch (error) {
+      console.error(`Failed to preload ${model}.${field}:`, error);
+      this.cache.set(key, new Set());
     }
-  });
-
-  // Add overflow messages if needed
-  if (warnings.length === MAX_WARNINGS_PER_SHEET) {
-    warnings.push(`... and more warnings (limit reached)`);
-  }
-  if (errors.length === MAX_ERRORS_PER_SHEET) {
-    errors.push(`... and more errors (limit reached)`);
   }
 
-  return { data, totalRows, skipped, warnings, errors };
+  add(model: PrismaModelName, field: string, id: number): void {
+    const key = this.getKey(model, field);
+    if (!this.cache.has(key)) {
+      this.cache.set(key, new Set());
+    }
+    this.cache.get(key)!.add(id);
+  }
+
+  has(model: PrismaModelName, field: string, id: number): boolean {
+    const key = this.getKey(model, field);
+    return this.cache.get(key)?.has(id) ?? false;
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
 }
 
-async function importBatches(
-  model: any,
-  data: Record<string, unknown>[],
-  sheetName: string,
-): Promise<{
-  imported: number;
-  duplicates: number;
-  errors: string[];
-}> {
-  let totalImported = 0;
-  let totalDuplicates = 0;
-  const errors: string[] = [];
+const fkCache = new ForeignKeyCache();
 
-  for (let i = 0; i < data.length; i += BATCH_SIZE) {
-    const batch = data.slice(i, i + BATCH_SIZE);
-    const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+/* =========================================================
+ * PRE-VALIDATE ALL FOREIGN KEYS
+ * ========================================================= */
 
-    try {
-      const result = await model.createMany({
-        data: batch,
-        skipDuplicates: true,
-      });
+async function preloadAllForeignKeys(
+  tx: PrismaTransactionClient,
+): Promise<void> {
+  console.log("Preloading foreign key caches...");
 
-      const imported = result.count ?? 0;
-      const duplicates = batch.length - imported;
+  // Preload all referenced tables
+  const tablesToPreload: Array<{ model: PrismaModelName; field: string }> = [
+    { model: "region", field: "Id_Reg" },
+    { model: "departement", field: "Id_Dept" },
+    { model: "arrondissement", field: "Id_Arrond" },
+    { model: "lotissement", field: "Id_Lotis" },
+    { model: "parcelle", field: "Id_Parcel" },
+    { model: "batiment", field: "Id_Bat" },
+    { model: "route", field: "Id_Rte" },
+    { model: "riviere", field: "Id_Riv" },
+    { model: "equipement", field: "Id_Equip" },
+    { model: "infrastructure", field: "Id_Infras" },
+    { model: "borne", field: "Id_Borne" },
+    { model: "taxe_immobiliere", field: "Id_Taxe" },
+    { model: "reseau_energetique", field: "Id_Reseaux" },
+    { model: "reseau_en_eau", field: "Id_Reseaux" },
+  ];
 
-      totalImported += imported;
-      totalDuplicates += duplicates;
-    } catch (batchError) {
-      const message =
-        batchError instanceof Error
-          ? batchError.message
-          : "Unknown database error";
-      errors.push(`Batch ${batchNumber}: ${message}`);
-
-      // Try to identify which records failed
-      if (message.includes("Unique constraint")) {
-        errors.push(
-          `Batch ${batchNumber}: Some records have duplicate unique keys`,
-        );
-      } else if (message.includes("Foreign key constraint")) {
-        errors.push(
-          `Batch ${batchNumber}: Some records reference non-existent foreign keys`,
-        );
-      }
-    }
+  for (const { model, field } of tablesToPreload) {
+    await fkCache.preload(tx, model, field);
   }
 
-  return { imported: totalImported, duplicates: totalDuplicates, errors };
+  console.log("Foreign key caches preloaded");
 }
 
 /* =========================================================
- * MAIN FUNCTION
+ * VALIDATE FOREIGN KEYS FOR A ROW
+ * ========================================================= */
+
+function validateForeignKeysSync(
+  data: Record<string, unknown>,
+  model: PrismaModelName,
+): { valid: boolean; errors: string[]; warnings: string[] } {
+  const fkConfigs = getForeignKeyConfig(model);
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  for (const fk of fkConfigs) {
+    const fkValue = data[fk.field] as number | null | undefined;
+
+    // Skip null/undefined values
+    if (fkValue === null || fkValue === undefined) {
+      if (fk.required) {
+        errors.push(`Missing required FK: ${fk.field}`);
+      }
+      continue;
+    }
+
+    // Check if FK exists in cache
+    if (!fkCache.has(fk.referencedModel, fk.referencedField, fkValue)) {
+      if (fk.required) {
+        errors.push(
+          `FK ${fk.field}=${fkValue} not found in ${fk.referencedModel}`,
+        );
+      } else {
+        // For optional FKs, nullify the value and add warning
+        warnings.push(`FK ${fk.field}=${fkValue} not found, setting to null`);
+        data[fk.field] = null;
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
+/* =========================================================
+ * BUILD COMPOSITE KEY WHERE CLAUSE
+ * ========================================================= */
+
+function buildCompositeKeyWhere(
+  data: Record<string, unknown>,
+  fields: string[],
+): Record<string, unknown> {
+  const keyName = fields.join("_");
+  const keyValues: Record<string, unknown> = {};
+
+  for (const field of fields) {
+    keyValues[field] = data[field];
+  }
+
+  return { [keyName]: keyValues };
+}
+
+/* =========================================================
+ * PROCESS SINGLE SHEET
+ * ========================================================= */
+
+async function processSheet(
+  worksheet: ExcelJS.Worksheet,
+  config: SheetConfig,
+  tx: PrismaTransactionClient,
+): Promise<SheetResult> {
+  const result: SheetResult = {
+    sheetName: config.sheetName,
+    model: config.model,
+    status: "success",
+    imported: 0,
+    duplicates: 0,
+    skipped: 0,
+    errors: [],
+    warnings: [],
+  };
+
+  // Collect all rows
+  const rows: unknown[][] = [];
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return; // Skip header
+
+    const values: unknown[] = [];
+    for (let i = 1; i <= config.columnCount; i++) {
+      const cell = row.getCell(i);
+      values.push(cell.value);
+    }
+    rows.push(values);
+  });
+
+  if (rows.length === 0) {
+    result.status = "skipped";
+    result.warnings.push("Sheet is empty (no data rows)");
+    return result;
+  }
+
+  // Process each row
+  for (let i = 0; i < rows.length; i++) {
+    const rowNumber = i + 2;
+    const rawRow = rows[i];
+
+    try {
+      // Apply mappers
+      const mappedRow = rawRow.map((val, idx) =>
+        idx < config.mappers.length ? config.mappers[idx](val) : val,
+      );
+
+      // Create transform context
+      const ctx: TransformContext = {
+        rowNumber,
+        sheetName: config.sheetName,
+        addWarning: (msg: string) =>
+          result.warnings.push(`Row ${rowNumber}: ${msg}`),
+        addError: (msg: string) =>
+          result.errors.push(`Row ${rowNumber}: ${msg}`),
+      };
+
+      // Transform row
+      const data = config.transform(mappedRow, ctx);
+
+      if (!data) {
+        result.skipped++;
+        continue;
+      }
+
+      // Validate with Zod schema if provided
+      // Validate with Zod schema if provided
+      if (config.schema) {
+        const validation = config.schema.safeParse(data);
+        if (!validation.success) {
+          const errorMessages = validation.error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", ");
+          result.errors.push(
+            `Row ${rowNumber}: Schema validation failed - ${errorMessages}`,
+          );
+          result.skipped++;
+          continue;
+        }
+      }
+
+      // Validate foreign keys BEFORE attempting insert
+      const fkValidation = validateForeignKeysSync(
+        data as Record<string, unknown>,
+        config.model,
+      );
+
+      // Add FK warnings
+      for (const warning of fkValidation.warnings) {
+        result.warnings.push(`Row ${rowNumber}: ${warning}`);
+      }
+
+      if (!fkValidation.valid) {
+        for (const err of fkValidation.errors) {
+          result.errors.push(`Row ${rowNumber}: ${err}`);
+        }
+        result.skipped++;
+        continue;
+      }
+
+      // Get Prisma model
+      const prismaModel = tx[config.model as keyof typeof tx] as any;
+      if (!prismaModel) {
+        result.errors.push(`Row ${rowNumber}: Model ${config.model} not found`);
+        result.skipped++;
+        continue;
+      }
+
+      // Perform database operation
+      if (config.compositeKey) {
+        // Junction table with composite key
+        const whereClause = buildCompositeKeyWhere(
+          data as Record<string, unknown>,
+          config.compositeKey.fields,
+        );
+
+        try {
+          await prismaModel.upsert({
+            where: whereClause,
+            create: data,
+            update: data,
+          });
+          result.imported++;
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Unknown error";
+
+          if (
+            message.includes("Unique constraint") ||
+            message.includes("duplicate key")
+          ) {
+            result.duplicates++;
+          } else {
+            result.errors.push(`Row ${rowNumber}: ${message}`);
+            result.skipped++;
+          }
+        }
+      } else if (config.uniqueKey || config.primaryKey) {
+        // Single primary key
+        const uniqueKey = config.uniqueKey || config.primaryKey!;
+        const uniqueValue = (data as Record<string, unknown>)[uniqueKey];
+
+        if (uniqueValue === null || uniqueValue === undefined) {
+          // Create new record (auto-increment ID)
+          const created = await prismaModel.create({ data });
+          result.imported++;
+
+          // Add to cache if has numeric ID
+          const newId = created[uniqueKey];
+          if (typeof newId === "number") {
+            fkCache.add(config.model, uniqueKey, newId);
+          }
+        } else {
+          // Upsert existing record
+          await prismaModel.upsert({
+            where: { [uniqueKey]: uniqueValue },
+            create: data,
+            update: data,
+          });
+          result.imported++;
+
+          // Add to cache
+          if (typeof uniqueValue === "number") {
+            fkCache.add(config.model, uniqueKey, uniqueValue);
+          }
+        }
+      } else {
+        // No key - just create
+        await prismaModel.create({ data });
+        result.imported++;
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown error occurred";
+
+      if (
+        message.includes("Unique constraint") ||
+        message.includes("duplicate key")
+      ) {
+        result.duplicates++;
+        result.warnings.push(`Row ${rowNumber}: Duplicate record`);
+      } else if (message.includes("Foreign key constraint")) {
+        result.errors.push(`Row ${rowNumber}: FK constraint failed`);
+        result.skipped++;
+      } else {
+        result.errors.push(`Row ${rowNumber}: ${message}`);
+        result.skipped++;
+      }
+    }
+  }
+
+  // Determine final status
+  if (result.errors.length === 0 && result.imported > 0) {
+    result.status = "success";
+  } else if (result.imported > 0) {
+    result.status = "partial";
+  } else if (result.errors.length > 0) {
+    result.status = "failed";
+  } else {
+    result.status = "skipped";
+  }
+
+  return result;
+}
+
+/* =========================================================
+ * MAIN WORKBOOK PROCESSOR
  * ========================================================= */
 
 export async function processExcelWorkbook(
-  workbook: Workbook,
-  client: PrismaClient | PrismaTransactionClient = prisma,
+  workbook: ExcelJS.Workbook,
+  tx: PrismaTransactionClient,
 ): Promise<ImportResult> {
+  // Clear and preload FK cache
+  fkCache.clear();
+  await preloadAllForeignKeys(tx);
+
+  const importOrder = getImportOrder();
   const results: SheetResult[] = [];
   const globalErrors: string[] = [];
 
@@ -245,135 +471,66 @@ export async function processExcelWorkbook(
   let totalDuplicates = 0;
   let totalSkipped = 0;
   let totalErrors = 0;
+  let processedSheets = 0;
 
-  for (const config of excelImportConfig) {
-    const sheet = workbook.getWorksheet(config.sheetName);
+  for (const sheetName of importOrder) {
+    const worksheet = workbook.getWorksheet(sheetName);
+    const config = getSheetConfig(sheetName);
 
-    // Handle missing sheets
-    if (!sheet) {
-      if (!OPTIONAL_SHEETS.includes(config.sheetName)) {
-        globalErrors.push(`Required sheet "${config.sheetName}" not found`);
-        results.push({
-          sheetName: config.sheetName,
-          status: "failed",
-          totalRows: 0,
-          imported: 0,
-          duplicates: 0,
-          skipped: 0,
-          errors: [`Sheet not found in workbook`],
-          warnings: [],
-        });
-        totalErrors++;
-      } else {
-        results.push({
-          sheetName: config.sheetName,
-          status: "skipped",
-          totalRows: 0,
-          imported: 0,
-          duplicates: 0,
-          skipped: 0,
-          errors: [],
-          warnings: [`Optional sheet not found`],
-        });
+    if (!config) {
+      continue;
+    }
+
+    if (!worksheet) {
+      if (!OPTIONAL_SHEETS.includes(sheetName)) {
+        globalErrors.push(`Required sheet "${sheetName}" not found`);
       }
       continue;
     }
 
-    // Process sheet data
-    const {
-      data,
-      totalRows,
-      skipped: rowsSkipped,
-      warnings,
-      errors: rowErrors,
-    } = processSheet(sheet, config);
+    try {
+      console.log(`Processing sheet: ${sheetName}`);
+      const sheetResult = await processSheet(worksheet, config, tx);
+      results.push(sheetResult);
 
-    // If no valid data, skip import
-    if (data.length === 0) {
-      results.push({
-        sheetName: config.sheetName,
-        status: totalRows === 0 ? "skipped" : "failed",
-        totalRows,
-        imported: 0,
-        duplicates: 0,
-        skipped: rowsSkipped,
-        errors: rowErrors,
-        warnings: [
-          ...warnings,
-          totalRows === 0
-            ? "Sheet is empty (no data rows)"
-            : "No valid data to import after processing",
-        ],
-      });
-      totalSkipped += rowsSkipped;
-      totalErrors += rowErrors.length;
-      continue;
-    }
+      totalImported += sheetResult.imported;
+      totalDuplicates += sheetResult.duplicates;
+      totalSkipped += sheetResult.skipped;
+      totalErrors += sheetResult.errors.length;
+      processedSheets++;
 
-    // Get Prisma model
-    const model = (client as any)[config.model];
-    if (!model?.createMany) {
-      const errorMsg = `Model "${config.model}" not found or doesn't support createMany`;
-      globalErrors.push(errorMsg);
+      console.log(
+        `Sheet ${sheetName}: ${sheetResult.imported} imported, ${sheetResult.skipped} skipped, ${sheetResult.errors.length} errors`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      globalErrors.push(`Sheet "${sheetName}": ${message}`);
+
       results.push({
-        sheetName: config.sheetName,
+        sheetName,
+        model: config.model,
         status: "failed",
-        totalRows,
         imported: 0,
         duplicates: 0,
-        skipped: rowsSkipped,
-        errors: [...rowErrors, errorMsg],
-        warnings,
+        skipped: 0,
+        errors: [message],
+        warnings: [],
       });
+
       totalErrors++;
-      continue;
     }
-
-    // Import data in batches
-    const {
-      imported,
-      duplicates,
-      errors: importErrors,
-    } = await importBatches(model, data, config.sheetName);
-
-    // Determine status
-    let status: SheetResult["status"];
-    if (importErrors.length > 0) {
-      status = imported > 0 ? "partial" : "failed";
-    } else {
-      status = "success";
-    }
-
-    // Compile result
-    const sheetResult: SheetResult = {
-      sheetName: config.sheetName,
-      status,
-      totalRows,
-      imported,
-      duplicates,
-      skipped: rowsSkipped,
-      errors: [...rowErrors, ...importErrors],
-      warnings,
-    };
-
-    results.push(sheetResult);
-
-    // Update totals
-    totalImported += imported;
-    totalDuplicates += duplicates;
-    totalSkipped += rowsSkipped;
-    totalErrors += rowErrors.length + importErrors.length;
   }
 
   // Determine overall success
-  const hasFailures = results.some((r) => r.status === "failed");
-  const hasPartialSuccess = results.some((r) => r.status === "partial");
-  const success = !hasFailures && globalErrors.length === 0;
+  // Success = at least some imports and no critical global errors
+  const hasGlobalErrors = globalErrors.length > 0;
+  const hasImports = totalImported > 0;
 
   return {
-    success,
-    totalSheets: excelImportConfig.length,
-    processedSheets: results.filter((r) => r.status !== "skipped").length,
+    success: hasImports && !hasGlobalErrors,
+    totalSheets: importOrder.length,
+    processedSheets,
     results,
     errors: globalErrors,
     summary: {
@@ -386,52 +543,7 @@ export async function processExcelWorkbook(
 }
 
 /* =========================================================
- * UTILITY: Validate workbook structure before processing
+ * RE-EXPORTS
  * ========================================================= */
 
-export function validateWorkbookStructure(workbook: Workbook): {
-  valid: boolean;
-  missingRequired: string[];
-  missingOptional: string[];
-  found: string[];
-} {
-  const found: string[] = [];
-  const missingRequired: string[] = [];
-  const missingOptional: string[] = [];
-
-  for (const config of excelImportConfig) {
-    const sheet = workbook.getWorksheet(config.sheetName);
-    if (sheet) {
-      found.push(config.sheetName);
-    } else if (OPTIONAL_SHEETS.includes(config.sheetName)) {
-      missingOptional.push(config.sheetName);
-    } else {
-      missingRequired.push(config.sheetName);
-    }
-  }
-
-  return {
-    valid: missingRequired.length === 0,
-    missingRequired,
-    missingOptional,
-    found,
-  };
-}
-
-/* =========================================================
- * UTILITY: Get import order (for documentation/debugging)
- * ========================================================= */
-
-export function getImportOrder(): {
-  order: number;
-  sheet: string;
-  model: string;
-  dependencies: string[];
-}[] {
-  return excelImportConfig.map((config, index) => ({
-    order: index + 1,
-    sheet: config.sheetName,
-    model: config.model,
-    dependencies: config.dependencies || [],
-  }));
-}
+export { getImportOrder, getRequiredSheets, OPTIONAL_SHEETS };

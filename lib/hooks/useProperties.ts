@@ -1,224 +1,665 @@
 // lib/hooks/useProperties.ts
 import { useState, useEffect, useCallback } from "react";
 
-// Property types - MUST match Prisma enum
+/* =========================================================
+ * ENUMS & TYPES - Must match Prisma schema
+ * ========================================================= */
+
 export const PropertyTypes = [
-  "Apartment",
-  "House",
-  "Villa",
-  "Office",
-  "Commercial",
-  "Land",
-  "Building",
-  "Studio",
-  "Duplex",
-  "ChambreModerne",
-  "Chambre",
+  "APARTMENT",
+  "HOUSE",
+  "VILLA",
+  "STUDIO",
+  "DUPLEX",
+  "TRIPLEX",
+  "PENTHOUSE",
+  "CHAMBRE_MODERNE",
+  "CHAMBRE",
+  "OFFICE",
+  "SHOP",
+  "RESTAURANT",
+  "HOTEL",
+  "WAREHOUSE",
+  "COMMERCIAL_SPACE",
+  "INDUSTRIAL",
+  "FACTORY",
+  "BUILDING",
+  "MIXED_USE",
 ] as const;
 
 export type PropertyType = (typeof PropertyTypes)[number];
 
-// Media item from the Media model
-export interface PropertyMedia {
+export const PropertyCategories = [
+  "LAND",
+  "RESIDENTIAL",
+  "COMMERCIAL",
+  "INDUSTRIAL",
+  "MIXED",
+] as const;
+export type PropertyCategory = (typeof PropertyCategories)[number];
+
+export const ListingTypes = ["SALE", "RENT", "BOTH"] as const;
+export type ListingType = (typeof ListingTypes)[number];
+
+export const ListingStatuses = [
+  "DRAFT",
+  "PUBLISHED",
+  "SOLD",
+  "RENTED",
+  "ARCHIVED",
+] as const;
+export type ListingStatus = (typeof ListingStatuses)[number];
+
+export type EntityType = "LOTISSEMENT" | "PARCELLE" | "BATIMENT";
+
+/* =========================================================
+ * INTERFACES
+ * ========================================================= */
+
+export interface MediaItem {
   id: number;
+  entityType: string;
   url: string;
   type: "image" | "video";
   order: number;
+  caption?: string | null;
+  isPrimary: boolean;
 }
 
-// Unified Property interface - matches schema
-export interface Property {
-  id: number;
-  title: string;
+export interface Creator {
+  id: string;
+  name: string | null;
+  email: string;
+  image?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  agencyName?: string | null;
+  agencyLogo?: string | null;
+  isVerified: boolean;
+}
+
+export interface BaseListing {
+  slug: string | null;
+  title: string | null;
   shortDescription: string | null;
   description: string | null;
-
-  // Pricing
-  price: number | null;
-  priceMin: number | null;
-  priceMax: number | null;
-  pricePerSqM: number | null;
+  category: PropertyCategory;
+  listingType: ListingType | null;
+  listingStatus: ListingStatus;
+  price: string | number | null;
+  pricePerSqM: string | number | null;
   currency: string;
-
-  // Type & listing
-  type: PropertyType;
-  forSale: boolean;
-  forRent: boolean;
-  rentPrice: number | null;
-
-  // Land specifics
-  isLandForDevelopment: boolean;
-  approvedForApartments: boolean | null;
-
-  // Unit features
-  bedrooms: number | null;
-  bathrooms: number | null;
-  kitchens: number | null;
-  livingRooms: number | null;
-  surfaceArea: number | null;
-  floorLevel: number | null;
-  totalFloors: number | null;
-  doorNumber: string | null;
-
-  // Amenities
-  hasGenerator: boolean | null;
-  hasParking: boolean | null;
-  parkingSpaces: number | null;
-  hasElevator: boolean | null; // From Batiment
-  totalUnits: number | null; // From Batiment
-  amenities: string | null;
-
-  // Location
-  address: string | null;
-  location: {
-    lieudit: string | null;
-    arrondissement: string | null;
-    departement: string | null;
-    region: string | null;
-  };
-
-  // Relations
-  parcelleId: number;
-  batimentId: number | null;
-
-  // Media (from Media relation)
-  media: PropertyMedia[];
-
-  // Status
-  published: boolean;
   featured: boolean;
-
-  // Timestamps
+  viewCount: number;
+  favoriteCount: number;
+  shareCount: number;
+  createdById: string | null;
+  createdBy?: Creator | null;
+  media?: MediaItem[];
   createdAt: string;
   updatedAt: string;
 }
 
-// Keep UnifiedProperty as alias for backwards compatibility
-export type UnifiedProperty = Property;
+export interface Lotissement extends BaseListing {
+  Id_Lotis: number;
+  Nom_proprio: string | null;
+  Num_TF: string | null;
+  Statut: string | null;
+  Nom_cons: string | null;
+  Surface: number | null;
+  Nom_visa_lotis: string | null;
+  Date_approb: string | null;
+  Geo_exe: string | null;
+  Nbre_lots: number | null;
+  Lieudit: string | null;
+  Echelle: number | null;
+  Ccp: string | null;
+  Id_Arrond: number | null;
+  WKT_Geometry: string | null;
+  totalParcels: number | null;
+  availableParcels: number | null;
+  hasRoadAccess: boolean | null;
+  hasElectricity: boolean | null;
+  hasWater: boolean | null;
+  arrondissement?: any;
+  parcelles?: Parcelle[];
+}
 
-// Filter options
-export interface PropertyFilters {
-  type?: PropertyType | "all";
-  forSale?: boolean;
-  forRent?: boolean;
+export interface Parcelle extends BaseListing {
+  Id_Parcel: number;
+  Nom_Prop: string | null;
+  TF_Mere: string | null;
+  Mode_Obtent: string | null;
+  TF_Cree: string | null;
+  Nom_Cons: string | null;
+  Sup: number | null;
+  Nom_Visa_Cad: string | null;
+  Date_visa: string | null;
+  Geometre: string | null;
+  Date_impl: string | null;
+  Num_lot: string | null;
+  Num_bloc: string | null;
+  Lieu_dit: string | null;
+  Largeur_Rte: string | null;
+  Echelle: number | null;
+  Ccp_N: string | null;
+  Mise_Val: boolean | null;
+  Cloture: boolean | null;
+  Id_Lotis: number | null;
+  WKT_Geometry: string | null;
+  isForDevelopment: boolean | null;
+  approvedForBuilding: boolean | null;
+  zoningType: string | null;
+  lotissement?: Lotissement | null;
+  batiments?: Batiment[];
+}
+
+export interface Batiment extends BaseListing {
+  Id_Bat: number;
+  Cat_Bat: string | null;
+  Status: string | null;
+  Standing: string | null;
+  Cloture: boolean | null;
+  No_Permis: string | null;
+  Type_Lodg: string | null;
+  Etat_Bat: string | null;
+  Nom: string | null;
+  Mat_Bati: string | null;
+  Id_Parcel: number | null;
+  WKT_Geometry: string | null;
+  propertyType: PropertyType | null;
+  rentPrice: string | number | null;
+  totalFloors: number | null;
+  totalUnits: number | null;
+  hasElevator: boolean | null;
+  surfaceArea: number | null;
+  doorNumber: string | null;
+  address: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  kitchens: number | null;
+  livingRooms: number | null;
+  floorLevel: number | null;
+  hasGenerator: boolean | null;
+  hasParking: boolean | null;
+  parkingSpaces: number | null;
+  hasPool: boolean | null;
+  hasGarden: boolean | null;
+  hasSecurity: boolean | null;
+  hasAirConditioning: boolean | null;
+  hasFurnished: boolean | null;
+  hasBalcony: boolean | null;
+  hasTerrace: boolean | null;
+  amenities: string | null;
+  parcelle?: Parcelle | null;
+}
+
+export type Listing =
+  | (Lotissement & { _entityType: "LOTISSEMENT" })
+  | (Parcelle & { _entityType: "PARCELLE" })
+  | (Batiment & { _entityType: "BATIMENT" });
+
+/* =========================================================
+ * FILTER INTERFACE
+ * ========================================================= */
+
+export interface ListingFilters {
+  status?: ListingStatus;
+  listingType?: ListingType;
+  category?: PropertyCategory;
+  propertyType?: PropertyType;
+  featured?: boolean;
   minPrice?: number;
   maxPrice?: number;
-  minBedrooms?: number;
-  maxBedrooms?: number;
-  minSurfaceArea?: number;
-  maxSurfaceArea?: number;
-  hasParking?: boolean;
-  hasGenerator?: boolean;
-  hasElevator?: boolean;
-  isLandForDevelopment?: boolean;
-  published?: boolean;
-  featured?: boolean;
-  region?: string;
-  departement?: string;
-  arrondissement?: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  search?: string;
+  createdById?: string;
+  limit?: number;
+  offset?: number;
 }
 
-// Sort options
-export type SortOption =
-  | "newest"
-  | "oldest"
-  | "price-asc"
-  | "price-desc"
-  | "bedrooms-asc"
-  | "bedrooms-desc"
-  | "surface-asc"
-  | "surface-desc"
-  | "title-asc"
-  | "title-desc";
+/* =========================================================
+ * HOOKS - Same pattern as DataManagement
+ * ========================================================= */
 
-// Stats interface
-export interface PropertyStats {
-  total: number;
-  published: number;
-  featured: number;
-  forSale: number;
-  forRent: number;
-  saleAndRent: number;
-  landForDevelopment: number;
-  averagePrice: number;
-  byType: Record<PropertyType, number>;
-  byRegion: Record<string, number>;
-  withParking: number;
-  withGenerator: number;
-  withElevator: number;
-}
-
-// Main hook
-export function useProperties() {
-  const [properties, setProperties] = useState<Property[]>([]);
+// Generic table fetcher - SAME AS DATAMANAGEMENT
+export function useTableData<T>(table: string, filters?: ListingFilters) {
+  const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
 
-  const fetchProperties = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch("/api/properties");
+      // Build query params (optional filters)
+      const params = new URLSearchParams();
+
+      if (filters?.status) params.set("status", filters.status);
+      if (filters?.listingType) params.set("listingType", filters.listingType);
+      if (filters?.category) params.set("category", filters.category);
+      if (filters?.propertyType)
+        params.set("propertyType", filters.propertyType);
+      if (filters?.featured) params.set("featured", "true");
+      if (filters?.minPrice)
+        params.set("minPrice", filters.minPrice.toString());
+      if (filters?.maxPrice)
+        params.set("maxPrice", filters.maxPrice.toString());
+      if (filters?.bedrooms)
+        params.set("bedrooms", filters.bedrooms.toString());
+      if (filters?.bathrooms)
+        params.set("bathrooms", filters.bathrooms.toString());
+      if (filters?.search) params.set("search", filters.search);
+      if (filters?.createdById) params.set("createdById", filters.createdById);
+      if (filters?.limit) params.set("limit", filters.limit.toString());
+      if (filters?.offset) params.set("offset", filters.offset.toString());
+
+      const queryString = params.toString();
+      const url = `/api/data/${table.toLowerCase()}${queryString ? `?${queryString}` : ""}`;
+
+      // SAME FETCH AS DATAMANAGEMENT
+      const res = await fetch(url);
 
       if (!res.ok) {
-        throw new Error(`Failed to fetch: ${res.status}`);
+        throw new Error(`Failed to load: ${res.status}`);
       }
 
-      const data = await res.json();
+      const json = await res.json();
 
-      if (!data.success) {
-        throw new Error(data.error || "Failed to fetch properties");
-      }
-
-      setProperties(data.data || []);
+      // Handle response - same as DataManagement expects
+      setData(json.data || []);
+      setTotal(json.total || json.count || json.data?.length || 0);
     } catch (err) {
-      console.error("Error fetching properties:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to load properties",
-      );
+      console.error(`Error fetching ${table}:`, err);
+      setError(err instanceof Error ? err.message : "Failed to load data");
+      setData([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [table, JSON.stringify(filters)]); // Serialize filters to prevent infinite loop
 
   useEffect(() => {
-    fetchProperties();
-  }, [fetchProperties]);
+    fetchData();
+  }, [fetchData]);
 
-  return { properties, loading, error, refetch: fetchProperties };
+  return { data, loading, error, total, refetch: fetchData };
 }
 
-// Single property hook
-// Single property hook - accepts string or number ID
-// Single property hook - accepts string or number ID
-// Single property hook - accepts string or number ID
-// In lib/hooks/useProperties.ts
-
-// Replace your useProperty hook in lib/hooks/useProperties.ts
-// Starting at line ~197
-
-export function useProperty(id: number | string | null | undefined) {
-  const [property, setProperty] = useState<Property | null>(null);
+// Single item fetcher - SAME AS DATAMANAGEMENT
+export function useTableItem<T>(
+  table: string,
+  id: number | string | null | undefined,
+) {
+  const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Handle null, undefined, or empty
-    if (id === null || id === undefined || id === "") {
-      setProperty(null);
+    if (id == null || id === "") {
+      setData(null);
       setLoading(false);
       setError(null);
       return;
     }
 
-    // Convert string to number
-    const numericId = typeof id === "string" ? parseInt(id, 10) : id;
+    setLoading(true);
+    setError(null);
 
-    // Validate
-    if (isNaN(numericId) || numericId <= 0) {
-      setError("Invalid property ID");
-      setProperty(null);
+    // SAME FETCH AS DATAMANAGEMENT
+    fetch(`/api/data/${table.toLowerCase()}/${id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to load: ${res.status}`);
+        return res.json();
+      })
+      .then((json) => {
+        setData(json.data || json);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error(`Error fetching ${table}/${id}:`, err);
+        setError(err.message || "Failed to load");
+        setData(null);
+      })
+      .finally(() => setLoading(false));
+  }, [table, id]);
+
+  return { data, loading, error };
+}
+
+/* =========================================================
+ * TYPED HOOKS FOR EACH ENTITY
+ * ========================================================= */
+
+// Lotissement hooks
+export function useLotissements(filters?: ListingFilters) {
+  return useTableData<Lotissement>("lotissement", filters);
+}
+
+export function useLotissement(id: number | string | null | undefined) {
+  return useTableItem<Lotissement>("lotissement", id);
+}
+
+// Parcelle hooks
+export function useParcelles(filters?: ListingFilters) {
+  return useTableData<Parcelle>("parcelle", filters);
+}
+
+export function useParcelle(id: number | string | null | undefined) {
+  return useTableItem<Parcelle>("parcelle", id);
+}
+
+// Batiment hooks
+export function useBatiments(filters?: ListingFilters) {
+  return useTableData<Batiment>("batiment", filters);
+}
+
+export function useBatiment(id: number | string | null | undefined) {
+  return useTableItem<Batiment>("batiment", id);
+}
+
+// Legacy aliases
+export function useProperties(filters?: ListingFilters) {
+  return useBatiments(filters);
+}
+
+export function useProperty(id: number | string | null | undefined) {
+  return useBatiment(id);
+}
+
+/* =========================================================
+ * COMBINED LISTINGS HOOK
+ * ========================================================= */
+
+export function useAllListings(filters?: ListingFilters) {
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Build query params
+      const params = new URLSearchParams();
+      if (filters?.status) params.set("status", filters.status);
+      if (filters?.featured) params.set("featured", "true");
+      if (filters?.search) params.set("search", filters.search);
+      if (filters?.limit)
+        params.set("limit", Math.ceil(filters.limit / 3).toString());
+
+      const queryString = params.toString();
+      const suffix = queryString ? `?${queryString}` : "";
+
+      // Fetch all 3 tables in parallel - SAME AS DATAMANAGEMENT
+      const [lotisRes, parcelRes, batRes] = await Promise.all([
+        fetch(`/api/data/lotissement${suffix}`),
+        fetch(`/api/data/parcelle${suffix}`),
+        fetch(`/api/data/batiment${suffix}`),
+      ]);
+
+      const [lotisJson, parcelJson, batJson] = await Promise.all([
+        lotisRes.ok ? lotisRes.json() : { data: [] },
+        parcelRes.ok ? parcelRes.json() : { data: [] },
+        batRes.ok ? batRes.json() : { data: [] },
+      ]);
+
+      // Combine and tag with entity type
+      const combined: Listing[] = [
+        ...(lotisJson.data || []).map((l: Lotissement) => ({
+          ...l,
+          _entityType: "LOTISSEMENT" as const,
+        })),
+        ...(parcelJson.data || []).map((p: Parcelle) => ({
+          ...p,
+          _entityType: "PARCELLE" as const,
+        })),
+        ...(batJson.data || []).map((b: Batiment) => ({
+          ...b,
+          _entityType: "BATIMENT" as const,
+        })),
+      ];
+
+      // Sort by newest first
+      combined.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
+
+      setListings(filters?.limit ? combined.slice(0, filters.limit) : combined);
+    } catch (err) {
+      console.error("Error fetching all listings:", err);
+      setError(err instanceof Error ? err.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }, [JSON.stringify(filters)]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  return { listings, loading, error, refetch: fetchAll };
+}
+
+/* =========================================================
+ * UTILITY FUNCTIONS
+ * ========================================================= */
+
+export function getListingId(listing: Listing): number {
+  switch (listing._entityType) {
+    case "LOTISSEMENT":
+      return (listing as Lotissement).Id_Lotis;
+    case "PARCELLE":
+      return (listing as Parcelle).Id_Parcel;
+    case "BATIMENT":
+      return (listing as Batiment).Id_Bat;
+  }
+}
+
+export function getListingUrl(listing: Listing): string {
+  const id = getListingId(listing);
+  const slug = listing.slug || id;
+
+  switch (listing._entityType) {
+    case "LOTISSEMENT":
+      return `/estates/${slug}`;
+    case "PARCELLE":
+      return `/lands/${slug}`;
+    case "BATIMENT":
+      return `/properties/${slug}`;
+  }
+}
+
+export function formatPrice(
+  price: string | number | null | undefined,
+  currency = "XAF",
+): string {
+  if (price == null || price === "") return "Prix sur demande";
+
+  const numPrice = typeof price === "string" ? parseFloat(price) : price;
+  if (isNaN(numPrice) || numPrice <= 0) return "Prix sur demande";
+
+  if (numPrice >= 1e9) return `${(numPrice / 1e9).toFixed(1)}B ${currency}`;
+  if (numPrice >= 1e6) return `${(numPrice / 1e6).toFixed(0)}M ${currency}`;
+  if (numPrice >= 1e3) return `${(numPrice / 1e3).toFixed(0)}K ${currency}`;
+
+  return `${numPrice.toLocaleString("fr-CM")} ${currency}`;
+}
+
+export function formatArea(area: number | null | undefined): string {
+  if (!area) return "N/A";
+  return `${area.toLocaleString("fr-CM")} m²`;
+}
+
+export function getListingPrimaryImage(listing: BaseListing): string | null {
+  if (!listing.media?.length) return null;
+
+  const primary = listing.media.find((m) => m.isPrimary && m.type === "image");
+  if (primary) return primary.url;
+
+  const firstImage = listing.media
+    .filter((m) => m.type === "image")
+    .sort((a, b) => a.order - b.order)[0];
+
+  return firstImage?.url || null;
+}
+
+export function getListingImages(listing: BaseListing): string[] {
+  if (!listing.media?.length) return [];
+
+  return listing.media
+    .filter((m) => m.type === "image")
+    .sort((a, b) => a.order - b.order)
+    .map((m) => m.url);
+}
+
+export function getEntityTypeLabel(
+  type: EntityType,
+  lang: "en" | "fr" = "fr",
+): string {
+  const labels: Record<EntityType, { en: string; fr: string }> = {
+    LOTISSEMENT: { en: "Estate", fr: "Lotissement" },
+    PARCELLE: { en: "Land", fr: "Terrain" },
+    BATIMENT: { en: "Property", fr: "Bien Immobilier" },
+  };
+  return labels[type][lang];
+}
+
+export function getPropertyTypeLabel(
+  type: PropertyType,
+  lang: "en" | "fr" = "fr",
+): string {
+  const labels: Record<PropertyType, { en: string; fr: string }> = {
+    APARTMENT: { en: "Apartment", fr: "Appartement" },
+    HOUSE: { en: "House", fr: "Maison" },
+    VILLA: { en: "Villa", fr: "Villa" },
+    STUDIO: { en: "Studio", fr: "Studio" },
+    DUPLEX: { en: "Duplex", fr: "Duplex" },
+    TRIPLEX: { en: "Triplex", fr: "Triplex" },
+    PENTHOUSE: { en: "Penthouse", fr: "Penthouse" },
+    CHAMBRE_MODERNE: { en: "Modern Room", fr: "Chambre Moderne" },
+    CHAMBRE: { en: "Room", fr: "Chambre" },
+    OFFICE: { en: "Office", fr: "Bureau" },
+    SHOP: { en: "Shop", fr: "Boutique" },
+    RESTAURANT: { en: "Restaurant", fr: "Restaurant" },
+    HOTEL: { en: "Hotel", fr: "Hôtel" },
+    WAREHOUSE: { en: "Warehouse", fr: "Entrepôt" },
+    COMMERCIAL_SPACE: { en: "Commercial Space", fr: "Local Commercial" },
+    INDUSTRIAL: { en: "Industrial", fr: "Industriel" },
+    FACTORY: { en: "Factory", fr: "Usine" },
+    BUILDING: { en: "Building", fr: "Immeuble" },
+    MIXED_USE: { en: "Mixed Use", fr: "Usage Mixte" },
+  };
+  return labels[type]?.[lang] || type;
+}
+
+export function getCategoryLabel(
+  category: PropertyCategory,
+  lang: "en" | "fr" = "fr",
+): string {
+  const labels: Record<PropertyCategory, { en: string; fr: string }> = {
+    LAND: { en: "Land", fr: "Terrain" },
+    RESIDENTIAL: { en: "Residential", fr: "Résidentiel" },
+    COMMERCIAL: { en: "Commercial", fr: "Commercial" },
+    INDUSTRIAL: { en: "Industrial", fr: "Industriel" },
+    MIXED: { en: "Mixed", fr: "Mixte" },
+  };
+  return labels[category][lang];
+}
+
+export function getListingTypeLabel(
+  type: ListingType,
+  lang: "en" | "fr" = "fr",
+): string {
+  const labels: Record<ListingType, { en: string; fr: string }> = {
+    SALE: { en: "For Sale", fr: "À Vendre" },
+    RENT: { en: "For Rent", fr: "À Louer" },
+    BOTH: { en: "Sale or Rent", fr: "Vente ou Location" },
+  };
+  return labels[type][lang];
+}
+
+export function getListingSurface(listing: Listing): number | null {
+  switch (listing._entityType) {
+    case "LOTISSEMENT":
+      return (listing as Lotissement).Surface;
+    case "PARCELLE":
+      return (listing as Parcelle).Sup;
+    case "BATIMENT":
+      return (listing as Batiment).surfaceArea;
+  }
+}
+
+export function getLocationString(
+  listing: Lotissement | Parcelle | Batiment,
+): string {
+  // Try direct arrondissement (Lotissement)
+  if ("arrondissement" in listing && listing.arrondissement?.Nom_Arrond) {
+    const arr = listing.arrondissement;
+    const parts = [
+      arr.Nom_Arrond,
+      arr.departement?.Nom_Dept,
+      arr.departement?.region?.Nom_Reg,
+    ].filter(Boolean);
+    return parts.join(", ");
+  }
+
+  // Try via lotissement (Parcelle)
+  if ("lotissement" in listing && listing.lotissement?.arrondissement) {
+    const arr = listing.lotissement.arrondissement;
+    const parts = [
+      arr.Nom_Arrond,
+      arr.departement?.Nom_Dept,
+      arr.departement?.region?.Nom_Reg,
+    ].filter(Boolean);
+    return parts.join(", ");
+  }
+
+  // Try via parcelle (Batiment)
+  if ("parcelle" in listing && listing.parcelle?.lotissement?.arrondissement) {
+    const arr = listing.parcelle.lotissement.arrondissement;
+    const parts = [
+      arr.Nom_Arrond,
+      arr.departement?.Nom_Dept,
+      arr.departement?.region?.Nom_Reg,
+    ].filter(Boolean);
+    return parts.join(", ");
+  }
+
+  // Fallback to address or lieudit
+  if ("address" in listing && listing.address) return listing.address;
+  if ("Lieudit" in listing && listing.Lieudit) return listing.Lieudit;
+  if ("Lieu_dit" in listing && listing.Lieu_dit) return listing.Lieu_dit;
+
+  return "Location not specified";
+}
+
+export function isForSale(listing: BaseListing): boolean {
+  return listing.listingType === "SALE" || listing.listingType === "BOTH";
+}
+
+export function isForRent(listing: BaseListing): boolean {
+  return listing.listingType === "RENT" || listing.listingType === "BOTH";
+}
+
+// Legacy type alias
+export type Property = Batiment;
+// =========================================================
+// SLUG-BASED HOOKS (handle both slug and numeric ID)
+// =========================================================
+
+export function useBatimentBySlug(slugOrId: string | null | undefined) {
+  const [data, setData] = useState<Batiment | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slugOrId || slugOrId === "") {
+      setData(null);
       setLoading(false);
       return;
     }
@@ -226,513 +667,107 @@ export function useProperty(id: number | string | null | undefined) {
     setLoading(true);
     setError(null);
 
-    // ⭐ Fetch both property and media in parallel
-    Promise.all([
-      fetch(`/api/properties/${numericId}`).then((res) => res.json()),
-      fetch(`/api/data/Media?entityType=PROPERTY&entityId=${numericId}`).then(
-        (res) => res.json(),
-      ),
-    ])
-      .then(([propertyData, mediaData]) => {
-        // Check if property fetch was successful
-        if (!propertyData.success) {
-          if (propertyData.error === "Property not found") {
-            throw new Error("Property not found");
-          }
-          throw new Error(propertyData.error || "Failed to fetch property");
-        }
+    const isNumeric = /^\d+$/.test(slugOrId);
+    const endpoint = isNumeric
+      ? `/api/data/batiment/${slugOrId}`
+      : `/api/data/batiment?slug=${encodeURIComponent(slugOrId)}&limit=1`;
 
-        // Extract property and media
-        const baseProperty = propertyData.data;
-        const mediaItems = mediaData.data || mediaData || [];
-
-        console.log("✅ Property loaded:", baseProperty.id, baseProperty.title);
-        console.log(
-          "✅ Media fetched:",
-          Array.isArray(mediaItems) ? mediaItems.length : 0,
-          "items",
-        );
-
-        // Normalize media items
-        const normalizedMedia = Array.isArray(mediaItems)
-          ? mediaItems.map((m: any) => ({
-              id: m.id,
-              url: m.url,
-              type: String(m.type).toLowerCase() as "image" | "video",
-              order: m.order || 0,
-            }))
-          : [];
-
-        // Combine property with media
-        const propertyWithMedia: Property = {
-          ...baseProperty,
-          media: normalizedMedia,
-        };
-
-        console.log("✅ Final property with media:", {
-          id: propertyWithMedia.id,
-          title: propertyWithMedia.title,
-          mediaCount: propertyWithMedia.media.length,
-          images: propertyWithMedia.media.filter((m) => m.type === "image")
-            .length,
-          videos: propertyWithMedia.media.filter((m) => m.type === "video")
-            .length,
-        });
-
-        setProperty(propertyWithMedia);
-        setError(null);
+    fetch(endpoint)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Not found`);
+        return res.json();
+      })
+      .then((json) => {
+        const item = json.data || null; // Changed from json.data?.[0]
+        setData(item);
+        if (!item) setError("Property not found");
       })
       .catch((err) => {
-        console.error("❌ useProperty error:", err);
-        setError(err.message || "Failed to load property");
-        setProperty(null);
+        setError(err.message);
+        setData(null);
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [slugOrId]);
 
-  return { property, loading, error };
+  return { data, loading, error };
 }
 
-// Add these at the end of useProperties.ts
+export function useParcelleBySlug(slugOrId: string | null | undefined) {
+  const [data, setData] = useState<Parcelle | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-// Source labels (for backwards compatibility - now all properties come from "property" table)
-export function getSourceLabel(source?: string): string {
-  // Since we now have a unified Property model, this is simplified
-  const labels: Record<string, string> = {
-    property: "Property",
-    batiment: "Building",
-    parcelle: "Land",
-    lotissement: "Development",
-  };
-  return labels[source || "property"] || "Property";
-}
-
-// Source colors
-export function getSourceColor(source?: string): string {
-  const colors: Record<string, string> = {
-    property: "#10b981", // emerald
-    batiment: "#6366f1", // indigo
-    parcelle: "#f59e0b", // amber
-    lotissement: "#ec4899", // pink
-  };
-  return colors[source || "property"] || "#10b981";
-}
-// Search function
-export function searchProperties(
-  properties: Property[],
-  query: string,
-): Property[] {
-  if (!query.trim()) return properties;
-
-  const terms = query.toLowerCase().split(/\s+/);
-
-  return properties.filter((p) => {
-    const text = [
-      p.title,
-      p.shortDescription,
-      p.description,
-      p.type,
-      p.address,
-      p.location.lieudit,
-      p.location.arrondissement,
-      p.location.departement,
-      p.location.region,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    return terms.every((term) => text.includes(term));
-  });
-}
-
-// Filter function
-export function filterProperties(
-  properties: Property[],
-  filters: PropertyFilters,
-): Property[] {
-  return properties.filter((p) => {
-    if (filters.type && filters.type !== "all" && p.type !== filters.type)
-      return false;
-    if (filters.forSale !== undefined && p.forSale !== filters.forSale)
-      return false;
-    if (filters.forRent !== undefined && p.forRent !== filters.forRent)
-      return false;
-    if (
-      filters.minPrice !== undefined &&
-      p.price !== null &&
-      p.price < filters.minPrice
-    )
-      return false;
-    if (
-      filters.maxPrice !== undefined &&
-      p.price !== null &&
-      p.price > filters.maxPrice
-    )
-      return false;
-    if (
-      filters.minBedrooms !== undefined &&
-      (p.bedrooms ?? 0) < filters.minBedrooms
-    )
-      return false;
-    if (
-      filters.maxBedrooms !== undefined &&
-      (p.bedrooms ?? 0) > filters.maxBedrooms
-    )
-      return false;
-    if (
-      filters.minSurfaceArea !== undefined &&
-      (p.surfaceArea ?? 0) < filters.minSurfaceArea
-    )
-      return false;
-    if (
-      filters.maxSurfaceArea !== undefined &&
-      (p.surfaceArea ?? 0) > filters.maxSurfaceArea
-    )
-      return false;
-    if (filters.hasParking === true && !p.hasParking) return false;
-    if (filters.hasGenerator === true && !p.hasGenerator) return false;
-    if (filters.hasElevator === true && !p.hasElevator) return false;
-    if (
-      filters.isLandForDevelopment !== undefined &&
-      p.isLandForDevelopment !== filters.isLandForDevelopment
-    )
-      return false;
-    if (filters.published !== undefined && p.published !== filters.published)
-      return false;
-    if (filters.featured !== undefined && p.featured !== filters.featured)
-      return false;
-    if (
-      filters.region &&
-      !p.location.region?.toLowerCase().includes(filters.region.toLowerCase())
-    )
-      return false;
-    if (
-      filters.departement &&
-      !p.location.departement
-        ?.toLowerCase()
-        .includes(filters.departement.toLowerCase())
-    )
-      return false;
-    if (
-      filters.arrondissement &&
-      !p.location.arrondissement
-        ?.toLowerCase()
-        .includes(filters.arrondissement.toLowerCase())
-    )
-      return false;
-    return true;
-  });
-}
-
-// Sort function
-export function sortProperties(
-  properties: Property[],
-  sortBy: SortOption,
-): Property[] {
-  const sorted = [...properties];
-  switch (sortBy) {
-    case "newest":
-      return sorted.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-    case "oldest":
-      return sorted.sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-      );
-    case "price-asc":
-      return sorted.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-    case "price-desc":
-      return sorted.sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-    case "bedrooms-asc":
-      return sorted.sort((a, b) => (a.bedrooms ?? 0) - (b.bedrooms ?? 0));
-    case "bedrooms-desc":
-      return sorted.sort((a, b) => (b.bedrooms ?? 0) - (a.bedrooms ?? 0));
-    case "surface-asc":
-      return sorted.sort((a, b) => (a.surfaceArea ?? 0) - (b.surfaceArea ?? 0));
-    case "surface-desc":
-      return sorted.sort((a, b) => (b.surfaceArea ?? 0) - (a.surfaceArea ?? 0));
-    case "title-asc":
-      return sorted.sort((a, b) => a.title.localeCompare(b.title));
-    case "title-desc":
-      return sorted.sort((a, b) => b.title.localeCompare(a.title));
-    default:
-      return sorted;
-  }
-}
-
-// Calculate stats
-export function calculateStats(properties: Property[]): PropertyStats {
-  const published = properties.filter((p) => p.published);
-  const forSale = published.filter((p) => p.forSale);
-  const forRent = published.filter((p) => p.forRent);
-  const dual = published.filter((p) => p.forSale && p.forRent);
-
-  const byType = {} as Record<PropertyType, number>;
-  PropertyTypes.forEach((t) => {
-    byType[t] = published.filter((p) => p.type === t).length;
-  });
-
-  const byRegion: Record<string, number> = {};
-  published.forEach((p) => {
-    const r = p.location.region || "Unknown";
-    byRegion[r] = (byRegion[r] || 0) + 1;
-  });
-
-  const prices = forSale
-    .filter((p) => p.price !== null && p.price > 0)
-    .map((p) => p.price as number);
-
-  return {
-    total: properties.length,
-    published: published.length,
-    featured: published.filter((p) => p.featured).length,
-    forSale: forSale.length,
-    forRent: forRent.length,
-    saleAndRent: dual.length,
-    landForDevelopment: published.filter((p) => p.isLandForDevelopment).length,
-    averagePrice: prices.length
-      ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length)
-      : 0,
-    byType,
-    byRegion,
-    withParking: published.filter((p) => p.hasParking).length,
-    withGenerator: published.filter((p) => p.hasGenerator).length,
-    withElevator: published.filter((p) => p.hasElevator).length,
-  };
-}
-
-// Format price
-export function formatPrice(
-  price: number | null | undefined,
-  currency = "XAF",
-): string {
-  if (price === null || price === undefined || price === 0) {
-    return "Prix sur demande";
-  }
-  if (typeof price === "number" && price > 0) {
-    if (price >= 1e9) return `${(price / 1e9).toFixed(1)}B ${currency}`;
-    if (price >= 1e6) return `${(price / 1e6).toFixed(0)}M ${currency}`;
-    if (price >= 1e3) return `${(price / 1e3).toFixed(0)}K ${currency}`;
-    return new Intl.NumberFormat("fr-CM", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 0,
-    }).format(price);
-  }
-  return "Prix sur demande";
-}
-
-export function formatPriceCompact(
-  price: number | null | undefined,
-  currency = "XAF",
-): string {
-  if (price === null || price === undefined || price === 0) {
-    return "N/A";
-  }
-  if (typeof price === "number" && price > 0) {
-    if (price >= 1e9) return `${(price / 1e9).toFixed(1)}B ${currency}`;
-    if (price >= 1e6) return `${(price / 1e6).toFixed(0)}M ${currency}`;
-    if (price >= 1e3) return `${(price / 1e3).toFixed(0)}K ${currency}`;
-    return `${price} ${currency}`;
-  }
-  return "N/A";
-}
-
-export function formatArea(area: number | null): string {
-  if (!area) return "N/A";
-  return `${area.toLocaleString("fr-CM")} m²`;
-}
-
-// Get property images from media array
-// Replace your getPropertyImages function in lib/hooks/useProperties.ts
-// with this heavily debugged version
-
-export function getPropertyImages(property: Property): string[] {
-  console.group("🖼️ getPropertyImages called");
-
-  if (!property) {
-    console.error("❌ property is null/undefined");
-    console.groupEnd();
-    return [];
-  }
-
-  if (!property.media) {
-    console.error("❌ property.media is null/undefined");
-    console.groupEnd();
-    return [];
-  }
-
-  if (!Array.isArray(property.media)) {
-    console.error("❌ property.media is not an array:", typeof property.media);
-    console.groupEnd();
-    return [];
-  }
-
-  console.log(
-    "✅ property.media is valid array with",
-    property.media.length,
-    "items",
-  );
-
-  // Log each item
-  property.media.forEach((item, idx) => {
-    console.log(`  [${idx}]:`, {
-      id: item.id,
-      type: item.type,
-      url: item.url?.substring(0, 50) + "...",
-    });
-  });
-
-  // Filter for images
-  const images = property.media.filter((m) => {
-    const isImage = m.type === "image";
-    console.log(`    ${m.id}: type="${m.type}" === "image"? ${isImage}`);
-    return isImage;
-  });
-
-  console.log("After filter: found", images.length, "images");
-
-  // Sort by order
-  const sorted = images.sort((a, b) => a.order - b.order);
-  console.log("After sort:", sorted.length, "images");
-
-  // Extract URLs
-  const urls = sorted.map((m) => m.url);
-  console.log("URLs:", urls);
-
-  console.groupEnd();
-  return urls;
-}
-
-export function getPropertyVideo(property: Property): string | null {
-  console.group("🎬 getPropertyVideo called");
-
-  if (!property?.media || !Array.isArray(property.media)) {
-    console.log("❌ No valid media array");
-    console.groupEnd();
-    return null;
-  }
-
-  const video = property.media.find((m) => {
-    const isVideo = m.type === "video";
-    console.log(`  ${m.id}: type="${m.type}" === "video"? ${isVideo}`);
-    return isVideo;
-  });
-
-  if (video) {
-    console.log("✅ Found video:", video.url);
-  } else {
-    console.log("❌ No video found");
-  }
-
-  console.groupEnd();
-  return video?.url ?? null;
-}
-
-export function getPropertyLocation(property: Property): string {
-  return (
-    [
-      property.location.lieudit,
-      property.location.arrondissement,
-      property.location.departement,
-      property.location.region,
-    ]
-      .filter(Boolean)
-      .join(", ") ||
-    property.address ||
-    "Location not specified"
-  );
-}
-
-export function getFeaturedProperties(
-  properties: Property[],
-  limit = 10,
-): Property[] {
-  return properties.filter((p) => p.featured && p.published).slice(0, limit);
-}
-
-export function getTypeLabel(type: PropertyType): string {
-  const labels: Record<PropertyType, string> = {
-    Apartment: "Appartement",
-    House: "Maison",
-    Villa: "Villa",
-    Office: "Bureau",
-    Commercial: "Commercial",
-    Land: "Terrain",
-    Building: "Immeuble",
-    Studio: "Studio",
-    Duplex: "Duplex",
-    ChambreModerne: "Chambre Moderne",
-    Chambre: "Chambre",
-  };
-  return labels[type] || type;
-}
-
-// Get similar properties
-// Get similar properties
-export function getSimilarProperties(
-  property: Property,
-  allProperties: Property[],
-  limit = 6,
-): Property[] {
-  // Filter out the current property and unpublished ones
-  const candidates = allProperties.filter(
-    (p) => p.id !== property.id && p.published,
-  );
-
-  const scored = candidates.map((p) => {
-    let score = 0;
-
-    // Same type is a strong match
-    if (p.type === property.type) score += 50;
-
-    // Same listing type
-    if (p.forSale === property.forSale) score += 15;
-    if (p.forRent === property.forRent) score += 15;
-
-    // Similar price range
-    if (property.price && p.price) {
-      const propertyPrice = Number(property.price);
-      const pPrice = Number(p.price);
-      if (propertyPrice > 0 && pPrice > 0) {
-        const priceDiff = Math.abs(pPrice - propertyPrice) / propertyPrice;
-        if (priceDiff < 0.3) score += 30;
-        else if (priceDiff < 0.5) score += 15;
-      }
+  useEffect(() => {
+    if (!slugOrId || slugOrId === "") {
+      setData(null);
+      setLoading(false);
+      return;
     }
 
-    // Same location
-    if (p.location.region === property.location.region) score += 25;
-    if (p.location.departement === property.location.departement) score += 15;
-    if (p.location.arrondissement === property.location.arrondissement)
-      score += 10;
+    setLoading(true);
+    setError(null);
 
-    // Similar surface area
-    if (property.surfaceArea && p.surfaceArea) {
-      const surfaceDiff =
-        Math.abs(p.surfaceArea - property.surfaceArea) / property.surfaceArea;
-      if (surfaceDiff < 0.3) score += 20;
-      else if (surfaceDiff < 0.5) score += 10;
+    const isNumeric = /^\d+$/.test(slugOrId);
+    const endpoint = isNumeric
+      ? `/api/data/parcelle/${slugOrId}`
+      : `/api/data/parcelle?slug=${encodeURIComponent(slugOrId)}&limit=1`;
+
+    fetch(endpoint)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Not found`);
+        return res.json();
+      })
+      .then((json) => {
+        const item = json.data || null;
+        setData(item);
+        if (!item) setError("Land not found");
+      })
+      .catch((err) => {
+        setError(err.message);
+        setData(null);
+      })
+      .finally(() => setLoading(false));
+  }, [slugOrId]);
+
+  return { data, loading, error };
+}
+
+export function useLotissementBySlug(slugOrId: string | null | undefined) {
+  const [data, setData] = useState<Lotissement | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!slugOrId || slugOrId === "") {
+      setData(null);
+      setLoading(false);
+      return;
     }
 
-    // Similar bedrooms
-    if (property.bedrooms && p.bedrooms) {
-      const bedroomDiff = Math.abs(p.bedrooms - property.bedrooms);
-      if (bedroomDiff === 0) score += 15;
-      else if (bedroomDiff === 1) score += 8;
-    }
+    setLoading(true);
+    setError(null);
 
-    // Featured properties get a small boost
-    if (p.featured) score += 5;
+    const isNumeric = /^\d+$/.test(slugOrId);
+    const endpoint = isNumeric
+      ? `/api/data/lotissement/${slugOrId}`
+      : `/api/data/lotissement?slug=${encodeURIComponent(slugOrId)}&limit=1`;
 
-    return { property: p, score };
-  });
+    fetch(endpoint)
+      .then((res) => {
+        if (!res.ok) throw new Error(`Not found`);
+        return res.json();
+      })
+      .then((json) => {
+        const item = isNumeric ? json.data || json : json.data?.[0] || null;
+        setData(item);
+        if (!item) setError("Estate not found");
+      })
+      .catch((err) => {
+        setError(err.message);
+        setData(null);
+      })
+      .finally(() => setLoading(false));
+  }, [slugOrId]);
 
-  return scored
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .map((item) => item.property);
+  return { data, loading, error };
 }

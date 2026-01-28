@@ -28,51 +28,71 @@ import {
   Heart,
   Clock,
   Bell,
+  Layers,
+  Map,
+  Power,
+  Droplets,
+  Route,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 
-// ✅ Keep only this
 import { signOut } from "next-auth/react";
-import { useAuth } from "@/lib/hooks/useAuth"; //
+import { useAuth } from "@/lib/hooks/useAuth";
 import {
-  useProperties,
-  searchProperties as searchPropertiesHelper,
-  Property,
+  // Hooks
+  useAllListings,
+  // Types
+  Listing,
+  Lotissement,
+  Parcelle,
+  Batiment,
+  EntityType,
   PropertyType,
-  PropertyStats,
+  // Utility functions
+  getListingId,
+  getListingUrl,
+  getListingPrimaryImage,
+  getLocationString,
+  getListingSurface,
   formatPrice,
-  formatPriceCompact,
-  getPropertyImages,
-  getPropertyLocation,
   formatArea,
+  getPropertyTypeLabel,
+  getEntityTypeLabel,
+  isForSale,
+  isForRent,
 } from "@/lib/hooks/useProperties";
 
-interface HeaderProps {
-  stats: PropertyStats;
-  onSearchClick?: () => void;
-}
-
-// Placeholder images by property type
-const PLACEHOLDER_IMAGES: Record<PropertyType | string, string> = {
-  Villa:
+// Placeholder images by entity type and property type
+const PLACEHOLDER_IMAGES: Record<string, string> = {
+  // Property types (Batiment)
+  VILLA:
     "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400&h=300&fit=crop&q=80",
-  Apartment:
+  APARTMENT:
     "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&h=300&fit=crop&q=80",
-  Land: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=300&fit=crop&q=80",
-  Commercial:
-    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop&q=80",
-  Building:
-    "https://images.unsplash.com/photo-1565008576549-57569a49371d?w=400&h=300&fit=crop&q=80",
-  House:
+  HOUSE:
     "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=300&fit=crop&q=80",
-  Office:
+  OFFICE:
     "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=300&fit=crop&q=80",
-  Studio:
+  STUDIO:
     "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400&h=300&fit=crop&q=80",
-  Duplex:
+  DUPLEX:
     "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop&q=80",
+  COMMERCIAL_SPACE:
+    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=400&h=300&fit=crop&q=80",
+  BUILDING:
+    "https://images.unsplash.com/photo-1565008576549-57569a49371d?w=400&h=300&fit=crop&q=80",
+  WAREHOUSE:
+    "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&h=300&fit=crop&q=80",
+  SHOP: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop&q=80",
+  // Entity type defaults
+  LOTISSEMENT:
+    "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=300&fit=crop&q=80",
+  PARCELLE:
+    "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=300&fit=crop&q=80",
+  BATIMENT:
+    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop&q=80",
   default:
     "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop&q=80",
 };
@@ -105,54 +125,122 @@ const SERVICES = [
   },
 ];
 
-// Property type icons
-const TYPE_ICONS: Record<PropertyType, React.ComponentType<any>> = {
-  Apartment: Building2,
-  House: Home,
-  Villa: Home,
-  Office: Building2,
-  Commercial: Building2,
-  Land: TreePine,
-  Building: Building2,
-  Studio: Home,
-  Duplex: Home,
-  ChambreModerne: Home,
-  Chambre: Home,
+// Entity type icons
+const ENTITY_ICONS: Record<EntityType, React.ComponentType<any>> = {
+  LOTISSEMENT: Layers,
+  PARCELLE: Map,
+  BATIMENT: Building2,
+};
+// =========================================================
+// LOCAL TYPES & UTILITY FUNCTIONS
+// =========================================================
+
+// ListingStats interface (define locally since not exported from hook)
+interface ListingStats {
+  total: number;
+  published: number;
+  featured: number;
+  forSale: number;
+  forRent: number;
+  byCategory: Record<string, number>;
+  byEntityType: Record<EntityType, number>;
+  averagePrice: number;
+}
+
+// Format price compact (e.g., "25M" instead of "25,000,000 XAF")
+function formatPriceCompact(
+  price: string | number | null | undefined,
+  currency = "XAF",
+): string {
+  if (price == null || price === "") return "N/A";
+  const numPrice = typeof price === "string" ? parseFloat(price) : price;
+  if (isNaN(numPrice) || numPrice <= 0) return "N/A";
+  if (numPrice >= 1e9) return `${(numPrice / 1e9).toFixed(1)}B`;
+  if (numPrice >= 1e6) return `${(numPrice / 1e6).toFixed(0)}M`;
+  if (numPrice >= 1e3) return `${(numPrice / 1e3).toFixed(0)}K`;
+  return numPrice.toLocaleString("fr-CM");
+}
+
+// Search listings locally
+function searchListings(listings: Listing[], query: string): Listing[] {
+  if (!query.trim()) return listings;
+  const terms = query.toLowerCase().split(/\s+/);
+  return listings.filter((listing) => {
+    const searchableText = [
+      listing.title,
+      listing.shortDescription,
+      listing.description,
+      getLocationString(listing),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return terms.every((term) => searchableText.includes(term));
+  });
+}
+
+// Get listing image (primary or placeholder)
+const getListingImage = (listing: Listing): string => {
+  const primaryImage = getListingPrimaryImage(listing);
+  if (primaryImage) return primaryImage;
+
+  // Try property type for batiments
+  if (listing._entityType === "BATIMENT") {
+    const batiment = listing as Batiment;
+    if (batiment.propertyType && PLACEHOLDER_IMAGES[batiment.propertyType]) {
+      return PLACEHOLDER_IMAGES[batiment.propertyType];
+    }
+  }
+
+  return PLACEHOLDER_IMAGES[listing._entityType] || PLACEHOLDER_IMAGES.default;
 };
 
-// Get property status
-const getPropertyStatus = (property: Property): string => {
-  if (property.forSale && property.forRent) return "Sale / Rent";
-  if (property.forSale) return "For Sale";
-  if (property.forRent) return "For Rent";
+// Get listing status label
+const getListingStatusLabel = (listing: Listing): string => {
+  if (listing.listingType === "BOTH") return "Sale / Rent";
+  if (listing.listingType === "SALE") return "For Sale";
+  if (listing.listingType === "RENT") return "For Rent";
   return "Available";
 };
 
 // Get status color
-const getStatusColor = (property: Property): string => {
-  if (property.forSale && property.forRent) return COLORS.primary[500];
-  if (property.forSale) return "#22c55e";
-  if (property.forRent) return "#3b82f6";
+const getStatusColor = (listing: Listing): string => {
+  if (listing.listingType === "BOTH") return COLORS.primary[500];
+  if (listing.listingType === "SALE") return "#22c55e";
+  if (listing.listingType === "RENT") return "#3b82f6";
   return COLORS.gray[500];
 };
 
-// Get first available image
-const getPropertyImage = (property: Property): string => {
-  const images = getPropertyImages(property);
-  return images.length > 0
-    ? images[0]
-    : PLACEHOLDER_IMAGES[property.type] || PLACEHOLDER_IMAGES.default;
+// Get type label for display
+const getTypeLabel = (listing: Listing): string => {
+  if (listing._entityType === "BATIMENT") {
+    const batiment = listing as Batiment;
+    if (batiment.propertyType) {
+      return getPropertyTypeLabel(batiment.propertyType, "en");
+    }
+  }
+  return getEntityTypeLabel(listing._entityType, "en");
 };
 
-export default function Header({ stats, onSearchClick }: HeaderProps) {
-  // Session management
+// Get placeholder image for entity type
+const getPlaceholderImage = (entityType: EntityType): string => {
+  return PLACEHOLDER_IMAGES[entityType] || PLACEHOLDER_IMAGES.default;
+};
 
-  const { properties } = useProperties();
+export default function Header({
+  stats,
+  onSearchClick,
+}: {
+  stats: any;
+  onSearchClick?: () => void;
+}) {
+  const { listings } = useAllListings({ status: "PUBLISHED", limit: 100 });
+
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [searchResults, setSearchResults] = useState<Property[]>([]);
+  const [searchResults, setSearchResults] = useState<Listing[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [showServicesMenu, setShowServicesMenu] = useState(false);
   const [showMobileServicesMenu, setShowMobileServicesMenu] = useState(false);
@@ -186,7 +274,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery.trim()) {
-        const results = searchPropertiesHelper(properties, searchQuery);
+        const results = searchListings(listings, searchQuery);
         setSearchResults(results.slice(0, 6));
         setSelectedIndex(-1);
       } else {
@@ -195,7 +283,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, properties]);
+  }, [searchQuery, listings]);
 
   // Handle click outside to close all menus
   useEffect(() => {
@@ -260,7 +348,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
         }
         if (e.key === "Enter" && selectedIndex >= 0) {
           e.preventDefault();
-          handleViewProperty(searchResults[selectedIndex]);
+          handleViewListing(searchResults[selectedIndex]);
         }
       }
     };
@@ -269,9 +357,9 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isSearchFocused, searchResults, selectedIndex]);
 
-  const handleViewProperty = useCallback(
-    (property: Property) => {
-      router.push(`/property/${property.id}`);
+  const handleViewListing = useCallback(
+    (listing: Listing) => {
+      router.push(getListingUrl(listing));
       setSearchQuery("");
       setIsSearchFocused(false);
       setIsMobileSearchOpen(false);
@@ -280,10 +368,6 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
     },
     [router],
   );
-
-  const getPlaceholderImage = useCallback((type: PropertyType) => {
-    return PLACEHOLDER_IMAGES[type] || PLACEHOLDER_IMAGES.default;
-  }, []);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,20 +419,12 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
   const showNoResults = searchQuery.trim() !== "" && !hasResults;
 
   // Get user initials for avatar fallback
-  // Get user initials for avatar fallback
   const getUserInitials = () => {
-    // If no user or no name, return default
     if (!user || !user.name) return "U";
-
-    // Split the name into parts
     const names = user.name.trim().split(" ");
-
-    // If multiple names, use first letter of first two
     if (names.length >= 2) {
       return `${names[0][0]}${names[1][0]}`.toUpperCase();
     }
-
-    // If single name, use first letter
     return names[0][0].toUpperCase();
   };
 
@@ -366,22 +442,82 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
     }
   };
 
-  // Render property card for search results
-  const renderPropertyCard = (
-    property: Property,
+  // Render listing features for search results
+  const renderListingFeatures = (listing: Listing) => {
+    if (listing._entityType === "BATIMENT") {
+      const batiment = listing as Batiment;
+      return (
+        <>
+          {batiment.bedrooms && batiment.bedrooms > 0 && (
+            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+              <Bed className="w-3 h-3" /> {batiment.bedrooms}
+            </span>
+          )}
+          {batiment.bathrooms && batiment.bathrooms > 0 && (
+            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+              <Bath className="w-3 h-3" /> {batiment.bathrooms}
+            </span>
+          )}
+          {batiment.hasParking && (
+            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+              <Car className="w-3 h-3" />
+            </span>
+          )}
+        </>
+      );
+    } else if (listing._entityType === "LOTISSEMENT") {
+      const lotissement = listing as Lotissement;
+      return (
+        <>
+          {lotissement.Nbre_lots && (
+            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+              <Layers className="w-3 h-3" /> {lotissement.Nbre_lots} lots
+            </span>
+          )}
+          {lotissement.hasElectricity && (
+            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+              <Power className="w-3 h-3" />
+            </span>
+          )}
+          {lotissement.hasWater && (
+            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+              <Droplets className="w-3 h-3" />
+            </span>
+          )}
+        </>
+      );
+    } else if (listing._entityType === "PARCELLE") {
+      const parcelle = listing as Parcelle;
+      return (
+        <>
+          {parcelle.approvedForBuilding && (
+            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
+              <Building2 className="w-3 h-3" /> Build Ready
+            </span>
+          )}
+        </>
+      );
+    }
+    return null;
+  };
+
+  // Render listing card for search results
+  const renderListingCard = (
+    listing: Listing,
     idx: number,
     isMobile: boolean = false,
   ) => {
-    const TypeIcon = TYPE_ICONS[property.type] || Home;
+    const EntityIcon = ENTITY_ICONS[listing._entityType];
     const isSelected = idx === selectedIndex && !isMobile;
+    const surface = getListingSurface(listing);
 
     return (
       <motion.div
-        key={property.id}
+        key={`${listing._entityType}-${getListingId(listing)}`}
         initial={{ opacity: 0, y: isMobile ? 10 : 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: idx * 0.05 }}
-        onClick={() => handleViewProperty(property)}
+        onClick={() => handleViewListing(listing)}
         className={`group cursor-pointer rounded-xl overflow-hidden transition-all ${
           isSelected ? "ring-2 ring-primary-400" : ""
         }`}
@@ -397,16 +533,16 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
         {isMobile ? (
           <div className="flex items-center gap-3 p-3 transition-colors active:bg-primary-800/40">
             <img
-              src={getPropertyImage(property)}
-              alt={property.title}
+              src={getListingImage(listing)}
+              alt={listing.title || "Listing"}
               className="w-16 h-16 rounded-lg object-cover shadow flex-shrink-0"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                target.src = getPlaceholderImage(property.type);
+                target.src = getPlaceholderImage(listing._entityType);
               }}
             />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span
                   className="px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1"
                   style={{
@@ -414,31 +550,31 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     color: COLORS.white,
                   }}
                 >
-                  <TypeIcon className="w-3 h-3" />
-                  {property.type}
+                  <EntityIcon className="w-3 h-3" />
+                  {getTypeLabel(listing)}
                 </span>
                 <span
                   className="px-2 py-0.5 rounded-full text-xs font-medium"
                   style={{
-                    background: getStatusColor(property),
+                    background: getStatusColor(listing),
                     color: COLORS.white,
                   }}
                 >
-                  {getPropertyStatus(property)}
+                  {getListingStatusLabel(listing)}
                 </span>
               </div>
               <h4
                 className="font-bold text-sm truncate"
                 style={{ color: COLORS.white }}
               >
-                {property.title}
+                {listing.title || "Untitled Listing"}
               </h4>
               <p
                 className="text-xs truncate flex items-center gap-1"
                 style={{ color: COLORS.primary[200] }}
               >
                 <MapPin className="w-3 h-3 flex-shrink-0" />
-                {getPropertyLocation(property)}
+                {getLocationString(listing)}
               </p>
             </div>
             <div className="text-right flex-shrink-0">
@@ -446,11 +582,13 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 className="font-bold text-sm"
                 style={{ color: COLORS.primary[300] }}
               >
-                {formatPriceCompact(property.price, property.currency)}
+                {listing.price && Number(listing.price) > 0
+                  ? formatPriceCompact(listing.price, listing.currency)
+                  : "N/A"}
               </p>
-              {property.surfaceArea && (
+              {surface && (
                 <p className="text-xs" style={{ color: COLORS.primary[400] }}>
-                  {formatArea(property.surfaceArea)}
+                  {formatArea(surface)}
                 </p>
               )}
             </div>
@@ -463,12 +601,12 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
           <>
             <div className="relative h-40 overflow-hidden">
               <img
-                src={getPropertyImage(property)}
-                alt={property.title}
+                src={getListingImage(listing)}
+                alt={listing.title || "Listing"}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = getPlaceholderImage(property.type);
+                  target.src = getPlaceholderImage(listing._entityType);
                 }}
               />
               <div
@@ -486,35 +624,32 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     color: COLORS.white,
                   }}
                 >
-                  <TypeIcon className="w-3 h-3" />
-                  {property.type}
+                  <EntityIcon className="w-3 h-3" />
+                  {getTypeLabel(listing)}
                 </span>
                 <span
                   className="px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm"
                   style={{
-                    background: getStatusColor(property),
+                    background: getStatusColor(listing),
                     color: COLORS.white,
                   }}
                 >
-                  {getPropertyStatus(property)}
+                  {getListingStatusLabel(listing)}
+                </span>
+              </div>
+              <div className="absolute top-3 right-3">
+                <span
+                  className="px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm"
+                  style={{
+                    background: "rgba(0,0,0,0.5)",
+                    color: COLORS.white,
+                  }}
+                >
+                  {getEntityTypeLabel(listing._entityType, "en")}
                 </span>
               </div>
               <div className="absolute bottom-3 left-3 flex gap-2">
-                {property.bedrooms && property.bedrooms > 0 && (
-                  <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                    <Bed className="w-3 h-3" /> {property.bedrooms}
-                  </span>
-                )}
-                {property.bathrooms && property.bathrooms > 0 && (
-                  <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                    <Bath className="w-3 h-3" /> {property.bathrooms}
-                  </span>
-                )}
-                {property.hasParking && (
-                  <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-                    <Car className="w-3 h-3" />
-                  </span>
-                )}
+                {renderListingFeatures(listing)}
               </div>
             </div>
             <div className="p-4">
@@ -522,40 +657,49 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 className="font-bold text-base mb-2 line-clamp-1 group-hover:text-primary-200 transition-colors"
                 style={{ color: COLORS.white }}
               >
-                {property.title}
+                {listing.title || "Untitled Listing"}
               </h4>
               <p
                 className="flex items-center gap-1.5 text-sm mb-3 line-clamp-1"
                 style={{ color: COLORS.primary[200] }}
               >
                 <MapPin className="w-4 h-4 flex-shrink-0" />
-                {getPropertyLocation(property)}
+                {getLocationString(listing)}
               </p>
               <div className="flex items-center justify-between">
                 <p
                   className="font-bold text-lg"
                   style={{ color: COLORS.primary[300] }}
                 >
-                  {formatPriceCompact(property.price, property.currency)}
+                  {listing.price && Number(listing.price) > 0
+                    ? formatPriceCompact(listing.price, listing.currency)
+                    : "Price on Request"}
                 </p>
-                {property.surfaceArea && (
+                {surface && (
                   <p
                     className="text-xs flex items-center gap-1"
                     style={{ color: COLORS.primary[300] }}
                   >
                     <Square className="w-3 h-3" />
-                    {formatArea(property.surfaceArea)}
+                    {formatArea(surface)}
                   </p>
                 )}
               </div>
-              {property.forRent && property.rentPrice && (
-                <p
-                  className="text-xs mt-2"
-                  style={{ color: COLORS.primary[400] }}
-                >
-                  Rent: {formatPrice(property.rentPrice, property.currency)}/mo
-                </p>
-              )}
+              {listing._entityType === "BATIMENT" &&
+                (listing as Batiment).rentPrice &&
+                Number((listing as Batiment).rentPrice) > 0 && (
+                  <p
+                    className="text-xs mt-2"
+                    style={{ color: COLORS.primary[400] }}
+                  >
+                    Rent:{" "}
+                    {formatPrice(
+                      (listing as Batiment).rentPrice,
+                      listing.currency,
+                    )}
+                    /mo
+                  </p>
+                )}
             </div>
           </>
         )}
@@ -789,13 +933,13 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     }`}
                     style={{ color: COLORS.white }}
                   >
-                    Browse Properties
+                    Browse Listings
                   </p>
                   <p
                     className={`${isMobile ? "text-sm" : "text-xs"}`}
                     style={{ color: COLORS.primary[400] }}
                   >
-                    Explore our listings
+                    Explore properties & lands
                   </p>
                 </div>
                 <ChevronRight
@@ -1003,7 +1147,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   className={`${isMobile ? "text-sm" : "text-xs"}`}
                   style={{ color: COLORS.primary[400] }}
                 >
-                  Saved properties
+                  Saved listings
                 </p>
               </div>
               <ChevronRight
@@ -1181,7 +1325,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                       className={`${isMobile ? "text-sm" : "text-xs"}`}
                       style={{ color: COLORS.primary[400] }}
                     >
-                      Manage properties & users
+                      Manage listings & users
                     </p>
                   </div>
                   <ChevronRight
@@ -1192,57 +1336,6 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
               </Link>
             </>
           )}
-
-          {/* Agent Panel - Only for AGENT role */}
-          {/* {user?.role?.toUpperCase() === "AGENT" && (
-            <>
-              <div
-                className="border-t mx-4 my-2"
-                style={{ borderColor: `${COLORS.primary[400]}40` }}
-              />
-              <Link href="/agent" onClick={closeAccountMenu}>
-                <motion.div
-                  whileHover={{ x: 4 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`flex items-center gap-3 px-4 ${
-                    isMobile ? "py-4" : "py-3"
-                  } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-                >
-                  <div
-                    className={`${
-                      isMobile ? "w-11 h-11" : "w-9 h-9"
-                    } rounded-lg flex items-center justify-center`}
-                    style={{ background: `${COLORS.emerald[500]}30` }}
-                  >
-                    <Building2
-                      className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                      style={{ color: COLORS.emerald[400] }}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <p
-                      className={`font-medium ${
-                        isMobile ? "text-base" : "text-sm"
-                      }`}
-                      style={{ color: COLORS.white }}
-                    >
-                      Agent Dashboard
-                    </p>
-                    <p
-                      className={`${isMobile ? "text-sm" : "text-xs"}`}
-                      style={{ color: COLORS.primary[400] }}
-                    >
-                      Manage listings
-                    </p>
-                  </div>
-                  <ChevronRight
-                    className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                    style={{ color: COLORS.primary[400] }}
-                  />
-                </motion.div>
-              </Link>
-            </>
-          )} */}
         </div>
 
         {/* Logout Button */}
@@ -1315,25 +1408,34 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     <strong style={{ color: COLORS.yellow[400] }}>
                       {stats.published}
                     </strong>{" "}
+                    Listings
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" style={{ color: "#22c55e" }} />
+                  <span>
+                    <strong style={{ color: "#22c55e" }}>
+                      {stats.byEntityType?.BATIMENT || 0}
+                    </strong>{" "}
                     Properties
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" style={{ color: "#22c55e" }} />
+                  <Map className="w-4 h-4" style={{ color: "#3b82f6" }} />
                   <span>
-                    <strong style={{ color: "#22c55e" }}>
-                      {stats.forSale}
+                    <strong style={{ color: "#3b82f6" }}>
+                      {stats.byEntityType?.PARCELLE || 0}
                     </strong>{" "}
-                    For Sale
+                    Lands
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4" style={{ color: "#3b82f6" }} />
+                  <Layers className="w-4 h-4" style={{ color: "#a855f7" }} />
                   <span>
-                    <strong style={{ color: "#3b82f6" }}>
-                      {stats.forRent}
+                    <strong style={{ color: "#a855f7" }}>
+                      {stats.byEntityType?.LOTISSEMENT || 0}
                     </strong>{" "}
-                    For Rent
+                    Estates
                   </span>
                 </div>
                 {stats.featured > 0 && (
@@ -1356,17 +1458,21 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   <strong style={{ color: COLORS.yellow[400] }}>
                     {stats.published}
                   </strong>{" "}
-                  Properties
+                  Listings
                 </span>
                 <span>•</span>
                 <span>
-                  <strong style={{ color: "#22c55e" }}>{stats.forSale}</strong>{" "}
-                  Sale
+                  <strong style={{ color: "#22c55e" }}>
+                    {stats.byEntityType?.BATIMENT || 0}
+                  </strong>{" "}
+                  Props
                 </span>
                 <span>•</span>
                 <span>
-                  <strong style={{ color: "#3b82f6" }}>{stats.forRent}</strong>{" "}
-                  Rent
+                  <strong style={{ color: "#3b82f6" }}>
+                    {stats.byEntityType?.PARCELLE || 0}
+                  </strong>{" "}
+                  Lands
                 </span>
               </div>
               <div className="flex items-center gap-4">
@@ -1441,7 +1547,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder="Search properties, locations, types..."
+                  placeholder="Search properties, lands, estates..."
                   value={searchQuery}
                   onChange={handleSearchChange}
                   onFocus={handleSearchFocus}
@@ -1511,13 +1617,13 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                             className="font-semibold text-lg mb-2"
                             style={{ color: COLORS.primary[200] }}
                           >
-                            No properties found
+                            No listings found
                           </p>
                           <p
                             className="text-sm"
                             style={{ color: COLORS.primary[300] }}
                           >
-                            Try a different search term or browse all properties
+                            Try a different search term or browse all listings
                           </p>
                           <Link
                             href="/properties"
@@ -1525,7 +1631,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                             style={{ background: GRADIENTS.button.primary }}
                             onClick={handleViewAllResults}
                           >
-                            Browse All Properties
+                            Browse All Listings
                           </Link>
                         </div>
                       ) : hasResults ? (
@@ -1540,8 +1646,8 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                             >
                               Found {searchResults.length}{" "}
                               {searchResults.length === 1
-                                ? "property"
-                                : "properties"}
+                                ? "listing"
+                                : "listings"}
                             </p>
                             <p
                               className="text-xs"
@@ -1552,8 +1658,8 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                           </div>
                           <div className="max-h-[500px] overflow-y-auto py-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {searchResults.map((property, idx) =>
-                                renderPropertyCard(property, idx, false),
+                              {searchResults.map((listing, idx) =>
+                                renderListingCard(listing, idx, false),
                               )}
                             </div>
                           </div>
@@ -1698,7 +1804,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   style={{ background: "rgba(255,255,255,0.1)" }}
                 >
                   <Building2 className="w-4 h-4" />
-                  <span>Properties</span>
+                  <span>Listings</span>
                 </motion.button>
               </Link>
 
@@ -1716,7 +1822,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 )}
               </motion.button>
 
-              {/* Account button - visible on all screens */}
+              {/* Account button */}
               <div className="relative" ref={accountMenuRef}>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
@@ -1750,11 +1856,10 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   )}
                 </motion.button>
 
-                {/* Account dropdown - Responsive */}
+                {/* Account dropdown */}
                 <AnimatePresence>
                   {showAccountMenu && (
                     <>
-                      {/* Mobile Overlay Background */}
                       <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -1775,7 +1880,6 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                           border: `1px solid ${COLORS.primary[400]}60`,
                         }}
                       >
-                        {/* Close button for mobile */}
                         <div className="lg:hidden flex justify-between items-center px-5 pt-4">
                           <span
                             className="text-sm font-medium"
@@ -1793,12 +1897,10 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                           </motion.button>
                         </div>
 
-                        {/* Desktop content */}
                         <div className="hidden lg:block">
                           {renderAccountMenuContent(false)}
                         </div>
 
-                        {/* Mobile content */}
                         <div className="lg:hidden">
                           {renderAccountMenuContent(true)}
                         </div>
@@ -1826,7 +1928,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
               }}
             >
               <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
-                {/* Properties Link */}
+                {/* Listings Link */}
                 <Link href="/properties" onClick={closeMobileMenu}>
                   <motion.div
                     whileTap={{ scale: 0.98 }}
@@ -1834,7 +1936,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     style={{ background: "rgba(255,255,255,0.1)" }}
                   >
                     <Building2 className="w-5 h-5 text-white" />
-                    <span className="font-medium text-white">Properties</span>
+                    <span className="font-medium text-white">All Listings</span>
                     <ChevronRight
                       className="w-4 h-4 ml-auto"
                       style={{ color: COLORS.primary[300] }}
@@ -1876,7 +1978,6 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                     </motion.div>
                   </motion.button>
 
-                  {/* Mobile Services List */}
                   <AnimatePresence>
                     {showMobileServicesMenu && (
                       <motion.div
@@ -1922,7 +2023,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   </motion.div>
                 </Link>
 
-                {/* Quick Auth Buttons for Mobile Menu (only when not logged in) */}
+                {/* Quick Auth Buttons for Mobile Menu */}
                 {!isAuthenticated && (
                   <div className="pt-2 space-y-2">
                     <Link href="/auth/signin" onClick={closeMobileMenu}>
@@ -1986,7 +2087,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                   <input
                     ref={mobileInputRef}
                     type="text"
-                    placeholder="Search properties..."
+                    placeholder="Search properties, lands, estates..."
                     value={searchQuery}
                     onChange={handleSearchChange}
                     className="w-full pl-12 pr-12 py-4 rounded-xl text-base focus:outline-none focus:ring-2"
@@ -2029,7 +2130,7 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                         className="font-semibold"
                         style={{ color: COLORS.primary[200] }}
                       >
-                        No properties found
+                        No listings found
                       </p>
                       <p
                         className="text-sm mt-1"
@@ -2057,17 +2158,15 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                           style={{ color: COLORS.primary[100] }}
                         >
                           Found {searchResults.length}{" "}
-                          {searchResults.length === 1
-                            ? "property"
-                            : "properties"}
+                          {searchResults.length === 1 ? "listing" : "listings"}
                         </p>
                       </div>
                       <div
                         className="divide-y"
                         style={{ borderColor: `${COLORS.primary[400]}30` }}
                       >
-                        {searchResults.map((property, idx) =>
-                          renderPropertyCard(property, idx, true),
+                        {searchResults.map((listing, idx) =>
+                          renderListingCard(listing, idx, true),
                         )}
                       </div>
                       <div
