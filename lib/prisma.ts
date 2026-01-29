@@ -1,3 +1,4 @@
+// lib/prisma.ts or db/index.ts
 import { PrismaClient } from "@prisma/client";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -14,9 +15,9 @@ const poolConfig = {
     process.env.NODE_ENV === "production"
       ? {
           rejectUnauthorized: true,
-          ca: process.env.DDATABASE_CA_CERT, // We will set this in Vercel
+          ca: process.env.DATABASE_CA_CERT, // ✅ Fixed typo
         }
-      : false, // In local dev, you usually don't need SSL unless specified
+      : undefined,
 };
 
 const pool = new Pool(poolConfig);
