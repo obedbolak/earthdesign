@@ -1,7 +1,7 @@
 // app/admin/dashboard/components/DataManagement.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Edit,
   Trash2,
@@ -41,6 +41,14 @@ import {
   Tag,
 } from "lucide-react";
 
+// Import SWR hooks
+import {
+  useAdminTableData,
+  useTableCounts,
+  updateRecord,
+  deleteRecord,
+} from "@/lib/hooks/useProperties";
+
 // ============================================
 // TYPES & INTERFACES
 // ============================================
@@ -57,12 +65,12 @@ interface TableConfig {
   hasMedia: boolean;
   mediaEntityType?: string;
   mediaForeignKey?: string;
-  isListing?: boolean; // For lotissement, parcelle, batiment
+  isListing?: boolean;
   primaryKey: string;
 }
 
 // ============================================
-// TABLE CONFIGURATIONS - Updated for new schema
+// TABLE CONFIGURATIONS
 // ============================================
 
 const tableConfigs: Record<string, TableConfig> = {
@@ -131,7 +139,6 @@ const tableConfigs: Record<string, TableConfig> = {
     primaryKey: "Id_Lotis",
     isListing: true,
     fields: [
-      // Cadastral
       "Id_Lotis",
       "Nom_proprio",
       "Num_TF",
@@ -147,7 +154,6 @@ const tableConfigs: Record<string, TableConfig> = {
       "Ccp",
       "Id_Arrond",
       "WKT_Geometry",
-      // Listing
       "slug",
       "title",
       "shortDescription",
@@ -162,13 +168,11 @@ const tableConfigs: Record<string, TableConfig> = {
       "viewCount",
       "favoriteCount",
       "shareCount",
-      // Development
       "totalParcels",
       "availableParcels",
       "hasRoadAccess",
       "hasElectricity",
       "hasWater",
-      // Owner
       "createdById",
     ],
     hasMedia: true,
@@ -186,7 +190,6 @@ const tableConfigs: Record<string, TableConfig> = {
     primaryKey: "Id_Parcel",
     isListing: true,
     fields: [
-      // Cadastral
       "Id_Parcel",
       "Nom_Prop",
       "TF_Mere",
@@ -208,7 +211,6 @@ const tableConfigs: Record<string, TableConfig> = {
       "Cloture",
       "Id_Lotis",
       "WKT_Geometry",
-      // Listing
       "slug",
       "title",
       "shortDescription",
@@ -223,11 +225,9 @@ const tableConfigs: Record<string, TableConfig> = {
       "viewCount",
       "favoriteCount",
       "shareCount",
-      // Land specifics
       "isForDevelopment",
       "approvedForBuilding",
       "zoningType",
-      // Owner
       "createdById",
     ],
     hasMedia: true,
@@ -245,7 +245,6 @@ const tableConfigs: Record<string, TableConfig> = {
     primaryKey: "Id_Bat",
     isListing: true,
     fields: [
-      // Cadastral
       "Id_Bat",
       "Cat_Bat",
       "Status",
@@ -258,9 +257,7 @@ const tableConfigs: Record<string, TableConfig> = {
       "Mat_Bati",
       "Id_Parcel",
       "WKT_Geometry",
-      // Property type
       "propertyType",
-      // Listing
       "slug",
       "title",
       "shortDescription",
@@ -276,20 +273,17 @@ const tableConfigs: Record<string, TableConfig> = {
       "viewCount",
       "favoriteCount",
       "shareCount",
-      // Building characteristics
       "totalFloors",
       "totalUnits",
       "hasElevator",
       "surfaceArea",
       "doorNumber",
       "address",
-      // Unit features
       "bedrooms",
       "bathrooms",
       "kitchens",
       "livingRooms",
       "floorLevel",
-      // Amenities
       "hasGenerator",
       "hasParking",
       "parkingSpaces",
@@ -301,7 +295,6 @@ const tableConfigs: Record<string, TableConfig> = {
       "hasBalcony",
       "hasTerrace",
       "amenities",
-      // Owner
       "createdById",
     ],
     hasMedia: true,
@@ -489,7 +482,7 @@ const tableConfigs: Record<string, TableConfig> = {
     hasMedia: false,
   },
 
-  // User Management (Admin only)
+  // User Management
   User: {
     icon: User,
     color: "bg-gradient-to-br from-slate-600 to-slate-700",
@@ -519,7 +512,6 @@ type TableName = keyof typeof tableConfigs;
 // FIELD TYPE CONFIGURATIONS
 // ============================================
 
-// Numeric fields
 const numericFields = new Set([
   "Sup_Reg",
   "Sup_Dept",
@@ -562,7 +554,6 @@ const numericFields = new Set([
   "infrastructureId",
 ]);
 
-// Boolean fields
 const booleanFields = new Set([
   "Taxe_Payee",
   "Mise_Val",
@@ -587,7 +578,6 @@ const booleanFields = new Set([
   "isVerified",
 ]);
 
-// Enum fields with their values
 const enumFields: Record<string, string[]> = {
   propertyType: [
     "APARTMENT",
@@ -618,7 +608,6 @@ const enumFields: Record<string, string[]> = {
   role: ["USER", "AGENT", "ADMIN"],
 };
 
-// Date fields
 const dateFields = new Set([
   "Date_approb",
   "Date_visa",
@@ -629,10 +618,8 @@ const dateFields = new Set([
   "emailVerified",
 ]);
 
-// URL fields
 const urlFields = new Set(["url", "image", "agencyLogo"]);
 
-// Read-only fields
 const readOnlyFields = new Set([
   "createdAt",
   "updatedAt",
@@ -694,7 +681,6 @@ function MediaModal({
     setLoading(true);
     setError(null);
     try {
-      // Use the foreign key to filter
       const fkParam = foreignKey ? `&${foreignKey}=${entityId}` : "";
       const res = await fetch(
         `/api/data/media?entityType=${entityType}${fkParam}`,
@@ -1201,15 +1187,12 @@ function ListingStats({ item }: ListingStatsProps) {
 
 export default function DataManagement() {
   const [selectedTable, setSelectedTable] = useState<TableName | null>(null);
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Record<string, any>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [tableCounts, setTableCounts] = useState<Record<TableName, number>>(
-    {} as Record<TableName, number>,
-  );
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
 
   // Media modal state
   const [mediaModalOpen, setMediaModalOpen] = useState(false);
@@ -1220,6 +1203,17 @@ export default function DataManagement() {
     foreignKey?: string;
   } | null>(null);
 
+  // Get all table names for counts
+  const tableNames = useMemo(() => Object.keys(tableConfigs), []);
+
+  // Fetch table counts using SWR hook
+  const { counts: tableCounts, loading: countsLoading } =
+    useTableCounts(tableNames);
+
+  // Fetch selected table data using SWR
+  const { data, loading, error, isValidating, refetch } =
+    useAdminTableData(selectedTable);
+
   // Reset state when table changes
   useEffect(() => {
     setExpandedRow(null);
@@ -1228,60 +1222,17 @@ export default function DataManagement() {
     setSearchQuery("");
   }, [selectedTable]);
 
-  // Fetch data when table is selected
-  useEffect(() => {
-    if (selectedTable) {
-      fetchData(selectedTable);
-    } else {
-      fetchAllTableCounts();
-    }
-  }, [selectedTable]);
+  // Filtered data with memoization
+  const filteredData = useMemo(() => {
+    if (!searchQuery.trim()) return data;
 
-  const fetchAllTableCounts = async () => {
-    const tables = Object.keys(tableConfigs) as TableName[];
-
-    const results = await Promise.all(
-      tables.map(async (table) => {
-        try {
-          const res = await fetch(`/api/data/${table.toLowerCase()}?limit=1`);
-          if (res.ok) {
-            const json = await res.json();
-            return { table, count: json.total || json.count || 0 };
-          }
-          return { table, count: 0 };
-        } catch (err) {
-          console.error(`Failed to fetch count for ${table}:`, err);
-          return { table, count: 0 };
-        }
-      }),
+    const query = searchQuery.toLowerCase();
+    return data.filter((item: any) =>
+      Object.values(item).some(
+        (val) => val && String(val).toLowerCase().includes(query),
+      ),
     );
-
-    const counts: Record<TableName, number> = results.reduce(
-      (acc, { table, count }) => {
-        acc[table] = count;
-        return acc;
-      },
-      {} as Record<TableName, number>,
-    );
-
-    setTableCounts(counts);
-  };
-
-  const fetchData = async (table: TableName) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/data/${table.toLowerCase()}`);
-      if (!res.ok) throw new Error("Failed to load");
-      const json = await res.json();
-      setData(json.data || []);
-    } catch (err) {
-      console.error(err);
-      alert("Error loading data");
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [data, searchQuery]);
 
   const getRowId = (item: any): number | string | null => {
     if (!selectedTable) return null;
@@ -1345,6 +1296,7 @@ export default function DataManagement() {
 
   const handleSave = async () => {
     if (!selectedTable || editingRowIndex == null) return;
+
     const item = data[editingRowIndex];
     const id = getRowId(item);
     if (id == null) {
@@ -1356,7 +1308,6 @@ export default function DataManagement() {
     const processedForm: Record<string, any> = {};
 
     for (const field of config.fields) {
-      // Skip read-only fields
       if (readOnlyFields.has(field) || field === config.primaryKey) continue;
 
       const value = editForm[field];
@@ -1376,26 +1327,20 @@ export default function DataManagement() {
       }
     }
 
+    setIsSaving(true);
     try {
-      const res = await fetch(
-        `/api/data/${selectedTable.toLowerCase()}/${id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(processedForm),
-        },
+      await updateRecord(selectedTable, id, processedForm);
+      await refetch();
+
+      setEditingRowIndex(null);
+      setEditForm({});
+      setExpandedRow(null);
+    } catch (err) {
+      alert(
+        `Update failed: ${err instanceof Error ? err.message : "Unknown error"}`,
       );
-      if (res.ok) {
-        await fetchData(selectedTable);
-        setEditingRowIndex(null);
-        setEditForm({});
-        setExpandedRow(null);
-      } else {
-        const error = await res.json();
-        alert(`Update failed: ${error.error || "Unknown error"}`);
-      }
-    } catch {
-      alert("Update failed");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1407,27 +1352,24 @@ export default function DataManagement() {
 
   const handleDelete = async (index: number) => {
     if (!confirm("Delete this record?")) return;
+
     const item = data[index];
     const id = getRowId(item);
     if (id == null) {
       alert("Cannot delete: missing database ID");
       return;
     }
+
+    setIsDeleting(index);
     try {
-      const res = await fetch(
-        `/api/data/${selectedTable!.toLowerCase()}/${id}`,
-        {
-          method: "DELETE",
-        },
+      await deleteRecord(selectedTable!, id);
+      await refetch();
+    } catch (err) {
+      alert(
+        `Delete failed: ${err instanceof Error ? err.message : "Unknown error"}`,
       );
-      if (res.ok) {
-        setData((prev) => prev.filter((_, i) => i !== index));
-      } else {
-        const error = await res.json();
-        alert(`Delete failed: ${error.error || "Unknown error"}`);
-      }
-    } catch {
-      alert("Delete failed");
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -1522,7 +1464,6 @@ export default function DataManagement() {
 
     // Enum
     if (fieldType === "enum") {
-      // Status badges
       if (field === "listingStatus") {
         const statusColors: Record<string, string> = {
           DRAFT: "bg-gray-100 text-gray-700",
@@ -1610,19 +1551,10 @@ export default function DataManagement() {
     );
   };
 
-  const filteredData = data.filter((item) => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return Object.values(item).some(
-      (val) => val && String(val).toLowerCase().includes(query),
-    );
-  });
-
   // ------------------------------------------------
   // TABLE SELECTION VIEW
   // ------------------------------------------------
   if (!selectedTable) {
-    // Group tables by category
     const tableGroups = {
       Listings: ["Lotissement", "Parcelle", "Batiment"],
       Geographic: ["Region", "Departement", "Arrondissement"],
@@ -1655,6 +1587,9 @@ export default function DataManagement() {
               <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full w-fit">
                 <Database className="w-4 h-4" />
                 <span>{Object.keys(tableConfigs).length} tables</span>
+                {countsLoading && (
+                  <Loader2 className="w-3 h-3 animate-spin ml-1" />
+                )}
               </div>
             </div>
           </div>
@@ -1687,7 +1622,7 @@ export default function DataManagement() {
                     const cfg = tableConfigs[key as TableName];
                     if (!cfg) return null;
                     const Icon = cfg.icon;
-                    const count = tableCounts[key as TableName] ?? 0;
+                    const count = tableCounts[key] ?? 0;
 
                     return (
                       <button
@@ -1724,7 +1659,16 @@ export default function DataManagement() {
                             {cfg.label}
                           </h3>
                           <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
-                            {count} record{count !== 1 ? "s" : ""}
+                            {countsLoading ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Loading...
+                              </span>
+                            ) : (
+                              <>
+                                {count} record{count !== 1 ? "s" : ""}
+                              </>
+                            )}
                           </p>
                         </div>
                       </button>
@@ -1800,6 +1744,12 @@ export default function DataManagement() {
                       Listing
                     </span>
                   )}
+                  {isValidating && !loading && (
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-[10px] font-medium rounded-full flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Syncing
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500">
                   {searchQuery
@@ -1834,14 +1784,14 @@ export default function DataManagement() {
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => fetchData(selectedTable)}
-                  disabled={loading}
+                  onClick={() => refetch()}
+                  disabled={loading || isValidating}
                   className="inline-flex items-center justify-center gap-1.5 px-3 py-2 
                            border border-gray-200 text-gray-600 rounded-lg text-sm font-medium
                            hover:bg-gray-50 transition-colors disabled:opacity-50"
                 >
                   <RefreshCw
-                    className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                    className={`w-4 h-4 ${loading || isValidating ? "animate-spin" : ""}`}
                   />
                   <span className="hidden sm:inline">Refresh</span>
                 </button>
@@ -1857,6 +1807,25 @@ export default function DataManagement() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-12 text-center">
             <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
             <p className="text-gray-600 mt-3 text-sm">Loading records...</p>
+          </div>
+        ) : error ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-12 text-center">
+            <div className="w-14 h-14 bg-red-50 rounded-full mx-auto flex items-center justify-center mb-4">
+              <AlertCircle className="w-7 h-7 text-red-500" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-800 mb-1">
+              Error Loading Data
+            </h3>
+            <p className="text-gray-500 text-sm max-w-sm mx-auto mb-4">
+              {error}
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Try Again
+            </button>
           </div>
         ) : filteredData.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-12 text-center">
@@ -1876,20 +1845,19 @@ export default function DataManagement() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredData.map((item, index) => {
+            {filteredData.map((item: any, index: number) => {
               const id = getRowId(item);
               const isExpanded = expandedRow === index;
               const isEditing = editingRowIndex === index;
               const primaryKey = config.primaryKey;
 
-              // Get preview fields (first 4-6 non-geometry fields)
               const previewFields = config.fields
                 .filter((f) => f !== "WKT_Geometry" && f !== "description")
                 .slice(0, 6);
 
               return (
                 <div
-                  key={index}
+                  key={id ?? index}
                   className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all w-full
                     ${
                       isExpanded
@@ -1902,7 +1870,6 @@ export default function DataManagement() {
                     <div className="p-3 sm:p-4 lg:p-5">
                       <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4">
                         <div className="flex-1 min-w-0">
-                          {/* Listing stats for listing tables */}
                           {config.isListing && (
                             <div className="mb-2">
                               <ListingStats item={item} />
@@ -1973,12 +1940,16 @@ export default function DataManagement() {
                             </button>
                             <button
                               onClick={() => handleDelete(index)}
-                              disabled={id == null}
+                              disabled={id == null || isDeleting === index}
                               className={`p-2 rounded-lg transition-colors
-                                ${id != null ? "text-red-600 hover:bg-red-50" : "text-gray-300 cursor-not-allowed"}`}
+                                ${id != null && isDeleting !== index ? "text-red-600 hover:bg-red-50" : "text-gray-300 cursor-not-allowed"}`}
                               title="Delete"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              {isDeleting === index ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
                             </button>
                           </div>
                         </div>
@@ -2001,7 +1972,6 @@ export default function DataManagement() {
                         </button>
 
                         <div className="flex items-center gap-2 flex-wrap">
-                          {/* MEDIA BUTTON in expanded view */}
                           {config.hasMedia && config.mediaEntityType && (
                             <button
                               onClick={() => handleOpenMedia(item)}
@@ -2023,14 +1993,25 @@ export default function DataManagement() {
                             <>
                               <button
                                 onClick={handleSave}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-green-600 rounded-lg text-sm font-medium hover:bg-green-50 transition-colors shadow-sm"
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white text-green-600 rounded-lg text-sm font-medium hover:bg-green-50 transition-colors shadow-sm disabled:opacity-50"
                               >
-                                <Check className="w-4 h-4" />
-                                <span>Save</span>
+                                {isSaving ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Saving...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Check className="w-4 h-4" />
+                                    <span>Save</span>
+                                  </>
+                                )}
                               </button>
                               <button
                                 onClick={handleCancel}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 text-white rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"
+                                disabled={isSaving}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 text-white rounded-lg text-sm font-medium hover:bg-white/30 transition-colors disabled:opacity-50"
                               >
                                 <X className="w-4 h-4" />
                                 <span>Cancel</span>
@@ -2049,12 +2030,21 @@ export default function DataManagement() {
                               </button>
                               <button
                                 onClick={() => handleDelete(index)}
-                                disabled={id == null}
+                                disabled={id == null || isDeleting === index}
                                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/20 rounded-lg text-sm font-medium transition-colors
-                                  ${id != null ? "text-white hover:bg-white/30" : "text-white/50 cursor-not-allowed"}`}
+                                  ${id != null && isDeleting !== index ? "text-white hover:bg-white/30" : "text-white/50 cursor-not-allowed"}`}
                               >
-                                <Trash2 className="w-4 h-4" />
-                                <span>Delete</span>
+                                {isDeleting === index ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <span>Deleting...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Trash2 className="w-4 h-4" />
+                                    <span>Delete</span>
+                                  </>
+                                )}
                               </button>
                             </>
                           )}
@@ -2096,6 +2086,11 @@ export default function DataManagement() {
                                   {field === primaryKey && (
                                     <span className="text-[9px] px-1.5 py-0.5 bg-gray-200 text-gray-600 rounded font-bold">
                                       PK
+                                    </span>
+                                  )}
+                                  {isReadOnly && field !== primaryKey && (
+                                    <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded font-medium">
+                                      Read-only
                                     </span>
                                   )}
                                 </div>
@@ -2219,6 +2214,34 @@ export default function DataManagement() {
                             );
                           })}
                         </div>
+
+                        {/* Timestamps Section */}
+                        {(item.createdAt || item.updatedAt) && (
+                          <div className="mt-6 pt-4 border-t border-gray-100">
+                            <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+                              {item.createdAt && (
+                                <div>
+                                  <span className="font-medium">Created:</span>{" "}
+                                  {new Date(item.createdAt).toLocaleString()}
+                                </div>
+                              )}
+                              {item.updatedAt && (
+                                <div>
+                                  <span className="font-medium">Updated:</span>{" "}
+                                  {new Date(item.updatedAt).toLocaleString()}
+                                </div>
+                              )}
+                              {item.createdById && (
+                                <div>
+                                  <span className="font-medium">
+                                    Created by:
+                                  </span>{" "}
+                                  {item.createdById}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

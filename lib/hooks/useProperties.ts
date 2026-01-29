@@ -1,5 +1,7 @@
 // lib/hooks/useProperties.ts
-import { useState, useEffect, useCallback } from "react";
+import useSWR, { SWRConfiguration } from "swr";
+import useSWRImmutable from "swr/immutable";
+import { useState, useEffect } from "react";
 
 /* =========================================================
  * ENUMS & TYPES - Must match Prisma schema
@@ -220,115 +222,116 @@ export interface ListingFilters {
 }
 
 /* =========================================================
- * HOOKS - Same pattern as DataManagement
+ * SWR CONFIG & FETCHER
  * ========================================================= */
 
-// Generic table fetcher - SAME AS DATAMANAGEMENT
-export function useTableData<T>(table: string, filters?: ListingFilters) {
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
+// Global fetcher function
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const error = new Error("Failed to fetch data");
+    throw error;
+  }
+  return res.json();
+};
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+// Default SWR options for lists (frequent updates)
+const listConfig: SWRConfiguration = {
+  revalidateOnFocus: true,
+  revalidateOnReconnect: true,
+  dedupingInterval: 5000, // Dedupe requests within 5 seconds
+  errorRetryCount: 3,
+};
 
-    try {
-      // Build query params (optional filters)
-      const params = new URLSearchParams();
+// SWR options for single items (less frequent updates)
+const itemConfig: SWRConfiguration = {
+  revalidateOnFocus: false,
+  revalidateOnReconnect: true,
+  dedupingInterval: 10000, // Dedupe requests within 10 seconds
+  errorRetryCount: 3,
+};
 
-      if (filters?.status) params.set("status", filters.status);
-      if (filters?.listingType) params.set("listingType", filters.listingType);
-      if (filters?.category) params.set("category", filters.category);
-      if (filters?.propertyType)
-        params.set("propertyType", filters.propertyType);
-      if (filters?.featured) params.set("featured", "true");
-      if (filters?.minPrice)
-        params.set("minPrice", filters.minPrice.toString());
-      if (filters?.maxPrice)
-        params.set("maxPrice", filters.maxPrice.toString());
-      if (filters?.bedrooms)
-        params.set("bedrooms", filters.bedrooms.toString());
-      if (filters?.bathrooms)
-        params.set("bathrooms", filters.bathrooms.toString());
-      if (filters?.search) params.set("search", filters.search);
-      if (filters?.createdById) params.set("createdById", filters.createdById);
-      if (filters?.limit) params.set("limit", filters.limit.toString());
-      if (filters?.offset) params.set("offset", filters.offset.toString());
+/* =========================================================
+ * HELPER FUNCTIONS
+ * ========================================================= */
 
-      const queryString = params.toString();
-      const url = `/api/data/${table.toLowerCase()}${queryString ? `?${queryString}` : ""}`;
+// Build query string from filters
+function buildQueryString(filters?: ListingFilters): string {
+  if (!filters) return "";
 
-      // SAME FETCH AS DATAMANAGEMENT
-      const res = await fetch(url);
+  const params = new URLSearchParams();
 
-      if (!res.ok) {
-        throw new Error(`Failed to load: ${res.status}`);
-      }
+  if (filters.status) params.set("status", filters.status);
+  if (filters.listingType) params.set("listingType", filters.listingType);
+  if (filters.category) params.set("category", filters.category);
+  if (filters.propertyType) params.set("propertyType", filters.propertyType);
+  if (filters.featured) params.set("featured", "true");
+  if (filters.minPrice) params.set("minPrice", filters.minPrice.toString());
+  if (filters.maxPrice) params.set("maxPrice", filters.maxPrice.toString());
+  if (filters.bedrooms) params.set("bedrooms", filters.bedrooms.toString());
+  if (filters.bathrooms) params.set("bathrooms", filters.bathrooms.toString());
+  if (filters.search) params.set("search", filters.search);
+  if (filters.createdById) params.set("createdById", filters.createdById);
+  if (filters.limit) params.set("limit", filters.limit.toString());
+  if (filters.offset) params.set("offset", filters.offset.toString());
 
-      const json = await res.json();
-
-      // Handle response - same as DataManagement expects
-      setData(json.data || []);
-      setTotal(json.total || json.count || json.data?.length || 0);
-    } catch (err) {
-      console.error(`Error fetching ${table}:`, err);
-      setError(err instanceof Error ? err.message : "Failed to load data");
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [table, JSON.stringify(filters)]); // Serialize filters to prevent infinite loop
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  return { data, loading, error, total, refetch: fetchData };
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : "";
 }
 
-// Single item fetcher - SAME AS DATAMANAGEMENT
+/* =========================================================
+ * GENERIC TABLE HOOKS WITH SWR
+ * ========================================================= */
+
+// Generic table data hook
+export function useTableData<T>(table: string, filters?: ListingFilters) {
+  const queryString = buildQueryString(filters);
+  const url = `/api/data/${table.toLowerCase()}${queryString}`;
+
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{
+    data: T[];
+    total?: number;
+    count?: number;
+  }>(url, fetcher, listConfig);
+
+  return {
+    data: data?.data || [],
+    loading: isLoading,
+    error: error?.message || null,
+    total: data?.total || data?.count || data?.data?.length || 0,
+    isValidating,
+    refetch: mutate,
+  };
+}
+
+// Generic single item hook
 export function useTableItem<T>(
   table: string,
   id: number | string | null | undefined,
 ) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const url =
+    id != null && id !== "" ? `/api/data/${table.toLowerCase()}/${id}` : null;
 
-  useEffect(() => {
-    if (id == null || id === "") {
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
+  const { data, error, isLoading, mutate } = useSWR<{ data: T } | T>(
+    url,
+    fetcher,
+    itemConfig,
+  );
 
-    setLoading(true);
-    setError(null);
+  // Fix: Check if data is an object before using 'in' operator
+  const resolvedData = data
+    ? typeof data === "object" && data !== null && "data" in data
+      ? (data as { data: T }).data
+      : (data as T)
+    : null;
 
-    // SAME FETCH AS DATAMANAGEMENT
-    fetch(`/api/data/${table.toLowerCase()}/${id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Failed to load: ${res.status}`);
-        return res.json();
-      })
-      .then((json) => {
-        setData(json.data || json);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error(`Error fetching ${table}/${id}:`, err);
-        setError(err.message || "Failed to load");
-        setData(null);
-      })
-      .finally(() => setLoading(false));
-  }, [table, id]);
-
-  return { data, loading, error };
+  return {
+    data: resolvedData as T | null,
+    loading: isLoading,
+    error: error?.message || null,
+    refetch: mutate,
+  };
 }
-
 /* =========================================================
  * TYPED HOOKS FOR EACH ENTITY
  * ========================================================= */
@@ -370,83 +373,220 @@ export function useProperty(id: number | string | null | undefined) {
 }
 
 /* =========================================================
- * COMBINED LISTINGS HOOK
+ * SLUG-BASED HOOKS WITH SWR
  * ========================================================= */
 
-export function useAllListings(filters?: ListingFilters) {
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function useBatimentBySlug(slugOrId: string | null | undefined) {
+  const isNumeric = slugOrId ? /^\d+$/.test(slugOrId) : false;
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const url = !slugOrId
+    ? null
+    : isNumeric
+      ? `/api/data/batiment/${slugOrId}`
+      : `/api/data/batiment?slug=${encodeURIComponent(slugOrId)}&limit=1`;
 
-    try {
-      // Build query params
-      const params = new URLSearchParams();
-      if (filters?.status) params.set("status", filters.status);
-      if (filters?.featured) params.set("featured", "true");
-      if (filters?.search) params.set("search", filters.search);
-      if (filters?.limit)
-        params.set("limit", Math.ceil(filters.limit / 3).toString());
+  const { data, error, isLoading, mutate } = useSWR<any>(
+    url,
+    fetcher,
+    itemConfig,
+  );
 
-      const queryString = params.toString();
-      const suffix = queryString ? `?${queryString}` : "";
-
-      // Fetch all 3 tables in parallel - SAME AS DATAMANAGEMENT
-      const [lotisRes, parcelRes, batRes] = await Promise.all([
-        fetch(`/api/data/lotissement${suffix}`),
-        fetch(`/api/data/parcelle${suffix}`),
-        fetch(`/api/data/batiment${suffix}`),
-      ]);
-
-      const [lotisJson, parcelJson, batJson] = await Promise.all([
-        lotisRes.ok ? lotisRes.json() : { data: [] },
-        parcelRes.ok ? parcelRes.json() : { data: [] },
-        batRes.ok ? batRes.json() : { data: [] },
-      ]);
-
-      // Combine and tag with entity type
-      const combined: Listing[] = [
-        ...(lotisJson.data || []).map((l: Lotissement) => ({
-          ...l,
-          _entityType: "LOTISSEMENT" as const,
-        })),
-        ...(parcelJson.data || []).map((p: Parcelle) => ({
-          ...p,
-          _entityType: "PARCELLE" as const,
-        })),
-        ...(batJson.data || []).map((b: Batiment) => ({
-          ...b,
-          _entityType: "BATIMENT" as const,
-        })),
-      ];
-
-      // Sort by newest first
-      combined.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-
-      setListings(filters?.limit ? combined.slice(0, filters.limit) : combined);
-    } catch (err) {
-      console.error("Error fetching all listings:", err);
-      setError(err instanceof Error ? err.message : "Failed to load");
-    } finally {
-      setLoading(false);
+  // Handle response: could be { data: Batiment } or { data: Batiment[] }
+  let resolvedData: Batiment | null = null;
+  if (data) {
+    if (Array.isArray(data.data)) {
+      resolvedData = data.data[0] || null;
+    } else {
+      resolvedData = data.data || null;
     }
-  }, [JSON.stringify(filters)]);
+  }
 
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+  return {
+    data: resolvedData,
+    loading: isLoading,
+    error:
+      error?.message ||
+      (!isLoading && !resolvedData && slugOrId ? "Property not found" : null),
+    refetch: mutate,
+  };
+}
 
-  return { listings, loading, error, refetch: fetchAll };
+export function useParcelleBySlug(slugOrId: string | null | undefined) {
+  const isNumeric = slugOrId ? /^\d+$/.test(slugOrId) : false;
+
+  const url = !slugOrId
+    ? null
+    : isNumeric
+      ? `/api/data/parcelle/${slugOrId}`
+      : `/api/data/parcelle?slug=${encodeURIComponent(slugOrId)}&limit=1`;
+
+  const { data, error, isLoading, mutate } = useSWR<any>(
+    url,
+    fetcher,
+    itemConfig,
+  );
+
+  let resolvedData: Parcelle | null = null;
+  if (data) {
+    if (Array.isArray(data.data)) {
+      resolvedData = data.data[0] || null;
+    } else {
+      resolvedData = data.data || null;
+    }
+  }
+
+  return {
+    data: resolvedData,
+    loading: isLoading,
+    error:
+      error?.message ||
+      (!isLoading && !resolvedData && slugOrId ? "Land not found" : null),
+    refetch: mutate,
+  };
+}
+
+export function useLotissementBySlug(slugOrId: string | null | undefined) {
+  const isNumeric = slugOrId ? /^\d+$/.test(slugOrId) : false;
+
+  const url = !slugOrId
+    ? null
+    : isNumeric
+      ? `/api/data/lotissement/${slugOrId}`
+      : `/api/data/lotissement?slug=${encodeURIComponent(slugOrId)}&limit=1`;
+
+  const { data, error, isLoading, mutate } = useSWR<any>(
+    url,
+    fetcher,
+    itemConfig,
+  );
+
+  let resolvedData: Lotissement | null = null;
+  if (data) {
+    if (Array.isArray(data.data)) {
+      resolvedData = data.data[0] || null;
+    } else {
+      resolvedData = data.data || null;
+    }
+  }
+
+  return {
+    data: resolvedData,
+    loading: isLoading,
+    error:
+      error?.message ||
+      (!isLoading && !resolvedData && slugOrId ? "Estate not found" : null),
+    refetch: mutate,
+  };
 }
 
 /* =========================================================
- * UTILITY FUNCTIONS
+ * COMBINED LISTINGS HOOK WITH SWR
+ * ========================================================= */
+
+export function useAllListings(filters?: ListingFilters) {
+  const limitPerTable = filters?.limit
+    ? Math.ceil(filters.limit / 3)
+    : undefined;
+
+  const baseFilters: ListingFilters = {
+    ...filters,
+    limit: limitPerTable,
+  };
+
+  const queryString = buildQueryString(baseFilters);
+
+  // Fetch all 3 tables in parallel with SWR
+  const lotis = useSWR<{ data: Lotissement[] }>(
+    `/api/data/lotissement${queryString}`,
+    fetcher,
+    listConfig,
+  );
+
+  const parcel = useSWR<{ data: Parcelle[] }>(
+    `/api/data/parcelle${queryString}`,
+    fetcher,
+    listConfig,
+  );
+
+  const bat = useSWR<{ data: Batiment[] }>(
+    `/api/data/batiment${queryString}`,
+    fetcher,
+    listConfig,
+  );
+
+  const isLoading = lotis.isLoading || parcel.isLoading || bat.isLoading;
+  const error = lotis.error || parcel.error || bat.error;
+
+  // Combine and tag with entity type
+  let listings: Listing[] = [];
+
+  if (!isLoading) {
+    const lotisData = (lotis.data?.data || []).map((l) => ({
+      ...l,
+      _entityType: "LOTISSEMENT" as const,
+    }));
+
+    const parcelData = (parcel.data?.data || []).map((p) => ({
+      ...p,
+      _entityType: "PARCELLE" as const,
+    }));
+
+    const batData = (bat.data?.data || []).map((b) => ({
+      ...b,
+      _entityType: "BATIMENT" as const,
+    }));
+
+    listings = [...lotisData, ...parcelData, ...batData];
+
+    // Sort by newest first
+    listings.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    // Apply limit if specified
+    if (filters?.limit) {
+      listings = listings.slice(0, filters.limit);
+    }
+  }
+
+  const refetch = () => {
+    lotis.mutate();
+    parcel.mutate();
+    bat.mutate();
+  };
+
+  return {
+    listings,
+    loading: isLoading,
+    error: error?.message || null,
+    refetch,
+  };
+}
+
+/* =========================================================
+ * PREFETCH HELPERS (for SSR/SSG)
+ * ========================================================= */
+
+export async function prefetchBatiments(filters?: ListingFilters) {
+  const queryString = buildQueryString(filters);
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || ""}/api/data/batiment${queryString}`,
+  );
+  if (!res.ok) throw new Error("Failed to prefetch");
+  return res.json();
+}
+
+export async function prefetchBatiment(id: string | number) {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL || ""}/api/data/batiment/${id}`,
+  );
+  if (!res.ok) throw new Error("Failed to prefetch");
+  return res.json();
+}
+
+/* =========================================================
+ * UTILITY FUNCTIONS (unchanged)
  * ========================================================= */
 
 export function getListingId(listing: Listing): number {
@@ -597,7 +737,6 @@ export function getListingSurface(listing: Listing): number | null {
 export function getLocationString(
   listing: Lotissement | Parcelle | Batiment,
 ): string {
-  // Try direct arrondissement (Lotissement)
   if ("arrondissement" in listing && listing.arrondissement?.Nom_Arrond) {
     const arr = listing.arrondissement;
     const parts = [
@@ -608,7 +747,6 @@ export function getLocationString(
     return parts.join(", ");
   }
 
-  // Try via lotissement (Parcelle)
   if ("lotissement" in listing && listing.lotissement?.arrondissement) {
     const arr = listing.lotissement.arrondissement;
     const parts = [
@@ -619,7 +757,6 @@ export function getLocationString(
     return parts.join(", ");
   }
 
-  // Try via parcelle (Batiment)
   if ("parcelle" in listing && listing.parcelle?.lotissement?.arrondissement) {
     const arr = listing.parcelle.lotissement.arrondissement;
     const parts = [
@@ -630,7 +767,6 @@ export function getLocationString(
     return parts.join(", ");
   }
 
-  // Fallback to address or lieudit
   if ("address" in listing && listing.address) return listing.address;
   if ("Lieudit" in listing && listing.Lieudit) return listing.Lieudit;
   if ("Lieu_dit" in listing && listing.Lieu_dit) return listing.Lieu_dit;
@@ -648,126 +784,160 @@ export function isForRent(listing: BaseListing): boolean {
 
 // Legacy type alias
 export type Property = Batiment;
-// =========================================================
-// SLUG-BASED HOOKS (handle both slug and numeric ID)
-// =========================================================
 
-export function useBatimentBySlug(slugOrId: string | null | undefined) {
-  const [data, setData] = useState<Batiment | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// lib/hooks/useProperties.ts
 
-  useEffect(() => {
-    if (!slugOrId || slugOrId === "") {
-      setData(null);
-      setLoading(false);
-      return;
-    }
+// ... (keep all existing code) ...
 
-    setLoading(true);
-    setError(null);
+/* =========================================================
+ * ADMIN DATA MANAGEMENT HOOKS
+ * ========================================================= */
 
-    const isNumeric = /^\d+$/.test(slugOrId);
-    const endpoint = isNumeric
-      ? `/api/data/batiment/${slugOrId}`
-      : `/api/data/batiment?slug=${encodeURIComponent(slugOrId)}&limit=1`;
+// Generic hook for any table (with null table support)
+export function useAdminTableData<T = any>(
+  table: string | null,
+  filters?: ListingFilters,
+) {
+  const queryString = buildQueryString(filters);
+  const url = table ? `/api/data/${table.toLowerCase()}${queryString}` : null;
 
-    fetch(endpoint)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Not found`);
-        return res.json();
-      })
-      .then((json) => {
-        const item = json.data || null; // Changed from json.data?.[0]
-        setData(item);
-        if (!item) setError("Property not found");
-      })
-      .catch((err) => {
-        setError(err.message);
-        setData(null);
-      })
-      .finally(() => setLoading(false));
-  }, [slugOrId]);
+  const { data, error, isLoading, isValidating, mutate } = useSWR<{
+    data: T[];
+    total?: number;
+    count?: number;
+  }>(url, fetcher, {
+    ...listConfig,
+    revalidateOnFocus: false, // Admin panel - manual refresh preferred
+  });
 
-  return { data, loading, error };
+  return {
+    data: data?.data || [],
+    loading: isLoading,
+    error: error?.message || null,
+    total: data?.total || data?.count || data?.data?.length || 0,
+    isValidating,
+    refetch: mutate,
+  };
 }
 
-export function useParcelleBySlug(slugOrId: string | null | undefined) {
-  const [data, setData] = useState<Parcelle | null>(null);
+// Hook for fetching counts of multiple tables
+export function useTableCounts(tables: string[]) {
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!slugOrId || slugOrId === "") {
-      setData(null);
-      setLoading(false);
-      return;
-    }
+    let isMounted = true;
 
-    setLoading(true);
-    setError(null);
+    const fetchCounts = async () => {
+      setLoading(true);
 
-    const isNumeric = /^\d+$/.test(slugOrId);
-    const endpoint = isNumeric
-      ? `/api/data/parcelle/${slugOrId}`
-      : `/api/data/parcelle?slug=${encodeURIComponent(slugOrId)}&limit=1`;
+      const results = await Promise.all(
+        tables.map(async (table) => {
+          try {
+            const res = await fetch(`/api/data/${table.toLowerCase()}?limit=1`);
+            if (res.ok) {
+              const json = await res.json();
+              return { table, count: json.total || json.count || 0 };
+            }
+            return { table, count: 0 };
+          } catch {
+            return { table, count: 0 };
+          }
+        }),
+      );
 
-    fetch(endpoint)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Not found`);
-        return res.json();
-      })
-      .then((json) => {
-        const item = json.data || null;
-        setData(item);
-        if (!item) setError("Land not found");
-      })
-      .catch((err) => {
-        setError(err.message);
-        setData(null);
-      })
-      .finally(() => setLoading(false));
-  }, [slugOrId]);
+      if (isMounted) {
+        const countsMap = results.reduce(
+          (acc, { table, count }) => {
+            acc[table] = count;
+            return acc;
+          },
+          {} as Record<string, number>,
+        );
+        setCounts(countsMap);
+        setLoading(false);
+      }
+    };
 
-  return { data, loading, error };
+    fetchCounts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [tables.join(",")]);
+
+  return { counts, loading };
 }
 
-export function useLotissementBySlug(slugOrId: string | null | undefined) {
-  const [data, setData] = useState<Lotissement | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// Hook for fetching table counts with SWR (cached)
+export function useTableCountsSWR(tables: string[]) {
+  const fetchers = tables.map((table) => {
+    const { data } = useSWR<{ total?: number; count?: number }>(
+      `/api/data/${table.toLowerCase()}?limit=1`,
+      fetcher,
+      {
+        revalidateOnFocus: false,
+        dedupingInterval: 60000, // 1 minute cache for counts
+      },
+    );
+    return { table, count: data?.total || data?.count || 0 };
+  });
 
-  useEffect(() => {
-    if (!slugOrId || slugOrId === "") {
-      setData(null);
-      setLoading(false);
-      return;
-    }
+  const counts = fetchers.reduce(
+    (acc, { table, count }) => {
+      acc[table] = count;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
-    setLoading(true);
-    setError(null);
+  return { counts };
+}
 
-    const isNumeric = /^\d+$/.test(slugOrId);
-    const endpoint = isNumeric
-      ? `/api/data/lotissement/${slugOrId}`
-      : `/api/data/lotissement?slug=${encodeURIComponent(slugOrId)}&limit=1`;
+// Mutation helpers for CRUD operations
+export async function createRecord(table: string, data: any) {
+  const res = await fetch(`/api/data/${table.toLowerCase()}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
 
-    fetch(endpoint)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Not found`);
-        return res.json();
-      })
-      .then((json) => {
-        const item = isNumeric ? json.data || json : json.data?.[0] || null;
-        setData(item);
-        if (!item) setError("Estate not found");
-      })
-      .catch((err) => {
-        setError(err.message);
-        setData(null);
-      })
-      .finally(() => setLoading(false));
-  }, [slugOrId]);
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to create");
+  }
 
-  return { data, loading, error };
+  return res.json();
+}
+
+export async function updateRecord(
+  table: string,
+  id: string | number,
+  data: any,
+) {
+  const res = await fetch(`/api/data/${table.toLowerCase()}/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to update");
+  }
+
+  return res.json();
+}
+
+export async function deleteRecord(table: string, id: string | number) {
+  const res = await fetch(`/api/data/${table.toLowerCase()}/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to delete");
+  }
+
+  return res.json();
 }

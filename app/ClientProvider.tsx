@@ -4,6 +4,7 @@
 import { ThemeProvider } from "@/lib/context/ThemeContext";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import DialogflowChatbot from "@/components/DialogflowChatbot";
+import { SWRConfig } from "swr";
 
 export default function ClientProvider({
   children,
@@ -44,7 +45,19 @@ export default function ClientProvider({
         </div>
 
         {/* Content wrapper */}
-        <div className="relative z-10">{children}</div>
+        <div className="relative z-10">
+          <SWRConfig
+            value={{
+              fetcher: (url: string) => fetch(url).then((res) => res.json()),
+              revalidateOnFocus: true,
+              revalidateOnReconnect: true,
+              errorRetryCount: 3,
+              dedupingInterval: 5000,
+            }}
+          >
+            {children}
+          </SWRConfig>
+        </div>
 
         {/* Bottom glow effect */}
         <div
