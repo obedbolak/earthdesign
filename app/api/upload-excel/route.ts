@@ -2,14 +2,13 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import {
   processExcelWorkbook,
   validateWorkbookStructure,
   ImportResult,
 } from "@/lib/utils/processExcelUpload";
-// Optional: Add auth check
-// import { getServerSession } from "next-auth";
-// import { authOptions } from "@/lib/auth";
 
 /* =========================================================
  * CONSTANTS
@@ -33,7 +32,11 @@ function getFileExtension(filename: string): string {
   return lastDot !== -1 ? filename.slice(lastDot).toLowerCase() : "";
 }
 
-function formatImportResponse(result: ImportResult) {
+function formatImportResponse(
+  result: ImportResult,
+  userId: string,
+  userEmail?: string,
+) {
   const successSheets = result.results.filter((r) => r.status === "success");
   const partialSheets = result.results.filter((r) => r.status === "partial");
   const failedSheets = result.results.filter((r) => r.status === "failed");
@@ -50,6 +53,11 @@ function formatImportResponse(result: ImportResult) {
   return {
     success: result.success,
     message,
+    // ⚠️ NEW: Include user info in response
+    importedBy: {
+      userId,
+      userEmail,
+    },
     details: {
       totalSheets: result.totalSheets,
       processedSheets: result.processedSheets,
@@ -83,13 +91,42 @@ function formatImportResponse(result: ImportResult) {
 
 export async function POST(request: Request) {
   try {
-    // Optional: Auth check
-    // const session = await getServerSession(authOptions);
-    // if (!session || session.user.role !== "ADMIN") {
-    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    // }
+    // ========================================
+    // 1. AUTHENTICATE USER
+    // ========================================
+    const session = await getServerSession(authOptions);
 
-    // 1. Size guard (early check before parsing)
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          message: "You must be signed in to import data",
+        },
+        { status: 401 },
+      );
+    }
+
+    const currentUserId = session.user.id;
+    const userEmail = session.user.email;
+
+    console.log(`📥 Import started by user: ${currentUserId} (${userEmail})`);
+
+    // Check role permissions
+    if (session.user.role !== "ADMIN" && session.user.role !== "AGENT") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Forbidden",
+          message: "Only admins and agents can import data",
+        },
+        { status: 403 },
+      );
+    }
+
+    // ========================================
+    // 2. VALIDATE FILE SIZE (early check)
+    // ========================================
     const contentLength = request.headers.get("content-length");
     if (contentLength && Number(contentLength) > MAX_FILE_SIZE) {
       return NextResponse.json(
@@ -102,7 +139,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Parse form data
+    // ========================================
+    // 3. PARSE FORM DATA
+    // ========================================
     let formData: FormData;
     try {
       formData = await request.formData();
@@ -130,7 +169,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Validate file extension
+    console.log(
+      `📄 Processing file: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`,
+    );
+
+    // ========================================
+    // 4. VALIDATE FILE EXTENSION
+    // ========================================
     const fileExtension = getFileExtension(file.name);
     if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
       return NextResponse.json(
@@ -144,7 +189,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Validate MIME type (with fallback for edge cases)
+    // ========================================
+    // 5. VALIDATE MIME TYPE
+    // ========================================
     if (file.type && !ALLOWED_MIME_TYPES.includes(file.type)) {
       // Some systems might send different MIME types, check extension as fallback
       if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
@@ -160,7 +207,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Double-check file size
+    // ========================================
+    // 6. VALIDATE FILE SIZE
+    // ========================================
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         {
@@ -172,14 +221,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // 6. Read and parse workbook
+    // ========================================
+    // 7. PARSE EXCEL WORKBOOK
+    // ========================================
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
     const workbook = new ExcelJS.Workbook();
 
     try {
       await workbook.xlsx.load(uint8Array as any);
+      console.log(
+        `📊 Workbook loaded with ${workbook.worksheets.length} sheets`,
+      );
     } catch (parseError) {
+      console.error("Failed to parse Excel file:", parseError);
       return NextResponse.json(
         {
           success: false,
@@ -191,9 +246,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // 7. Validate workbook structure
+    // ========================================
+    // 8. VALIDATE WORKBOOK STRUCTURE
+    // ========================================
     const validation = validateWorkbookStructure(workbook);
+
     if (!validation.valid) {
+      console.error("Invalid workbook structure:", validation);
       return NextResponse.json(
         {
           success: false,
@@ -207,26 +266,54 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Process in transaction
+    console.log(`✅ Workbook structure validated`);
+    console.log(`   - Found sheets: ${validation.found.join(", ")}`);
+    if (validation.missingOptional.length > 0) {
+      console.log(
+        `   - Missing optional: ${validation.missingOptional.join(", ")}`,
+      );
+    }
+
+    // ========================================
+    // 9. PROCESS IN TRANSACTION
+    // ⚠️ CRITICAL: Pass userId as 3rd parameter
+    // ========================================
+    console.log(`🚀 Starting import transaction...`);
+
     const result = await prisma.$transaction(
-      async (tx) => processExcelWorkbook(workbook, tx),
+      async (tx) => {
+        // ⚠️ PASS currentUserId HERE - it will auto-populate createdById
+        return await processExcelWorkbook(workbook, tx, currentUserId);
+      },
       {
-        maxWait: 30000,
-        timeout: 120000, // 2 minutes for large files
+        maxWait: 30000, // 30 seconds max wait
+        timeout: 120000, // 2 minutes timeout for large files
       },
     );
 
-    // 9. Return formatted response
-    const response = formatImportResponse(result);
+    console.log(`✅ Import completed`);
+    console.log(`   - Success: ${result.success}`);
+    console.log(`   - Total imported: ${result.summary.totalImported}`);
+    console.log(`   - Total errors: ${result.summary.totalErrors}`);
+    console.log(`   - Total skipped: ${result.summary.totalSkipped}`);
+
+    // ========================================
+    // 10. RETURN FORMATTED RESPONSE
+    // ========================================
+    const response = formatImportResponse(result, currentUserId, userEmail);
     const statusCode = result.success ? 200 : 422;
 
     return NextResponse.json(response, { status: statusCode });
   } catch (error) {
-    console.error("Excel upload error:", error);
+    console.error("❌ Excel upload error:", error);
+
+    // ========================================
+    // ERROR HANDLING
+    // ========================================
 
     // Handle specific error types
     if (error instanceof Error) {
-      // Prisma transaction timeout
+      // Transaction timeout
       if (
         error.message.includes("Transaction already closed") ||
         error.message.includes("timeout")
@@ -289,17 +376,48 @@ export async function POST(request: Request) {
  * ========================================================= */
 
 export async function GET() {
-  const { getImportOrder } = await import("@/lib/utils/processExcelUpload");
-  const { getRequiredSheets, OPTIONAL_SHEETS } =
-    await import("@/lib/config/excel-import-config");
+  try {
+    // Check authentication for GET endpoint too (optional)
+    const session = await getServerSession(authOptions);
 
-  return NextResponse.json({
-    info: "Excel Import API",
-    version: "2.0",
-    maxFileSize: `${MAX_FILE_SIZE / (1024 * 1024)} MB`,
-    allowedFormats: ALLOWED_EXTENSIONS,
-    requiredSheets: getRequiredSheets(),
-    optionalSheets: OPTIONAL_SHEETS,
-    importOrder: getImportOrder(),
-  });
+    const { getImportOrder } = await import("@/lib/utils/processExcelUpload");
+    const { getRequiredSheets, OPTIONAL_SHEETS } =
+      await import("@/lib/config/excel-import-config");
+
+    return NextResponse.json({
+      info: "Excel Import API",
+      version: "2.0",
+      maxFileSize: `${MAX_FILE_SIZE / (1024 * 1024)} MB`,
+      allowedFormats: ALLOWED_EXTENSIONS,
+      requiredSheets: getRequiredSheets(),
+      optionalSheets: OPTIONAL_SHEETS,
+      importOrder: getImportOrder(),
+      // Include user info if authenticated
+      ...(session?.user && {
+        currentUser: {
+          id: session.user.id,
+          email: session.user.email,
+          role: session.user.role,
+        },
+      }),
+      notes: {
+        createdById:
+          "This field is automatically populated from your user session. Do not include it in Excel files.",
+        columnCounts: {
+          Lotissement: "31 columns (createdById removed)",
+          Parcelle: "33 columns (createdById removed)",
+          Batiment: "47 columns (createdById removed)",
+        },
+      },
+    });
+  } catch (error) {
+    console.error("GET endpoint error:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch import info",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    );
+  }
 }

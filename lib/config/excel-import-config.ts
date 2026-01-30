@@ -95,6 +95,7 @@ export interface TransformContext {
   sheetName: string;
   addWarning: (message: string) => void;
   addError: (message: string) => void;
+  userId: string | null;
 }
 
 export interface TransformResult<T> {
@@ -868,7 +869,7 @@ export const excelImportConfig: SheetConfig[] = [
   {
     sheetName: "Lotissement",
     model: "lotissement",
-    columnCount: 32,
+    columnCount: 31,
     uniqueKey: "Id_Lotis",
     primaryKey: "Id_Lotis",
     dependencies: ["arrondissement"],
@@ -904,7 +905,7 @@ export const excelImportConfig: SheetConfig[] = [
       toBool, // 28: hasRoadAccess
       toBool, // 29: hasElectricity
       toBool, // 30: hasWater
-      toStr, // 31: createdById
+      // toStr, // 31: createdById
     ],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
@@ -962,7 +963,7 @@ export const excelImportConfig: SheetConfig[] = [
         hasRoadAccess: defBool(row[28], false),
         hasElectricity: defBool(row[29], false),
         hasWater: defBool(row[30], false),
-        createdById: defStr(row[31]),
+        createdById: ctx?.userId || null,
       };
     },
   },
@@ -974,7 +975,7 @@ export const excelImportConfig: SheetConfig[] = [
   {
     sheetName: "Parcelle",
     model: "parcelle",
-    columnCount: 34,
+    columnCount: 33,
     uniqueKey: "Id_Parcel",
     primaryKey: "Id_Parcel",
     dependencies: ["lotissement"],
@@ -1012,7 +1013,7 @@ export const excelImportConfig: SheetConfig[] = [
       toStr, // 30: currency
       toBool, // 31: featured
       toBool, // 32: isForDevelopment
-      toStr, // 33: createdById
+      // toStr, // 33: createdById
     ],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
@@ -1072,7 +1073,7 @@ export const excelImportConfig: SheetConfig[] = [
         currency: defStr(row[30], "XAF"),
         featured: defBool(row[31], false),
         isForDevelopment: defBool(row[32], false),
-        createdById: defStr(row[33]),
+        createdById: ctx?.userId || null,
       };
     },
   },
@@ -1084,7 +1085,7 @@ export const excelImportConfig: SheetConfig[] = [
   {
     sheetName: "Batiment",
     model: "batiment",
-    columnCount: 48, // INCREASED from 45
+    columnCount: 47, // INCREASED from 45
     uniqueKey: "Id_Bat",
     primaryKey: "Id_Bat",
     dependencies: ["parcelle"],
@@ -1136,7 +1137,7 @@ export const excelImportConfig: SheetConfig[] = [
       toBool, // 44: hasBalcony (NEW)
       toBool, // 45: hasTerrace (NEW)
       toStr, // 46: amenities (NEW)
-      toStr, // 47: createdById
+      // toStr, // 47: createdById
     ],
     transform: (row, ctx) => {
       const id = row[0] as number | null;
@@ -1215,7 +1216,7 @@ export const excelImportConfig: SheetConfig[] = [
         hasBalcony: defBool(row[44], false), // NEW
         hasTerrace: defBool(row[45], false), // NEW
         amenities: defStr(row[46]), // NEW
-        createdById: defStr(row[47]),
+        createdById: ctx?.userId || null,
       };
     },
   },

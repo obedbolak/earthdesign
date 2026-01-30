@@ -9,22 +9,13 @@ const globalForPrisma = global as unknown as {
   pgPool: Pool;
 };
 
-// Decode CA cert from base64 env var
-const caCert = process.env.DATABASE_CA_CERT
-  ? Buffer.from(process.env.DATABASE_CA_CERT, "base64").toString("utf-8")
-  : undefined;
-
-// Singleton pattern for the PG Pool with proper SSL
+// Create pool singleton
 if (!globalForPrisma.pgPool) {
   globalForPrisma.pgPool = new Pool({
     connectionString,
     max: process.env.NODE_ENV === "development" ? 5 : 20,
-    ssl: caCert
-      ? {
-          ca: caCert,
-          rejectUnauthorized: true, // Verify the certificate (secure)
-        }
-      : false, // Local dev without SSL
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000,
   });
 }
 

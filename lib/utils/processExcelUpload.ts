@@ -1,6 +1,7 @@
 // lib/utils/processExcelUpload.ts
 import ExcelJS from "exceljs";
 import { Prisma, PrismaClient } from "@prisma/client";
+import { authOptions } from "@/lib/auth"; // Your NextAuth config
 import {
   excelImportConfig,
   SheetConfig,
@@ -251,6 +252,7 @@ async function processSheet(
   worksheet: ExcelJS.Worksheet,
   config: SheetConfig,
   tx: PrismaTransactionClient,
+  userId: string | null,
 ): Promise<SheetResult> {
   const result: SheetResult = {
     sheetName: config.sheetName,
@@ -301,6 +303,7 @@ async function processSheet(
           result.warnings.push(`Row ${rowNumber}: ${msg}`),
         addError: (msg: string) =>
           result.errors.push(`Row ${rowNumber}: ${msg}`),
+        userId,
       };
 
       // Transform row
@@ -458,6 +461,7 @@ async function processSheet(
 export async function processExcelWorkbook(
   workbook: ExcelJS.Workbook,
   tx: PrismaTransactionClient,
+  userId: string,
 ): Promise<ImportResult> {
   // Clear and preload FK cache
   fkCache.clear();
@@ -490,7 +494,7 @@ export async function processExcelWorkbook(
 
     try {
       console.log(`Processing sheet: ${sheetName}`);
-      const sheetResult = await processSheet(worksheet, config, tx);
+      const sheetResult = await processSheet(worksheet, config, tx, userId);
       results.push(sheetResult);
 
       totalImported += sheetResult.imported;
