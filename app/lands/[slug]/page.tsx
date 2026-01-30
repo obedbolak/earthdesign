@@ -47,6 +47,7 @@ import {
   isForRent,
 } from "@/lib/hooks/useProperties";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
+import Footer from "@/components/Footer";
 
 // =========================================================
 // LOCAL UTILITIES
@@ -112,6 +113,29 @@ function getStatusBgColor(parcelle: Parcelle): string {
   if (parcelle.listingType === "RENT") return "from-blue-500 to-cyan-600";
   return "from-gray-500 to-gray-600";
 }
+
+// Video helpers
+const getYouTubeVideoId = (url: string): string | null => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
+
+const isYouTubeUrl = (url: string): boolean =>
+  url.includes("youtube.com") || url.includes("youtu.be");
+
+const getVideoThumbnail = (videoUrl: string): string => {
+  const videoId = getYouTubeVideoId(videoUrl);
+  if (videoId) return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  return PLACEHOLDER_IMAGE;
+};
+
+const getYouTubeEmbedUrl = (videoUrl: string): string => {
+  const videoId = getYouTubeVideoId(videoUrl);
+  if (videoId)
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+  return videoUrl;
+};
 
 // =========================================================
 // MAIN COMPONENT
@@ -299,14 +323,18 @@ export default function LandDetailPage() {
           className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4"
         >
           <button
-            onClick={() => setShowLightbox(false)}
+            onClick={() => {
+              setShowLightbox(false);
+              setIsPlayingVideo(false);
+              setShowVideo(false);
+            }}
             className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.1)" }}
           >
             <XCircle className="w-6 h-6 text-white" />
           </button>
 
-          {images.length > 1 && (
+          {!showVideo && images.length > 1 && (
             <>
               <button
                 onClick={prevImage}
@@ -325,14 +353,53 @@ export default function LandDetailPage() {
             </>
           )}
 
-          <img
-            src={getCurrentImage()}
-            alt={parcelle.title || "Land"}
-            className="max-w-full max-h-[90vh] object-contain rounded-2xl"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE;
-            }}
-          />
+          <div className="max-w-full max-h-[90vh] w-full flex items-center justify-center">
+            {showVideo && videoUrl ? (
+              isPlayingVideo ? (
+                isYouTubeUrl(videoUrl) ? (
+                  <iframe
+                    src={getYouTubeEmbedUrl(videoUrl)}
+                    className="w-full aspect-video max-h-[90vh] rounded-2xl"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={videoUrl}
+                    controls
+                    autoPlay
+                    className="w-full max-h-[90vh] rounded-2xl"
+                  />
+                )
+              ) : (
+                <div className="relative w-full aspect-video max-h-[90vh]">
+                  <img
+                    src={getVideoThumbnail(videoUrl)}
+                    alt="Video thumbnail"
+                    className="w-full h-full object-contain rounded-2xl"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      onClick={() => setIsPlayingVideo(true)}
+                      className="w-32 h-32 bg-red-600 rounded-full flex items-center justify-center shadow-2xl"
+                    >
+                      <Play
+                        className="w-16 h-16 text-white ml-2"
+                        fill="white"
+                      />
+                    </motion.button>
+                  </div>
+                </div>
+              )
+            ) : hasImages ? (
+              <img
+                src={getCurrentImage()}
+                alt={parcelle.title || "Land"}
+                className="max-w-full max-h-[90vh] object-contain rounded-2xl"
+              />
+            ) : null}
+          </div>
         </motion.div>
       )}
 
@@ -401,14 +468,54 @@ export default function LandDetailPage() {
               }}
             >
               <div className="relative aspect-video">
-                <img
-                  src={getCurrentImage()}
-                  alt={parcelle.title || "Land"}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE;
-                  }}
-                />
+                {showVideo && videoUrl ? (
+                  isPlayingVideo ? (
+                    isYouTubeUrl(videoUrl) ? (
+                      <iframe
+                        src={getYouTubeEmbedUrl(videoUrl)}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video
+                        src={videoUrl}
+                        controls
+                        autoPlay
+                        className="w-full h-full object-cover"
+                      />
+                    )
+                  ) : (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={getVideoThumbnail(videoUrl)}
+                        alt="Video thumbnail"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          onClick={() => setIsPlayingVideo(true)}
+                          className="w-24 h-24 bg-red-600 rounded-full flex items-center justify-center shadow-2xl"
+                        >
+                          <Play
+                            className="w-12 h-12 text-white ml-2"
+                            fill="white"
+                          />
+                        </motion.button>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <img
+                    src={getCurrentImage()}
+                    alt={parcelle.title || "Land"}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = PLACEHOLDER_IMAGE;
+                    }}
+                  />
+                )}
 
                 {/* Actions */}
                 <div className="absolute top-4 right-4 flex gap-2">
@@ -444,7 +551,7 @@ export default function LandDetailPage() {
                 </div>
 
                 {/* Navigation */}
-                {images.length > 1 && (
+                {!showVideo && images.length > 1 && (
                   <>
                     <button
                       onClick={prevImage}
@@ -466,16 +573,19 @@ export default function LandDetailPage() {
               </div>
 
               {/* Thumbnails */}
-              {hasImages && (
+              {(hasImages || hasVideo) && (
                 <div className="p-4 flex gap-2 overflow-x-auto">
                   {images.map((img, idx) => (
                     <button
                       key={idx}
-                      onClick={() => setCurrentImageIndex(idx)}
+                      onClick={() => {
+                        setCurrentImageIndex(idx);
+                        setShowVideo(false);
+                      }}
                       className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition"
                       style={{
                         borderColor:
-                          currentImageIndex === idx
+                          !showVideo && currentImageIndex === idx
                             ? COLORS.primary[500]
                             : "rgba(255,255,255,0.2)",
                       }}
@@ -487,6 +597,29 @@ export default function LandDetailPage() {
                       />
                     </button>
                   ))}
+                  {hasVideo && (
+                    <button
+                      onClick={() => {
+                        setShowVideo(true);
+                        setIsPlayingVideo(false);
+                      }}
+                      className="relative flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition"
+                      style={{
+                        borderColor: showVideo
+                          ? "#ef4444"
+                          : "rgba(255,255,255,0.2)",
+                      }}
+                    >
+                      <img
+                        src={getVideoThumbnail(videoUrl!)}
+                        alt="Video"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Play className="w-8 h-8 text-white" fill="white" />
+                      </div>
+                    </button>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -729,6 +862,55 @@ export default function LandDetailPage() {
                 </div>
               </div>
             </motion.div>
+
+            {/* Location */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="rounded-3xl shadow-2xl p-6 border"
+              style={{
+                background: "rgba(255,255,255,0.1)",
+                borderColor: "rgba(255,255,255,0.2)",
+              }}
+            >
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <MapPin
+                  className="w-6 h-6"
+                  style={{ color: COLORS.primary[400] }}
+                />{" "}
+                Location
+              </h2>
+              <div
+                className="aspect-video rounded-2xl flex items-center justify-center border"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  borderColor: "rgba(255,255,255,0.1)",
+                }}
+              >
+                <div className="text-center">
+                  <MapPin
+                    className="w-16 h-16 mx-auto mb-3"
+                    style={{ color: COLORS.primary[500] }}
+                  />
+                  <p className="text-white font-semibold text-lg">
+                    Interactive Map
+                  </p>
+                  <p className="mt-1 text-gray-400">Coming soon</p>
+                  <p
+                    className="text-sm mt-2"
+                    style={{ color: COLORS.primary[400] }}
+                  >
+                    {getLocationString(parcelle)}
+                  </p>
+                  {/* {parcelle.address && (
+                    <p className="text-sm mt-1 text-gray-400">
+                      {parcelle.address}
+                    </p>
+                  )} */}
+                </div>
+              </div>
+            </motion.div>
           </div>
 
           {/* Right Column - Contact */}
@@ -816,6 +998,12 @@ export default function LandDetailPage() {
                   <span className="opacity-75">Type</span>
                   <span className="font-semibold">Land / Parcelle</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="opacity-75">Status</span>
+                  <span className="font-semibold">
+                    {parcelle.listingStatus}
+                  </span>
+                </div>
               </div>
             </motion.div>
 
@@ -862,6 +1050,36 @@ export default function LandDetailPage() {
                     {images.length}
                   </span>
                 </div>
+                {hasVideo && (
+                  <div
+                    className="flex items-center justify-between p-3 rounded-xl"
+                    style={{ background: "rgba(255,255,255,0.05)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Video
+                        className="w-5 h-5"
+                        style={{ color: COLORS.primary[400] }}
+                      />
+                      <span className="text-gray-300">Video Tour</span>
+                    </div>
+                    <span className="font-semibold text-white">Available</span>
+                  </div>
+                )}
+                {parcelle.featured && (
+                  <div
+                    className="flex items-center justify-between p-3 rounded-xl"
+                    style={{ background: "rgba(255,255,255,0.05)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles
+                        className="w-5 h-5"
+                        style={{ color: "#facc15" }}
+                      />
+                      <span className="text-gray-300">Featured</span>
+                    </div>
+                    <span className="font-semibold text-yellow-400">Yes</span>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>
@@ -952,6 +1170,8 @@ export default function LandDetailPage() {
           </motion.div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 }
