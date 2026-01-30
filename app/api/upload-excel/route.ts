@@ -53,11 +53,7 @@ function formatImportResponse(
   return {
     success: result.success,
     message,
-    // ⚠️ NEW: Include user info in response
-    importedBy: {
-      userId,
-      userEmail,
-    },
+
     details: {
       totalSheets: result.totalSheets,
       processedSheets: result.processedSheets,

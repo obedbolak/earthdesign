@@ -125,9 +125,9 @@ class ForeignKeyCache {
       }
 
       this.cache.set(key, ids);
-      console.log(`Preloaded ${ids.size} IDs for ${model}.${field}`);
+      console.log(`✅ Preloaded ${ids.size} IDs for ${model}.${field}`);
     } catch (error) {
-      console.error(`Failed to preload ${model}.${field}:`, error);
+      console.error(`❌ Failed to preload ${model}.${field}:`, error);
       this.cache.set(key, new Set());
     }
   }
@@ -138,6 +138,7 @@ class ForeignKeyCache {
       this.cache.set(key, new Set());
     }
     this.cache.get(key)!.add(id);
+    console.log(`📝 Added to cache: ${model}.${field} = ${id}`);
   }
 
   has(model: PrismaModelName, field: string, id: number): boolean {
@@ -147,6 +148,15 @@ class ForeignKeyCache {
 
   clear(): void {
     this.cache.clear();
+  }
+
+  // NEW: Debug method to see cache contents
+  debugPrint(model: PrismaModelName, field: string): void {
+    const key = this.getKey(model, field);
+    const ids = this.cache.get(key);
+    console.log(
+      `🔍 Cache for ${key}: ${ids ? Array.from(ids).join(", ") : "empty"}`,
+    );
   }
 }
 
@@ -159,7 +169,7 @@ const fkCache = new ForeignKeyCache();
 async function preloadAllForeignKeys(
   tx: PrismaTransactionClient,
 ): Promise<void> {
-  console.log("Preloading foreign key caches...");
+  console.log("🔄 Preloading foreign key caches...");
 
   // Preload all referenced tables
   const tablesToPreload: Array<{ model: PrismaModelName; field: string }> = [
@@ -183,7 +193,7 @@ async function preloadAllForeignKeys(
     await fkCache.preload(tx, model, field);
   }
 
-  console.log("Foreign key caches preloaded");
+  console.log("✅ Foreign key caches preloaded");
 }
 
 /* =========================================================
@@ -193,6 +203,7 @@ async function preloadAllForeignKeys(
 function validateForeignKeysSync(
   data: Record<string, unknown>,
   model: PrismaModelName,
+  rowNumber: number, // Added for better error messages
 ): { valid: boolean; errors: string[]; warnings: string[] } {
   const fkConfigs = getForeignKeyConfig(model);
   const errors: string[] = [];
@@ -212,8 +223,14 @@ function validateForeignKeysSync(
     // Check if FK exists in cache
     if (!fkCache.has(fk.referencedModel, fk.referencedField, fkValue)) {
       if (fk.required) {
+        // Debug: print cache contents
+        console.error(
+          `❌ Row ${rowNumber}: FK validation failed for ${fk.field}=${fkValue}`,
+        );
+        fkCache.debugPrint(fk.referencedModel, fk.referencedField);
+
         errors.push(
-          `FK ${fk.field}=${fkValue} not found in ${fk.referencedModel}`,
+          `FK ${fk.field}=${fkValue} not found in ${fk.referencedModel}.${fk.referencedField}`,
         );
       } else {
         // For optional FKs, nullify the value and add warning
@@ -265,6 +282,10 @@ async function processSheet(
     warnings: [],
   };
 
+  console.log(
+    `📊 Processing sheet: ${config.sheetName} (model: ${config.model})`,
+  );
+
   // Collect all rows
   const rows: unknown[][] = [];
   worksheet.eachRow((row, rowNumber) => {
@@ -281,8 +302,11 @@ async function processSheet(
   if (rows.length === 0) {
     result.status = "skipped";
     result.warnings.push("Sheet is empty (no data rows)");
+    console.log(`⚠️  Sheet ${config.sheetName} is empty`);
     return result;
   }
+
+  console.log(`   Processing ${rows.length} rows...`);
 
   // Process each row
   for (let i = 0; i < rows.length; i++) {
@@ -315,7 +339,6 @@ async function processSheet(
       }
 
       // Validate with Zod schema if provided
-      // Validate with Zod schema if provided
       if (config.schema) {
         const validation = config.schema.safeParse(data);
         if (!validation.success) {
@@ -334,6 +357,7 @@ async function processSheet(
       const fkValidation = validateForeignKeysSync(
         data as Record<string, unknown>,
         config.model,
+        rowNumber, // Pass row number for debugging
       );
 
       // Add FK warnings
@@ -396,29 +420,40 @@ async function processSheet(
           const created = await prismaModel.create({ data });
           result.imported++;
 
-          // Add to cache if has numeric ID
+          // ✅ FIX #1: Add to cache immediately after creation
           const newId = created[uniqueKey];
           if (typeof newId === "number") {
             fkCache.add(config.model, uniqueKey, newId);
           }
         } else {
           // Upsert existing record
-          await prismaModel.upsert({
+          // ✅ FIX #2: Capture the result to get the actual ID
+          const upserted = await prismaModel.upsert({
             where: { [uniqueKey]: uniqueValue },
             create: data,
             update: data,
           });
           result.imported++;
 
-          // Add to cache
-          if (typeof uniqueValue === "number") {
-            fkCache.add(config.model, uniqueKey, uniqueValue);
+          // ✅ FIX #3: Add to cache using the returned ID (handles both create and update)
+          const resultId = upserted[uniqueKey];
+          if (typeof resultId === "number") {
+            fkCache.add(config.model, uniqueKey, resultId);
           }
         }
       } else {
         // No key - just create
-        await prismaModel.create({ data });
+        const created = await prismaModel.create({ data });
         result.imported++;
+
+        // ✅ FIX #4: Try to add to cache even for records without explicit key
+        // This handles models where the primary key might be useful for FK references
+        if (config.primaryKey) {
+          const newId = created[config.primaryKey];
+          if (typeof newId === "number") {
+            fkCache.add(config.model, config.primaryKey, newId);
+          }
+        }
       }
     } catch (error) {
       const message =
@@ -431,7 +466,9 @@ async function processSheet(
         result.duplicates++;
         result.warnings.push(`Row ${rowNumber}: Duplicate record`);
       } else if (message.includes("Foreign key constraint")) {
-        result.errors.push(`Row ${rowNumber}: FK constraint failed`);
+        result.errors.push(
+          `Row ${rowNumber}: FK constraint failed - ${message}`,
+        );
         result.skipped++;
       } else {
         result.errors.push(`Row ${rowNumber}: ${message}`);
@@ -451,6 +488,10 @@ async function processSheet(
     result.status = "skipped";
   }
 
+  console.log(
+    `   ✅ Sheet ${config.sheetName}: ${result.imported} imported, ${result.skipped} skipped, ${result.errors.length} errors`,
+  );
+
   return result;
 }
 
@@ -463,6 +504,8 @@ export async function processExcelWorkbook(
   tx: PrismaTransactionClient,
   userId: string,
 ): Promise<ImportResult> {
+  console.log(`🚀 Starting Excel import for user: ${userId}`);
+
   // Clear and preload FK cache
   fkCache.clear();
   await preloadAllForeignKeys(tx);
@@ -477,23 +520,33 @@ export async function processExcelWorkbook(
   let totalErrors = 0;
   let processedSheets = 0;
 
+  console.log(`📋 Import order: ${importOrder.join(" → ")}`);
+
+  // ✅ CRITICAL: Process sheets SEQUENTIALLY (not in parallel)
   for (const sheetName of importOrder) {
     const worksheet = workbook.getWorksheet(sheetName);
     const config = getSheetConfig(sheetName);
 
     if (!config) {
+      console.log(`⚠️  No config found for sheet: ${sheetName}`);
       continue;
     }
 
     if (!worksheet) {
       if (!OPTIONAL_SHEETS.includes(sheetName)) {
         globalErrors.push(`Required sheet "${sheetName}" not found`);
+        console.error(`❌ Required sheet "${sheetName}" not found`);
+      } else {
+        console.log(`ℹ️  Optional sheet "${sheetName}" not found, skipping`);
       }
       continue;
     }
 
     try {
+      console.log(`\n${"=".repeat(60)}`);
       console.log(`Processing sheet: ${sheetName}`);
+      console.log("=".repeat(60));
+
       const sheetResult = await processSheet(worksheet, config, tx, userId);
       results.push(sheetResult);
 
@@ -503,12 +556,22 @@ export async function processExcelWorkbook(
       totalErrors += sheetResult.errors.length;
       processedSheets++;
 
-      console.log(
-        `Sheet ${sheetName}: ${sheetResult.imported} imported, ${sheetResult.skipped} skipped, ${sheetResult.errors.length} errors`,
-      );
+      console.log(`✅ Sheet ${sheetName} completed:`);
+      console.log(`   - Imported: ${sheetResult.imported}`);
+      console.log(`   - Skipped: ${sheetResult.skipped}`);
+      console.log(`   - Errors: ${sheetResult.errors.length}`);
+      console.log(`   - Status: ${sheetResult.status}`);
+
+      // ✅ OPTIONAL: Add a small delay between sheets to ensure transaction commits
+      // This can help with race conditions in some database configurations
+      if (sheetResult.imported > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 50)); // 50ms delay
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown error occurred";
+
+      console.error(`❌ Fatal error processing sheet "${sheetName}":`, message);
       globalErrors.push(`Sheet "${sheetName}": ${message}`);
 
       results.push({
@@ -527,12 +590,23 @@ export async function processExcelWorkbook(
   }
 
   // Determine overall success
-  // Success = at least some imports and no critical global errors
   const hasGlobalErrors = globalErrors.length > 0;
   const hasImports = totalImported > 0;
+  const success = hasImports && !hasGlobalErrors;
+
+  console.log(`\n${"=".repeat(60)}`);
+  console.log(`📊 IMPORT SUMMARY`);
+  console.log("=".repeat(60));
+  console.log(`Total Imported: ${totalImported}`);
+  console.log(`Total Duplicates: ${totalDuplicates}`);
+  console.log(`Total Skipped: ${totalSkipped}`);
+  console.log(`Total Errors: ${totalErrors}`);
+  console.log(`Processed Sheets: ${processedSheets}/${importOrder.length}`);
+  console.log(`Overall Success: ${success ? "✅ YES" : "❌ NO"}`);
+  console.log("=".repeat(60));
 
   return {
-    success: hasImports && !hasGlobalErrors,
+    success,
     totalSheets: importOrder.length,
     processedSheets,
     results,
