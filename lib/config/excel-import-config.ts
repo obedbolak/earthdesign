@@ -1228,6 +1228,8 @@ export const excelImportConfig: SheetConfig[] = [
     sheetName: "Media",
     model: "media",
     columnCount: 8,
+    primaryKey: "id", // ✅ ADD THIS
+    uniqueKey: "id",
     schema: MediaSchema,
     mappers: [toInt, toStr, toStr, toStr, toInt, toStr, toBool, toInt],
     transform: (row, ctx) => {
@@ -1293,6 +1295,7 @@ export const excelImportConfig: SheetConfig[] = [
     model: "payer",
     columnCount: 4,
     compositeKey: { fields: ["Id_Parcel", "Id_Bat", "Id_Taxe"] },
+    primaryKey: "Id_Parcel", // ✅ ADD - first field of composite key
     dependencies: ["parcelle", "batiment", "taxe_immobiliere"],
     mappers: [toInt, toInt, toInt, toInt],
     transform: (row, ctx) => {
@@ -1327,6 +1330,7 @@ export const excelImportConfig: SheetConfig[] = [
     model: "limitrophe",
     columnCount: 2,
     compositeKey: { fields: ["Id_Lotis", "Id_Riv"] },
+    primaryKey: "Id_Lotis", // ✅ ADD
     dependencies: ["lotissement", "riviere"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
@@ -1375,6 +1379,7 @@ export const excelImportConfig: SheetConfig[] = [
     model: "contenir",
     columnCount: 2,
     compositeKey: { fields: ["Id_Parcel", "Id_Borne"] },
+    primaryKey: "Id_Parcel", // ✅ ADD
     dependencies: ["parcelle", "borne"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
@@ -1399,6 +1404,7 @@ export const excelImportConfig: SheetConfig[] = [
     model: "trouver",
     columnCount: 2,
     compositeKey: { fields: ["Id_Parcel", "Id_Infras"] },
+    primaryKey: "Id_Parcel", // ✅ ADD
     dependencies: ["parcelle", "infrastructure"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
@@ -1423,6 +1429,7 @@ export const excelImportConfig: SheetConfig[] = [
     model: "eclairer",
     columnCount: 2,
     compositeKey: { fields: ["Id_Parcel", "Id_Equip"] },
+    primaryKey: "Id_Parcel", // ✅ ADD
     dependencies: ["parcelle", "equipement"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
@@ -1447,6 +1454,7 @@ export const excelImportConfig: SheetConfig[] = [
     model: "desservir",
     columnCount: 2,
     compositeKey: { fields: ["Id_Parcel", "Id_Rte"] },
+    primaryKey: "Id_Parcel", // ✅ ADD
     dependencies: ["parcelle", "route"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
@@ -1471,6 +1479,7 @@ export const excelImportConfig: SheetConfig[] = [
     model: "approvisionner",
     columnCount: 2,
     compositeKey: { fields: ["Id_Bat", "Id_Reseaux"] },
+    primaryKey: "Id_Bat", // ✅ ADD
     dependencies: ["batiment", "reseau_en_eau"],
     mappers: [toInt, toInt],
     transform: (row, ctx) => {
