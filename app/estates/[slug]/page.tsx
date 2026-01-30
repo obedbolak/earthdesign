@@ -1228,13 +1228,13 @@ export default function EstateDetailPage() {
 
               <div className="space-y-3 mb-6">
                 <a
-                  href={`tel:${lotissement.createdBy?.phone || "+237677212279"}`}
+                  href={`tel:${lotissement.createdBy?.phone || "+237652149121"}`}
                   className="flex items-center gap-3 p-3 rounded-xl"
                   style={{ background: "rgba(255,255,255,0.1)" }}
                 >
                   <Phone className="w-5 h-5" />
                   <span className="text-sm">
-                    {lotissement.createdBy?.phone || "+237 677 212 279"}
+                    {lotissement.createdBy?.phone || "+237 652 149 121"}
                   </span>
                 </a>
                 <a

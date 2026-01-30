@@ -469,8 +469,8 @@ export default function ServicesPage() {
                     selectedService.id === service.id
                       ? service.color
                       : hoveredService === service.id
-                      ? `${service.color}80`
-                      : "rgba(255, 255, 255, 0.1)",
+                        ? `${service.color}80`
+                        : "rgba(255, 255, 255, 0.1)",
                   boxShadow:
                     hoveredService === service.id
                       ? `0 0 40px ${service.color}40`
@@ -1149,7 +1149,7 @@ export default function ServicesPage() {
                   style={{ color: COLORS.primary[400] }}
                 />
                 <span style={{ color: COLORS.gray[300] }}>
-                  +237 677 212 279
+                  +237 652 149 121
                 </span>
               </div>
               <div className="flex items-center gap-2">

@@ -1428,13 +1428,13 @@ export default function PropertyDetailPage() {
                 <motion.a
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  href={`tel:${property.createdBy?.phone || "+237677212279"}`}
+                  href={`tel:${property.createdBy?.phone || "+237652149121"}`}
                   className="flex items-center gap-3 p-3 rounded-xl transition"
                   style={{ background: "rgba(255,255,255,0.1)" }}
                 >
                   <Phone className="w-5 h-5" />
                   <span className="text-sm">
-                    {property.createdBy?.phone || "+237 677 212 279"}
+                    {property.createdBy?.phone || "+237 652 149 121"}
                   </span>
                 </motion.a>
                 <motion.a

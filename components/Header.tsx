@@ -1480,7 +1480,7 @@ export default function Header({
                   📍 Yaoundé, Cameroon
                 </span>
                 <span className="opacity-80 hidden sm:inline">
-                  📞 +237 677 212 279
+                  📞 +237 652 149 121
                 </span>
               </div>
             </div>
