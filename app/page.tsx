@@ -9,6 +9,7 @@ import {
   useSpring,
   AnimatePresence,
 } from "framer-motion";
+
 import {
   Search,
   Filter,
@@ -80,6 +81,7 @@ import {
 } from "@/lib/hooks/useProperties";
 import Link from "next/link";
 import FavoriteButton from "@/components/FavoriteButton";
+import ShareButton from "@/components/ShareButton";
 
 const faqs = [
   {
@@ -1859,17 +1861,13 @@ export default function HomePage() {
                           variant="default"
                           size="md"
                         />
-                        <motion.button
-                          whileHover={{ scale: 1.2 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="bg-white/90 backdrop-blur rounded-full p-2 shadow-lg hover:bg-white transition"
-                        >
-                          <Share2
-                            className="w-5 h-5"
-                            style={{ color: COLORS.gray[800] }}
-                          />
-                        </motion.button>
+                        <ShareButton
+                          entityType={listing._entityType}
+                          entityId={getListingId(listing)}
+                          variant="default"
+                          size="md"
+                          title={""}
+                        />
                       </div>
                       <div className="absolute top-4 right-4 flex flex-col gap-2">
                         <span
