@@ -24,8 +24,24 @@ export async function GET() {
         role: true,
         emailVerified: true,
         image: true,
+        phone: true,
+        // Agent-specific fields
+        agencyName: true,
+        agencyLogo: true,
+        bio: true,
+        whatsapp: true,
+        isVerified: true,
         createdAt: true,
         updatedAt: true,
+        // Optional: Include counts
+        _count: {
+          select: {
+            lotissements: true,
+            parcelles: true,
+            batiments: true,
+            favorites: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",

@@ -1,56 +1,91 @@
 // app/unauthorized/page.tsx
-"use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ShieldAlert } from "lucide-react";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function UnauthorizedPage() {
-  const router = useRouter();
+export default async function UnauthorizedPage() {
+  const session = await auth();
+
+  // If user is not logged in, redirect to sign in
+  if (!session) {
+    redirect("/auth/signin");
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-950 to-black p-4">
-      <div className="w-full max-w-md text-center space-y-8 backdrop-blur-xl bg-black/40 border border-white/10 rounded-2xl p-8 shadow-2xl">
-        {/* Icon */}
-        <div className="flex justify-center">
-          <div className="w-24 h-24 rounded-full bg-red-500/20 border-2 border-red-500/50 flex items-center justify-center">
-            <ShieldAlert className="w-12 h-12 text-red-400" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 text-center">
+        <div>
+          <div className="mx-auto h-24 w-24 text-red-500">
+            <svg
+              className="w-full h-full"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            Access Denied
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            You don't have permission to access this page.
+          </p>
+          <div className="mt-4 p-4 bg-gray-100 rounded-md">
+            <p className="text-xs text-gray-500">
+              Your current role:{" "}
+              <span className="font-semibold">{session.user.role}</span>
+            </p>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="space-y-4">
-          <h1 className="text-4xl font-extrabold text-white tracking-tight">
-            Access Denied
-          </h1>
-          <p className="text-gray-400 text-lg">
-            You don't have permission to access this page.
-          </p>
-          <p className="text-gray-500 text-sm">
-            This area is restricted to administrators only. If you believe this
-            is an error, please contact support.
-          </p>
-        </div>
+        <div className="mt-8 space-y-4">
+          {session.user.role === "USER" && (
+            <Link
+              href="/dashboard"
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Go to Dashboard
+            </Link>
+          )}
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4">
-          <button
-            onClick={() => router.back()}
-            className="flex-1 px-6 py-3 border border-white/20 rounded-lg text-white hover:bg-white/5 transition-all"
-          >
-            Go Back
-          </button>
+          {session.user.role === "AGENT" && (
+            <Link
+              href="/agent/dashboard"
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Go to Agent Dashboard
+            </Link>
+          )}
+
+          {session.user.role === "ADMIN" && (
+            <Link
+              href="/admin/dashboard"
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Go to Admin Dashboard
+            </Link>
+          )}
+
           <Link
             href="/"
-            className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-white font-medium transition-all hover:shadow-lg hover:shadow-green-500/25 flex items-center justify-center"
+            className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
-            Go Home
+            Go to Home
           </Link>
         </div>
 
-        {/* Help Text */}
-        <div className="pt-6 border-t border-white/10">
-          <p className="text-gray-500 text-xs">Error Code: 403 - Forbidden</p>
+        <div className="mt-6 text-xs text-gray-500">
+          <p>
+            If you believe you should have access to this page, please contact
+            your administrator.
+          </p>
         </div>
       </div>
     </div>

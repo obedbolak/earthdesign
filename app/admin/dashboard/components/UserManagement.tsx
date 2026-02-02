@@ -18,7 +18,15 @@ import {
   Mail,
   Calendar,
   UserCircle,
+  Phone,
+  Building2,
+  MessageSquare,
+  FileText,
+  CheckCircle,
+  XCircle,
+  Image as ImageIcon,
 } from "lucide-react";
+import AdminProfileImageUpload from "@/components/AdminProfileImageUpload";
 
 type UserRole = "USER" | "AGENT" | "ADMIN";
 
@@ -29,8 +37,22 @@ interface User {
   role: UserRole;
   emailVerified: string | null;
   image: string | null;
+  phone: string | null;
+  // Agent-specific fields
+  agencyName: string | null;
+  agencyLogo: string | null;
+  bio: string | null;
+  whatsapp: string | null;
+  isVerified: boolean;
   createdAt: string;
   updatedAt: string;
+  // Counts (if available)
+  _count?: {
+    lotissements: number;
+    parcelles: number;
+    batiments: number;
+    favorites: number;
+  };
 }
 
 const roleColors = {
@@ -95,6 +117,12 @@ export default function UserManagement() {
         body: JSON.stringify({
           name: editForm.name,
           role: editForm.role,
+          phone: editForm.phone,
+          agencyName: editForm.agencyName,
+          agencyLogo: editForm.agencyLogo,
+          bio: editForm.bio,
+          whatsapp: editForm.whatsapp,
+          isVerified: editForm.isVerified,
         }),
       });
 
@@ -104,7 +132,8 @@ export default function UserManagement() {
         setEditForm({});
         setExpandedRow(null);
       } else {
-        alert("Update failed");
+        const error = await res.json();
+        alert(error.error || "Update failed");
       }
     } catch {
       alert("Update failed");
@@ -133,7 +162,8 @@ export default function UserManagement() {
       if (res.ok) {
         setUsers((prev) => prev.filter((u) => u.id !== userId));
       } else {
-        alert("Delete failed");
+        const error = await res.json();
+        alert(error.error || "Delete failed");
       }
     } catch {
       alert("Delete failed");
@@ -150,7 +180,9 @@ export default function UserManagement() {
     return (
       user.email?.toLowerCase().includes(query) ||
       user.name?.toLowerCase().includes(query) ||
-      user.role?.toLowerCase().includes(query)
+      user.role?.toLowerCase().includes(query) ||
+      user.agencyName?.toLowerCase().includes(query) ||
+      user.phone?.toLowerCase().includes(query)
     );
   });
 
@@ -253,6 +285,7 @@ export default function UserManagement() {
             const isExpanded = expandedRow === user.id;
             const isEditing = editingUserId === user.id;
             const roleColor = roleColors[user.role];
+            const isAgent = user.role === "AGENT" || user.role === "ADMIN";
 
             return (
               <div
@@ -270,7 +303,7 @@ export default function UserManagement() {
                     <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4">
                       {/* User Info */}
                       <div className="flex-1 min-w-0">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-4 gap-y-2">
                           {/* Avatar + Name */}
                           <div className="flex items-center gap-3 sm:col-span-2 lg:col-span-1">
                             {user.image ? (
@@ -309,37 +342,72 @@ export default function UserManagement() {
                             </span>
                           </div>
 
-                          {/* Email Verified */}
+                          {/* Agency (for agents) */}
+                          {isAgent && (
+                            <div>
+                              <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+                                Agency
+                              </p>
+                              <p className="text-sm font-medium text-gray-800 truncate">
+                                {user.agencyName || "—"}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Verified Status */}
                           <div>
                             <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
-                              Verified
+                              Status
                             </p>
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
-                              ${
-                                user.emailVerified
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-gray-100 text-gray-500"
-                              }`}
-                            >
-                              {user.emailVerified ? (
-                                <Check className="w-3 h-3" />
-                              ) : (
-                                <X className="w-3 h-3" />
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
+                                ${
+                                  user.emailVerified
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}
+                              >
+                                {user.emailVerified ? (
+                                  <CheckCircle className="w-3 h-3" />
+                                ) : (
+                                  <XCircle className="w-3 h-3" />
+                                )}
+                                Email
+                              </span>
+                              {isAgent && (
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
+                                  ${
+                                    user.isVerified
+                                      ? "bg-purple-100 text-purple-700"
+                                      : "bg-gray-100 text-gray-500"
+                                  }`}
+                                >
+                                  {user.isVerified ? (
+                                    <CheckCircle className="w-3 h-3" />
+                                  ) : (
+                                    <XCircle className="w-3 h-3" />
+                                  )}
+                                  Agent
+                                </span>
                               )}
-                              {user.emailVerified ? "Yes" : "No"}
-                            </span>
+                            </div>
                           </div>
 
-                          {/* Created Date */}
-                          <div className="hidden lg:block">
-                            <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
-                              Joined
-                            </p>
-                            <p className="text-sm font-medium text-gray-800">
-                              {formatDate(user.createdAt)}
-                            </p>
-                          </div>
+                          {/* Listings Count (for agents) */}
+                          {isAgent && user._count && (
+                            <div>
+                              <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">
+                                Listings
+                              </p>
+                              <p className="text-sm font-medium text-gray-800">
+                                {(user._count.lotissements || 0) +
+                                  (user._count.parcelles || 0) +
+                                  (user._count.batiments || 0)}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -435,7 +503,7 @@ export default function UserManagement() {
                     <div className="p-5 lg:p-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {/* User ID */}
-                        <div>
+                        <div className="lg:col-span-3">
                           <div className="flex items-center gap-1.5 mb-2">
                             <p className="text-xs font-semibold text-gray-500 uppercase">
                               User ID
@@ -494,6 +562,35 @@ export default function UserManagement() {
                           )}
                         </div>
 
+                        {/* Phone */}
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <Phone className="w-3.5 h-3.5 text-gray-500" />
+                            <p className="text-xs font-semibold text-gray-500 uppercase">
+                              Phone
+                            </p>
+                          </div>
+                          {isEditing ? (
+                            <input
+                              type="tel"
+                              value={editForm.phone || ""}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  phone: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg
+                                       focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                              placeholder="Enter phone number"
+                            />
+                          ) : (
+                            <p className="text-sm text-gray-800">
+                              {user.phone || "—"}
+                            </p>
+                          )}
+                        </div>
+
                         {/* Role */}
                         <div>
                           <div className="flex items-center gap-1.5 mb-2">
@@ -532,7 +629,7 @@ export default function UserManagement() {
                         {/* Email Verified */}
                         <div>
                           <div className="flex items-center gap-1.5 mb-2">
-                            <Check className="w-3.5 h-3.5 text-gray-500" />
+                            <CheckCircle className="w-3.5 h-3.5 text-gray-500" />
                             <p className="text-xs font-semibold text-gray-500 uppercase">
                               Email Verified
                             </p>
@@ -543,6 +640,115 @@ export default function UserManagement() {
                               : "Not verified"}
                           </p>
                         </div>
+
+                        {/* Agent Verified */}
+                        {isAgent && (
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <CheckCircle className="w-3.5 h-3.5 text-gray-500" />
+                              <p className="text-xs font-semibold text-gray-500 uppercase">
+                                Agent Verified
+                              </p>
+                            </div>
+                            {isEditing ? (
+                              <label className="inline-flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={editForm.isVerified || false}
+                                  onChange={(e) =>
+                                    setEditForm({
+                                      ...editForm,
+                                      isVerified: e.target.checked,
+                                    })
+                                  }
+                                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded
+                                           focus:ring-indigo-500"
+                                />
+                                <span className="text-sm text-gray-700">
+                                  Verified Agent
+                                </span>
+                              </label>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
+                                ${
+                                  user.isVerified
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}
+                              >
+                                {user.isVerified ? (
+                                  <CheckCircle className="w-3 h-3" />
+                                ) : (
+                                  <XCircle className="w-3 h-3" />
+                                )}
+                                {user.isVerified ? "Verified" : "Not Verified"}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Agency Name */}
+                        {isAgent && (
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <Building2 className="w-3.5 h-3.5 text-gray-500" />
+                              <p className="text-xs font-semibold text-gray-500 uppercase">
+                                Agency Name
+                              </p>
+                            </div>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editForm.agencyName || ""}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    agencyName: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg
+                                         focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                placeholder="Enter agency name"
+                              />
+                            ) : (
+                              <p className="text-sm text-gray-800">
+                                {user.agencyName || "—"}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* WhatsApp */}
+                        {isAgent && (
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <MessageSquare className="w-3.5 h-3.5 text-gray-500" />
+                              <p className="text-xs font-semibold text-gray-500 uppercase">
+                                WhatsApp
+                              </p>
+                            </div>
+                            {isEditing ? (
+                              <input
+                                type="tel"
+                                value={editForm.whatsapp || ""}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    whatsapp: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg
+                                         focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                placeholder="Enter WhatsApp number"
+                              />
+                            ) : (
+                              <p className="text-sm text-gray-800">
+                                {user.whatsapp || "—"}
+                              </p>
+                            )}
+                          </div>
+                        )}
 
                         {/* Created At */}
                         <div>
@@ -570,29 +776,129 @@ export default function UserManagement() {
                           </p>
                         </div>
 
+                        {/* Bio */}
+                        {isAgent && (
+                          <div className="md:col-span-2 lg:col-span-3">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <FileText className="w-3.5 h-3.5 text-gray-500" />
+                              <p className="text-xs font-semibold text-gray-500 uppercase">
+                                Bio
+                              </p>
+                            </div>
+                            {isEditing ? (
+                              <textarea
+                                value={editForm.bio || ""}
+                                onChange={(e) =>
+                                  setEditForm({
+                                    ...editForm,
+                                    bio: e.target.value,
+                                  })
+                                }
+                                rows={3}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg
+                                         focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                                placeholder="Enter agent bio"
+                              />
+                            ) : (
+                              <p className="text-sm text-gray-800 whitespace-pre-wrap">
+                                {user.bio || "—"}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
                         {/* Profile Image */}
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-2 lg:col-span-1">
                           <div className="flex items-center gap-1.5 mb-2">
-                            <UserCircle className="w-3.5 h-3.5 text-gray-500" />
+                            <ImageIcon className="w-3.5 h-3.5 text-gray-500" />
                             <p className="text-xs font-semibold text-gray-500 uppercase">
                               Profile Image
                             </p>
                           </div>
-                          {user.image && (
-                            <button
-                              onClick={() => window.open(user.image!, "_blank")}
-                              className="text-sm text-indigo-600 underline"
-                            >
-                              <div className="flex items-center gap-3">
-                                <img
-                                  src={user.image}
-                                  alt={user.name || "User"}
-                                  className="w-16 h-16 rounded-lg object-cover border-2 border-gray-200"
-                                />
-                              </div>
-                            </button>
-                          )}
+                          <AdminProfileImageUpload
+                            userId={user.id}
+                            imageType="image"
+                            currentImage={user.image}
+                            onImageUpdate={(url) => {
+                              setUsers((prev) =>
+                                prev.map((u) =>
+                                  u.id === user.id ? { ...u, image: url } : u,
+                                ),
+                              );
+                            }}
+                            size="md"
+                          />
                         </div>
+
+                        {/* Agency Logo */}
+                        {isAgent && (
+                          <div className="md:col-span-2 lg:col-span-1">
+                            <div className="flex items-center gap-1.5 mb-2">
+                              <Building2 className="w-3.5 h-3.5 text-gray-500" />
+                              <p className="text-xs font-semibold text-gray-500 uppercase">
+                                Agency Logo
+                              </p>
+                            </div>
+                            <AdminProfileImageUpload
+                              userId={user.id}
+                              imageType="agencyLogo"
+                              currentImage={user.agencyLogo}
+                              onImageUpdate={(url) => {
+                                setUsers((prev) =>
+                                  prev.map((u) =>
+                                    u.id === user.id
+                                      ? { ...u, agencyLogo: url }
+                                      : u,
+                                  ),
+                                );
+                              }}
+                              size="md"
+                            />
+                          </div>
+                        )}
+
+                        {/* Listings Stats */}
+                        {isAgent && user._count && (
+                          <div className="md:col-span-2 lg:col-span-3 pt-4 border-t border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                              Listing Statistics
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div className="bg-blue-50 p-3 rounded-lg">
+                                <p className="text-xs text-blue-600 font-medium mb-1">
+                                  Lotissements
+                                </p>
+                                <p className="text-2xl font-bold text-blue-700">
+                                  {user._count.lotissements || 0}
+                                </p>
+                              </div>
+                              <div className="bg-green-50 p-3 rounded-lg">
+                                <p className="text-xs text-green-600 font-medium mb-1">
+                                  Parcelles
+                                </p>
+                                <p className="text-2xl font-bold text-green-700">
+                                  {user._count.parcelles || 0}
+                                </p>
+                              </div>
+                              <div className="bg-purple-50 p-3 rounded-lg">
+                                <p className="text-xs text-purple-600 font-medium mb-1">
+                                  Batiments
+                                </p>
+                                <p className="text-2xl font-bold text-purple-700">
+                                  {user._count.batiments || 0}
+                                </p>
+                              </div>
+                              <div className="bg-orange-50 p-3 rounded-lg">
+                                <p className="text-xs text-orange-600 font-medium mb-1">
+                                  Favorites
+                                </p>
+                                <p className="text-2xl font-bold text-orange-700">
+                                  {user._count.favorites || 0}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

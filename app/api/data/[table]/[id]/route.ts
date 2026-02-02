@@ -228,6 +228,9 @@ function getIncludeConfig(table: string) {
 /* =========================================================
  * 4. Helper Functions
  * ========================================================= */
+/* =========================================================
+ * 4. Helper Functions
+ * ========================================================= */
 function coerceId(idStr: string, table: string): string | number {
   const pk = primaryKeyMap[table];
   // UUID for user table
@@ -248,13 +251,31 @@ async function checkAuth(
     return { authorized: false, error: "Authentication required", status: 401 };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, role: true },
-  });
+  // 🔧 FIX: Try to get user by ID first, then fallback to email
+  let user = null;
+
+  // Try by ID if available
+  if (session.user.id) {
+    user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { id: true, role: true },
+    });
+  }
+
+  // Fallback: Try by email (more reliable with some OAuth providers)
+  if (!user && session.user.email) {
+    user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, role: true },
+    });
+  }
 
   if (!user) {
-    return { authorized: false, error: "User not found", status: 401 };
+    console.error("[Auth] User not found:", {
+      sessionId: session.user.id,
+      sessionEmail: session.user.email,
+    });
+    return { authorized: false, error: "User account not found", status: 401 };
   }
 
   // Admin-only tables
@@ -284,7 +305,6 @@ async function checkAuth(
 
   return { authorized: true, user };
 }
-
 /* =========================================================
  * 5. GET - Fetch single record by ID
  * ========================================================= */
