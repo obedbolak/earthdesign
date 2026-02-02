@@ -54,6 +54,7 @@ import {
 } from "@/lib/hooks/useProperties";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import Footer from "@/components/Footer";
+import FavoriteButton from "@/components/FavoriteButton";
 
 // =========================================================
 // LOCAL UTILITIES
@@ -552,9 +553,12 @@ export default function PropertyDetailPage() {
 
                 {/* Actions */}
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <button className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center">
-                    <Heart className="w-5 h-5 text-gray-800" />
-                  </button>
+                  <FavoriteButton
+                    entityType="BATIMENT" // ✅ Fixed - use literal string
+                    entityId={property.Id_Bat}
+                    variant="overlay"
+                    size="lg"
+                  />
                   <button className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center">
                     <Share2 className="w-5 h-5 text-gray-800" />
                   </button>

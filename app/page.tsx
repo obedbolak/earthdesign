@@ -79,6 +79,7 @@ import {
   isForRent,
 } from "@/lib/hooks/useProperties";
 import Link from "next/link";
+import FavoriteButton from "@/components/FavoriteButton";
 
 const faqs = [
   {
@@ -1852,17 +1853,12 @@ export default function HomePage() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       <div className="absolute top-4 left-4 flex gap-2">
-                        <motion.button
-                          whileHover={{ scale: 1.2 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="bg-white/90 backdrop-blur rounded-full p-2 shadow-lg hover:bg-white transition"
-                        >
-                          <Heart
-                            className="w-5 h-5"
-                            style={{ color: COLORS.gray[800] }}
-                          />
-                        </motion.button>
+                        <FavoriteButton
+                          entityType={listing._entityType}
+                          entityId={getListingId(listing)}
+                          variant="default"
+                          size="md"
+                        />
                         <motion.button
                           whileHover={{ scale: 1.2 }}
                           whileTap={{ scale: 0.9 }}

@@ -76,6 +76,7 @@ import {
 } from "@/lib/hooks/useProperties";
 import Footer from "@/components/Footer";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
+import FavoriteButton from "@/components/FavoriteButton";
 
 // Placeholder images by entity type and property type
 const PLACEHOLDER_IMAGES: Record<string, string> = {
@@ -738,19 +739,12 @@ export default function AllPropertiesPage() {
 
             {/* Action buttons */}
             <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex gap-1.5 sm:gap-2">
-              <motion.button
-                whileHover={{ scale: 1.2 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={(e) => {
-                  e.preventDefault();
-                }}
-                className="w-7 h-7 sm:w-8 sm:h-8 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition"
-              >
-                <Heart
-                  className="w-3.5 h-3.5 sm:w-4 sm:h-4"
-                  style={{ color: COLORS.gray[700] }}
-                />
-              </motion.button>
+              <FavoriteButton
+                entityType={listing._entityType}
+                entityId={getListingId(listing)}
+                size="sm"
+                variant="default"
+              />
             </div>
 
             {/* Feature badges */}
@@ -948,17 +942,12 @@ export default function AllPropertiesPage() {
                 )}
               </div>
               <div className="flex gap-1.5 sm:gap-2">
-                <motion.button
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                  }}
-                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition"
-                  style={{ background: `${COLORS.white}10` }}
-                >
-                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                </motion.button>
+                <FavoriteButton
+                  entityType={listing._entityType}
+                  entityId={getListingId(listing)}
+                  size="sm"
+                  variant="overlay"
+                />
                 <motion.button
                   whileHover={{ scale: 1.2 }}
                   whileTap={{ scale: 0.9 }}
