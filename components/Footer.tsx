@@ -29,11 +29,11 @@ const footerLinks = {
     { name: "Contact Us", href: "/contact" },
   ],
   properties: [
-    { name: "For Sale", href: "/properties?status=sale" },
-    { name: "For Rent", href: "/properties?status=rent" },
-    { name: "New Developments", href: "/properties?type=new" },
-    { name: "Commercial", href: "/properties?type=commercial" },
-    { name: "Land & Plots", href: "/properties?type=land" },
+    { name: "For Sale", href: "/properties?listingType=SALE" },
+    { name: "For Rent", href: "/properties?listingType=RENT" },
+    { name: "New Developments", href: "/properties?entityType=LOTISSEMENT" },
+    { name: "Commercial", href: "/properties?category=COMMERCIAL" },
+    { name: "Land & Plots", href: "/properties?entityType=PARCELLE" },
   ],
   support: [
     { name: "Help Center", href: "/help" },
