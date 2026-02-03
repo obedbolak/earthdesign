@@ -37,20 +37,18 @@ import {
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
+import { useFavorites } from "@/lib/hooks/useFavorites";
 
 import { signOut } from "next-auth/react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import {
-  // Hooks
   useAllListings,
-  // Types
   Listing,
   Lotissement,
   Parcelle,
   Batiment,
   EntityType,
   PropertyType,
-  // Utility functions
   getListingId,
   getListingUrl,
   getListingPrimaryImage,
@@ -60,13 +58,10 @@ import {
   formatArea,
   getPropertyTypeLabel,
   getEntityTypeLabel,
-  isForSale,
-  isForRent,
 } from "@/lib/hooks/useProperties";
 
-// Placeholder images by entity type and property type
+// Fallback images if media is missing
 const PLACEHOLDER_IMAGES: Record<string, string> = {
-  // Property types (Batiment)
   VILLA:
     "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400&h=300&fit=crop&q=80",
   APARTMENT:
@@ -86,7 +81,6 @@ const PLACEHOLDER_IMAGES: Record<string, string> = {
   WAREHOUSE:
     "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&h=300&fit=crop&q=80",
   SHOP: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop&q=80",
-  // Entity type defaults
   LOTISSEMENT:
     "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&h=300&fit=crop&q=80",
   PARCELLE:
@@ -97,7 +91,6 @@ const PLACEHOLDER_IMAGES: Record<string, string> = {
     "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop&q=80",
 };
 
-// Services data for dropdown
 const SERVICES = [
   {
     id: "real-estate",
@@ -125,29 +118,14 @@ const SERVICES = [
   },
 ];
 
-// Entity type icons
 const ENTITY_ICONS: Record<EntityType, React.ComponentType<any>> = {
   LOTISSEMENT: Layers,
   PARCELLE: Map,
   BATIMENT: Building2,
 };
-// =========================================================
-// LOCAL TYPES & UTILITY FUNCTIONS
-// =========================================================
 
-// ListingStats interface (define locally since not exported from hook)
-interface ListingStats {
-  total: number;
-  published: number;
-  featured: number;
-  forSale: number;
-  forRent: number;
-  byCategory: Record<string, number>;
-  byEntityType: Record<EntityType, number>;
-  averagePrice: number;
-}
+// --- Helper Functions ---
 
-// Format price compact (e.g., "25M" instead of "25,000,000 XAF")
 function formatPriceCompact(
   price: string | number | null | undefined,
   currency = "XAF",
@@ -161,7 +139,6 @@ function formatPriceCompact(
   return numPrice.toLocaleString("fr-CM");
 }
 
-// Search listings locally
 function searchListings(listings: Listing[], query: string): Listing[] {
   if (!query.trim()) return listings;
   const terms = query.toLowerCase().split(/\s+/);
@@ -179,31 +156,29 @@ function searchListings(listings: Listing[], query: string): Listing[] {
   });
 }
 
-// Get listing image (primary or placeholder)
-const getListingImage = (listing: Listing): string => {
+// Local helper for search results images
+const getSearchListingImage = (listing: Listing): string => {
   const primaryImage = getListingPrimaryImage(listing);
   if (primaryImage) return primaryImage;
 
-  // Try property type for batiments
+  // Use property type placeholder if available
   if (listing._entityType === "BATIMENT") {
     const batiment = listing as Batiment;
     if (batiment.propertyType && PLACEHOLDER_IMAGES[batiment.propertyType]) {
       return PLACEHOLDER_IMAGES[batiment.propertyType];
     }
   }
-
   return PLACEHOLDER_IMAGES[listing._entityType] || PLACEHOLDER_IMAGES.default;
 };
 
-// Get listing status label
-const getListingStatusLabel = (listing: Listing): string => {
+// Local helper for search result status
+const getSearchStatusLabel = (listing: Listing): string => {
   if (listing.listingType === "BOTH") return "Sale / Rent";
   if (listing.listingType === "SALE") return "For Sale";
   if (listing.listingType === "RENT") return "For Rent";
   return "Available";
 };
 
-// Get status color
 const getStatusColor = (listing: Listing): string => {
   if (listing.listingType === "BOTH") return COLORS.primary[500];
   if (listing.listingType === "SALE") return "#22c55e";
@@ -211,7 +186,6 @@ const getStatusColor = (listing: Listing): string => {
   return COLORS.gray[500];
 };
 
-// Get type label for display
 const getTypeLabel = (listing: Listing): string => {
   if (listing._entityType === "BATIMENT") {
     const batiment = listing as Batiment;
@@ -222,7 +196,6 @@ const getTypeLabel = (listing: Listing): string => {
   return getEntityTypeLabel(listing._entityType, "en");
 };
 
-// Get placeholder image for entity type
 const getPlaceholderImage = (entityType: EntityType): string => {
   return PLACEHOLDER_IMAGES[entityType] || PLACEHOLDER_IMAGES.default;
 };
@@ -235,8 +208,17 @@ export default function Header({
   onSearchClick?: () => void;
 }) {
   const { listings } = useAllListings({ status: "PUBLISHED", limit: 100 });
+  const { user, isLoading, isAuthenticated } = useAuth();
+
+  // Favorites Hook
+  const {
+    favorites,
+    count: favoritesCount,
+    loading: favoritesLoading,
+  } = useFavorites();
 
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [showFavoritesMenu, setShowFavoritesMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
@@ -253,11 +235,10 @@ export default function Header({
   const mobileInputRef = useRef<HTMLInputElement>(null);
   const servicesMenuRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const favoritesMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const { user, isLoading, isAuthenticated, isAdmin, isAgent } = useAuth();
-
-  // Logout handler
+  // Handle Logout
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
@@ -270,7 +251,7 @@ export default function Header({
     }
   };
 
-  // Search with debounce
+  // Search Logic
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery.trim()) {
@@ -281,40 +262,32 @@ export default function Header({
         setSearchResults([]);
       }
     }, 150);
-
     return () => clearTimeout(timer);
   }, [searchQuery, listings]);
 
-  // Handle click outside to close all menus
+  // Click Outside Handler
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-
-      if (searchRef.current && !searchRef.current.contains(target)) {
+      if (searchRef.current && !searchRef.current.contains(target))
         setIsSearchFocused(false);
-      }
-      if (
-        mobileSearchRef.current &&
-        !mobileSearchRef.current.contains(target)
-      ) {
+      if (mobileSearchRef.current && !mobileSearchRef.current.contains(target))
         setIsMobileSearchOpen(false);
-      }
-      if (
-        servicesMenuRef.current &&
-        !servicesMenuRef.current.contains(target)
-      ) {
+      if (servicesMenuRef.current && !servicesMenuRef.current.contains(target))
         setShowServicesMenu(false);
-      }
-      if (accountMenuRef.current && !accountMenuRef.current.contains(target)) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(target))
         setShowAccountMenu(false);
-      }
+      if (
+        favoritesMenuRef.current &&
+        !favoritesMenuRef.current.contains(target)
+      )
+        setShowFavoritesMenu(false);
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Handle keyboard navigation
+  // Keyboard Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -322,17 +295,16 @@ export default function Header({
         inputRef.current?.focus();
         setIsSearchFocused(true);
       }
-
       if (e.key === "Escape") {
         setIsSearchFocused(false);
         setIsMobileSearchOpen(false);
         setIsMobileMenuOpen(false);
         setShowAccountMenu(false);
+        setShowFavoritesMenu(false);
         inputRef.current?.blur();
         mobileInputRef.current?.blur();
         setSelectedIndex(-1);
       }
-
       if (isSearchFocused && searchResults.length > 0) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
@@ -352,11 +324,11 @@ export default function Header({
         }
       }
     };
-
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isSearchFocused, searchResults, selectedIndex]);
 
+  // --- Handlers ---
   const handleViewListing = useCallback(
     (listing: Listing) => {
       router.push(getListingUrl(listing));
@@ -382,9 +354,7 @@ export default function Header({
     setSelectedIndex(-1);
   }, []);
 
-  const handleSearchFocus = useCallback(() => {
-    setIsSearchFocused(true);
-  }, []);
+  const handleSearchFocus = useCallback(() => setIsSearchFocused(true), []);
 
   const handleMobileSearchOpen = useCallback(() => {
     setIsMobileSearchOpen(true);
@@ -410,25 +380,19 @@ export default function Header({
     setShowMobileServicesMenu(false);
   }, []);
 
-  const closeAccountMenu = useCallback(() => {
-    setShowAccountMenu(false);
-  }, []);
+  const closeAccountMenu = useCallback(() => setShowAccountMenu(false), []);
 
   const showDropdown = isSearchFocused && searchQuery.trim() !== "";
   const hasResults = searchResults.length > 0;
   const showNoResults = searchQuery.trim() !== "" && !hasResults;
 
-  // Get user initials for avatar fallback
   const getUserInitials = () => {
     if (!user || !user.name) return "U";
     const names = user.name.trim().split(" ");
-    if (names.length >= 2) {
-      return `${names[0][0]}${names[1][0]}`.toUpperCase();
-    }
+    if (names.length >= 2) return `${names[0][0]}${names[1][0]}`.toUpperCase();
     return names[0][0].toUpperCase();
   };
 
-  // Get role badge color
   const getRoleBadgeColor = (role: string | undefined) => {
     switch (role?.toUpperCase()) {
       case "ADMIN":
@@ -442,7 +406,108 @@ export default function Header({
     }
   };
 
-  // Render listing features for search results
+  // --- Favorite Helpers ---
+
+  // 1. URL Generator matching useProperties.ts logic exactly
+  const getFavoriteUrl = (favorite: any): string => {
+    const entity =
+      favorite.lotissement || favorite.parcelle || favorite.batiment;
+    if (!entity) return "/properties";
+
+    const id = entity.Id_Lotis || entity.Id_Parcel || entity.Id_Bat;
+    const slug = entity.slug || id;
+
+    if (favorite.entityType === "LOTISSEMENT") return `/estates/${slug}`;
+    if (favorite.entityType === "PARCELLE") return `/lands/${slug}`;
+    if (favorite.entityType === "BATIMENT") return `/properties/${slug}`;
+
+    return "/properties";
+  };
+
+  // 2. Data Extractor
+  const getFavoriteDetails = (favorite: any) => {
+    const entity =
+      favorite.lotissement || favorite.parcelle || favorite.batiment;
+    if (!entity) return null;
+
+    const entityType: EntityType = favorite.entityType;
+    const url = getFavoriteUrl(favorite);
+
+    let id: number;
+    let title: string;
+    let price: any;
+    let image: string;
+    let surface: number | null = null;
+    let propertyType: string | null = null;
+    let bedrooms: number | null = null;
+    let bathrooms: number | null = null;
+
+    // Helper to robustly find image url
+    const getPrimaryImage = (media: any[] | undefined): string | null => {
+      if (!media || !Array.isArray(media) || media.length === 0) return null;
+      // 1. Try Primary Image
+      const primary = media.find((m: any) => m.isPrimary);
+      if (primary?.url) return primary.url;
+      // 2. Try any Image
+      const anyImage = media.find(
+        (m: any) => m.type === "image" || m.type === "IMAGE",
+      );
+      if (anyImage?.url) return anyImage.url;
+      // 3. Fallback to first item with a url
+      if (media[0]?.url) return media[0].url;
+      return null;
+    };
+
+    if (favorite.lotissement) {
+      const lot = favorite.lotissement;
+      id = lot.Id_Lotis;
+      title = lot.title || lot.Nom_proprio || "Untitled Estate";
+      price = lot.price;
+      surface = lot.Surface;
+      image = getPrimaryImage(lot.media) || PLACEHOLDER_IMAGES.LOTISSEMENT;
+    } else if (favorite.parcelle) {
+      const par = favorite.parcelle;
+      id = par.Id_Parcel;
+      title = par.title || par.Nom_Prop || "Untitled Land";
+      price = par.price;
+      surface = par.Sup;
+      image = getPrimaryImage(par.media) || PLACEHOLDER_IMAGES.PARCELLE;
+    } else {
+      const bat = favorite.batiment;
+      id = bat.Id_Bat;
+      title = bat.title || bat.Nom || "Untitled Property";
+      price = bat.price || bat.rentPrice;
+      surface = bat.surfaceArea;
+      propertyType = bat.propertyType;
+      bedrooms = bat.bedrooms;
+      bathrooms = bat.bathrooms;
+
+      const foundImage = getPrimaryImage(bat.media);
+      if (foundImage) {
+        image = foundImage;
+      } else if (propertyType && PLACEHOLDER_IMAGES[propertyType]) {
+        image = PLACEHOLDER_IMAGES[propertyType];
+      } else {
+        image = PLACEHOLDER_IMAGES.BATIMENT;
+      }
+    }
+
+    return {
+      id,
+      entityType,
+      title,
+      url,
+      price,
+      image,
+      surface,
+      propertyType,
+      bedrooms,
+      bathrooms,
+    };
+  };
+
+  // --- Render Functions ---
+
   const renderListingFeatures = (listing: Listing) => {
     if (listing._entityType === "BATIMENT") {
       const batiment = listing as Batiment;
@@ -501,7 +566,6 @@ export default function Header({
     return null;
   };
 
-  // Render listing card for search results
   const renderListingCard = (
     listing: Listing,
     idx: number,
@@ -525,15 +589,13 @@ export default function Header({
           background: isSelected
             ? `${COLORS.primary[700]}99`
             : `${COLORS.primary[800]}99`,
-          border: `1px solid ${
-            isSelected ? COLORS.primary[400] : COLORS.primary[600]
-          }60`,
+          border: `1px solid ${isSelected ? COLORS.primary[400] : COLORS.primary[600]}60`,
         }}
       >
         {isMobile ? (
           <div className="flex items-center gap-3 p-3 transition-colors active:bg-primary-800/40">
             <img
-              src={getListingImage(listing)}
+              src={getSearchListingImage(listing)}
               alt={listing.title || "Listing"}
               className="w-16 h-16 rounded-lg object-cover shadow flex-shrink-0"
               onError={(e) => {
@@ -560,7 +622,7 @@ export default function Header({
                     color: COLORS.white,
                   }}
                 >
-                  {getListingStatusLabel(listing)}
+                  {getSearchStatusLabel(listing)}
                 </span>
               </div>
               <h4
@@ -601,7 +663,7 @@ export default function Header({
           <>
             <div className="relative h-40 overflow-hidden">
               <img
-                src={getListingImage(listing)}
+                src={getSearchListingImage(listing)}
                 alt={listing.title || "Listing"}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                 onError={(e) => {
@@ -634,16 +696,13 @@ export default function Header({
                     color: COLORS.white,
                   }}
                 >
-                  {getListingStatusLabel(listing)}
+                  {getSearchStatusLabel(listing)}
                 </span>
               </div>
               <div className="absolute top-3 right-3">
                 <span
                   className="px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm"
-                  style={{
-                    background: "rgba(0,0,0,0.5)",
-                    color: COLORS.white,
-                  }}
+                  style={{ background: "rgba(0,0,0,0.5)", color: COLORS.white }}
                 >
                   {getEntityTypeLabel(listing._entityType, "en")}
                 </span>
@@ -707,7 +766,6 @@ export default function Header({
     );
   };
 
-  // Render Services Menu Content (shared between mobile and desktop)
   const renderServicesContent = (isMobile: boolean = false) => (
     <div className={isMobile ? "space-y-2" : "py-2 space-y-1"}>
       {SERVICES.map((service) => (
@@ -721,22 +779,14 @@ export default function Header({
         >
           <motion.div
             whileHover={!isMobile ? { x: 4 } : undefined}
-            className={`group ${
-              isMobile ? "p-3" : "p-4"
-            } rounded-xl transition cursor-pointer ${
-              isMobile ? "active:bg-primary-800/40" : ""
-            }`}
-            style={{
-              background: "rgba(255, 255, 255, 0.05)",
-            }}
+            className={`group ${isMobile ? "p-3" : "p-4"} rounded-xl transition cursor-pointer ${isMobile ? "active:bg-primary-800/40" : ""}`}
+            style={{ background: "rgba(255, 255, 255, 0.05)" }}
           >
             <div className="flex items-start gap-3 sm:gap-4">
               <motion.div
                 whileHover={!isMobile ? { rotate: 360 } : undefined}
                 transition={{ duration: 0.6 }}
-                className={`${
-                  isMobile ? "w-10 h-10" : "w-12 h-12"
-                } rounded-xl bg-gradient-to-br ${
+                className={`${isMobile ? "w-10 h-10" : "w-12 h-12"} rounded-xl bg-gradient-to-br ${
                   service.id === "real-estate"
                     ? "from-green-500 to-emerald-500"
                     : service.id === "land-survey"
@@ -748,28 +798,21 @@ export default function Header({
                   className={`${isMobile ? "w-5 h-5" : "w-6 h-6"} text-white`}
                 />
               </motion.div>
-
               <div className="flex-1 min-w-0">
                 <h4
-                  className={`font-bold ${
-                    isMobile ? "text-sm" : "text-base"
-                  } mb-1 group-hover:text-primary-200 transition-colors`}
+                  className={`font-bold ${isMobile ? "text-sm" : "text-base"} mb-1 group-hover:text-primary-200 transition-colors`}
                   style={{ color: COLORS.white }}
                 >
                   {service.title}
                 </h4>
                 <p
-                  className={`${
-                    isMobile ? "text-xs" : "text-sm"
-                  } mb-2 line-clamp-1`}
+                  className={`${isMobile ? "text-xs" : "text-sm"} mb-2 line-clamp-1`}
                   style={{ color: COLORS.primary[300] }}
                 >
                   {service.description}
                 </p>
                 <div
-                  className={`flex ${
-                    isMobile ? "flex-col gap-1" : "flex-row flex-wrap gap-2"
-                  }`}
+                  className={`flex ${isMobile ? "flex-col gap-1" : "flex-row flex-wrap gap-2"}`}
                 >
                   {service.features.map((feature, idx) => (
                     <span
@@ -785,11 +828,8 @@ export default function Header({
                   ))}
                 </div>
               </div>
-
               <ChevronRight
-                className={`${isMobile ? "w-4 h-4" : "w-5 h-5"} flex-shrink-0 ${
-                  isMobile ? "opacity-50" : "opacity-0 group-hover:opacity-100"
-                } transition-opacity`}
+                className={`${isMobile ? "w-4 h-4" : "w-5 h-5"} flex-shrink-0 ${isMobile ? "opacity-50" : "opacity-0 group-hover:opacity-100"} transition-opacity`}
                 style={{ color: COLORS.primary[300] }}
               />
             </div>
@@ -799,9 +839,193 @@ export default function Header({
     </div>
   );
 
-  // Render Account Menu Content - Dynamic based on auth state
+  const renderFavoritesContent = () => {
+    // Uncomment to debug if images are still missing
+    // console.log("Favorites data in header:", favorites);
+
+    if (favoritesLoading) {
+      return (
+        <div className="p-8 flex flex-col items-center justify-center">
+          <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4" />
+          <p style={{ color: COLORS.primary[300] }}>Loading favorites...</p>
+        </div>
+      );
+    }
+
+    if (favorites.length === 0) {
+      return (
+        <div className="p-8 text-center">
+          <Heart
+            className="w-14 h-14 mx-auto mb-4"
+            style={{ color: COLORS.primary[400] }}
+          />
+          <p
+            className="font-semibold text-lg mb-2"
+            style={{ color: COLORS.primary[200] }}
+          >
+            No favorites yet
+          </p>
+          <p className="text-sm mb-4" style={{ color: COLORS.primary[300] }}>
+            Start saving properties you love!
+          </p>
+          <Link
+            href="/properties"
+            className="inline-block px-6 py-2 rounded-full font-semibold text-white transition"
+            style={{ background: GRADIENTS.button.primary }}
+            onClick={() => setShowFavoritesMenu(false)}
+          >
+            Browse Listings
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <div
+          className="px-4 py-3 border-b flex items-center justify-between"
+          style={{ borderColor: `${COLORS.primary[400]}40` }}
+        >
+          <p
+            className="text-sm font-semibold"
+            style={{ color: COLORS.primary[100] }}
+          >
+            {favoritesCount} {favoritesCount === 1 ? "Favorite" : "Favorites"}
+          </p>
+          <Link
+            href="/dashboard/favorites"
+            className="text-xs font-medium hover:underline"
+            style={{ color: COLORS.primary[300] }}
+            onClick={() => setShowFavoritesMenu(false)}
+          >
+            View All →
+          </Link>
+        </div>
+        <div className="max-h-[400px] overflow-y-auto">
+          {favorites.slice(0, 6).map((favorite, idx) => {
+            const details = getFavoriteDetails(favorite);
+            if (!details) return null;
+            const EntityIcon = ENTITY_ICONS[details.entityType];
+
+            return (
+              <Link
+                key={`${favorite.entityType}-${favorite.id}`}
+                href={details.url}
+                onClick={() => setShowFavoritesMenu(false)}
+              >
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="flex items-center gap-3 p-3 transition-colors hover:bg-white/5 active:bg-white/10 cursor-pointer border-b"
+                  style={{ borderColor: `${COLORS.primary[600]}30` }}
+                >
+                  <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                    <img
+                      src={details.image}
+                      alt={details.title}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src =
+                          PLACEHOLDER_IMAGES[details.entityType] ||
+                          PLACEHOLDER_IMAGES.default;
+                      }}
+                    />
+                    <div
+                      className="absolute top-1 left-1 w-5 h-5 rounded flex items-center justify-center"
+                      style={{ background: `${COLORS.primary[500]}CC` }}
+                    >
+                      <EntityIcon className="w-3 h-3 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="font-semibold text-sm truncate mb-1"
+                      style={{ color: COLORS.white }}
+                    >
+                      {details.title}
+                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full"
+                        style={{
+                          background: `${COLORS.primary[500]}30`,
+                          color: COLORS.primary[200],
+                        }}
+                      >
+                        {details.propertyType
+                          ? getPropertyTypeLabel(
+                              details.propertyType as PropertyType,
+                              "en",
+                            )
+                          : getEntityTypeLabel(details.entityType, "en")}
+                      </span>
+                      {details.bedrooms && (
+                        <span
+                          className="text-xs flex items-center gap-1"
+                          style={{ color: COLORS.primary[300] }}
+                        >
+                          <Bed className="w-3 h-3" /> {details.bedrooms}
+                        </span>
+                      )}
+                      {details.bathrooms && (
+                        <span
+                          className="text-xs flex items-center gap-1"
+                          style={{ color: COLORS.primary[300] }}
+                        >
+                          <Bath className="w-3 h-3" /> {details.bathrooms}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p
+                      className="font-bold text-sm"
+                      style={{ color: COLORS.primary[300] }}
+                    >
+                      {details.price && Number(details.price) > 0
+                        ? formatPriceCompact(details.price)
+                        : "N/A"}
+                    </p>
+                    {details.surface && (
+                      <p
+                        className="text-xs"
+                        style={{ color: COLORS.primary[400] }}
+                      >
+                        {formatArea(details.surface)}
+                      </p>
+                    )}
+                  </div>
+                  <ChevronRight
+                    className="w-4 h-4 flex-shrink-0 opacity-50"
+                    style={{ color: COLORS.primary[300] }}
+                  />
+                </motion.div>
+              </Link>
+            );
+          })}
+        </div>
+        {favorites.length > 6 && (
+          <div
+            className="p-3 border-t"
+            style={{ borderColor: `${COLORS.primary[400]}40` }}
+          >
+            <Link
+              href="/dashboard/favorites"
+              className="block text-center py-2 px-4 rounded-xl font-semibold text-white transition-all hover:shadow-lg text-sm"
+              style={{ background: GRADIENTS.button.primary }}
+              onClick={() => setShowFavoritesMenu(false)}
+            >
+              View All {favoritesCount} Favorites
+            </Link>
+          </div>
+        )}
+      </>
+    );
+  };
+
   const renderAccountMenuContent = (isMobile: boolean = false) => {
-    // Loading state
     if (isLoading) {
       return (
         <div className="p-8 flex flex-col items-center justify-center">
@@ -811,20 +1035,17 @@ export default function Header({
       );
     }
 
-    // Not logged in
     if (!isAuthenticated) {
+      // Guest View
       return (
         <>
-          {/* Header */}
           <div
             className="px-5 py-4 border-b"
             style={{ borderColor: `${COLORS.primary[400]}40` }}
           >
             <div className="flex items-center gap-3">
               <div
-                className={`${
-                  isMobile ? "w-14 h-14" : "w-12 h-12"
-                } rounded-full flex items-center justify-center`}
+                className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} rounded-full flex items-center justify-center`}
                 style={{
                   background: `linear-gradient(135deg, ${COLORS.primary[500]} 0%, ${COLORS.emerald[500]} 100%)`,
                 }}
@@ -849,8 +1070,6 @@ export default function Header({
               </div>
             </div>
           </div>
-
-          {/* Auth Buttons */}
           <div className="p-4 space-y-3">
             <Link
               href="/auth/signin"
@@ -860,18 +1079,13 @@ export default function Header({
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className={`w-full ${
-                  isMobile ? "py-4" : "py-3"
-                } px-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 shadow-lg ${
-                  isMobile ? "text-base" : "text-sm"
-                }`}
+                className={`w-full ${isMobile ? "py-4" : "py-3"} px-4 rounded-xl font-semibold text-white transition-all flex items-center justify-center gap-2 shadow-lg ${isMobile ? "text-base" : "text-sm"}`}
                 style={{ background: GRADIENTS.button.primary }}
               >
-                <LogIn className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
-                Sign In
+                <LogIn className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} /> Sign
+                In
               </motion.button>
             </Link>
-
             <Link
               href="/auth/register"
               onClick={closeAccountMenu}
@@ -880,30 +1094,22 @@ export default function Header({
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className={`w-full ${
-                  isMobile ? "py-4" : "py-3"
-                } px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-                  isMobile ? "text-base" : "text-sm"
-                }`}
+                className={`w-full ${isMobile ? "py-4" : "py-3"} px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${isMobile ? "text-base" : "text-sm"}`}
                 style={{
                   background: "rgba(255,255,255,0.1)",
                   color: COLORS.white,
                   border: `1px solid ${COLORS.primary[400]}60`,
                 }}
               >
-                <UserPlus className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
+                <UserPlus className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />{" "}
                 Create Account
               </motion.button>
             </Link>
           </div>
-
-          {/* Divider */}
           <div
             className="border-t mx-4"
             style={{ borderColor: `${COLORS.primary[400]}40` }}
           />
-
-          {/* Quick Links for guests */}
           <div
             className={`p-2 ${isMobile ? "max-h-[35vh] overflow-y-auto" : ""}`}
           >
@@ -911,14 +1117,10 @@ export default function Header({
               <motion.div
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
-                className={`flex items-center gap-3 px-4 ${
-                  isMobile ? "py-4" : "py-3"
-                } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+                className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
               >
                 <div
-                  className={`${
-                    isMobile ? "w-11 h-11" : "w-9 h-9"
-                  } rounded-lg flex items-center justify-center`}
+                  className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
                   style={{ background: `${COLORS.primary[500]}30` }}
                 >
                   <Building2
@@ -928,9 +1130,7 @@ export default function Header({
                 </div>
                 <div className="flex-1">
                   <p
-                    className={`font-medium ${
-                      isMobile ? "text-base" : "text-sm"
-                    }`}
+                    className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
                     style={{ color: COLORS.white }}
                   >
                     Browse Listings
@@ -948,19 +1148,14 @@ export default function Header({
                 />
               </motion.div>
             </Link>
-
             <Link href="/contact" onClick={closeAccountMenu}>
               <motion.div
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
-                className={`flex items-center gap-3 px-4 ${
-                  isMobile ? "py-4" : "py-3"
-                } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+                className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
               >
                 <div
-                  className={`${
-                    isMobile ? "w-11 h-11" : "w-9 h-9"
-                  } rounded-lg flex items-center justify-center`}
+                  className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
                   style={{ background: `${COLORS.teal[500]}30` }}
                 >
                   <Phone
@@ -970,9 +1165,7 @@ export default function Header({
                 </div>
                 <div className="flex-1">
                   <p
-                    className={`font-medium ${
-                      isMobile ? "text-base" : "text-sm"
-                    }`}
+                    className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
                     style={{ color: COLORS.white }}
                   >
                     Contact Us
@@ -995,21 +1188,17 @@ export default function Header({
       );
     }
 
-    // Logged in
+    // Authenticated View
     const roleBadgeColors = getRoleBadgeColor(user?.role);
-
     return (
       <>
-        {/* User Info Header */}
         <div
           className="px-5 py-4 border-b"
           style={{ borderColor: `${COLORS.primary[400]}40` }}
         >
           <div className="flex items-center gap-3">
             <div
-              className={`${
-                isMobile ? "w-14 h-14" : "w-12 h-12"
-              } rounded-full flex items-center justify-center overflow-hidden flex-shrink-0`}
+              className={`${isMobile ? "w-14 h-14" : "w-12 h-12"} rounded-full flex items-center justify-center overflow-hidden flex-shrink-0`}
               style={{
                 background: user?.image
                   ? "transparent"
@@ -1029,9 +1218,7 @@ export default function Header({
                 />
               ) : (
                 <span
-                  className={`font-bold ${
-                    isMobile ? "text-lg" : "text-base"
-                  } text-white`}
+                  className={`font-bold ${isMobile ? "text-lg" : "text-base"} text-white`}
                 >
                   {getUserInitials()}
                 </span>
@@ -1039,9 +1226,7 @@ export default function Header({
             </div>
             <div className="flex-1 min-w-0">
               <h4
-                className={`font-bold ${
-                  isMobile ? "text-lg" : "text-base"
-                } truncate`}
+                className={`font-bold ${isMobile ? "text-lg" : "text-base"} truncate`}
                 style={{ color: COLORS.white }}
               >
                 {user?.name}
@@ -1066,24 +1251,17 @@ export default function Header({
             </div>
           </div>
         </div>
-
-        {/* Navigation Links */}
         <div
           className={`p-2 ${isMobile ? "max-h-[40vh] overflow-y-auto" : ""}`}
         >
-          {/* Dashboard */}
           <Link href="/dashboard" onClick={closeAccountMenu}>
             <motion.div
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${
-                isMobile ? "py-4" : "py-3"
-              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
             >
               <div
-                className={`${
-                  isMobile ? "w-11 h-11" : "w-9 h-9"
-                } rounded-lg flex items-center justify-center`}
+                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
                 style={{ background: `${COLORS.primary[500]}30` }}
               >
                 <UserCircle
@@ -1093,9 +1271,7 @@ export default function Header({
               </div>
               <div className="flex-1">
                 <p
-                  className={`font-medium ${
-                    isMobile ? "text-base" : "text-sm"
-                  }`}
+                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
                   style={{ color: COLORS.white }}
                 >
                   Dashboard
@@ -1113,20 +1289,14 @@ export default function Header({
               />
             </motion.div>
           </Link>
-
-          {/* My Favorites */}
           <Link href="/dashboard/favorites" onClick={closeAccountMenu}>
             <motion.div
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${
-                isMobile ? "py-4" : "py-3"
-              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
             >
               <div
-                className={`${
-                  isMobile ? "w-11 h-11" : "w-9 h-9"
-                } rounded-lg flex items-center justify-center`}
+                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
                 style={{ background: `${COLORS.yellow[300]}30` }}
               >
                 <Heart
@@ -1136,9 +1306,7 @@ export default function Header({
               </div>
               <div className="flex-1">
                 <p
-                  className={`font-medium ${
-                    isMobile ? "text-base" : "text-sm"
-                  }`}
+                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
                   style={{ color: COLORS.white }}
                 >
                   My Favorites
@@ -1147,29 +1315,33 @@ export default function Header({
                   className={`${isMobile ? "text-sm" : "text-xs"}`}
                   style={{ color: COLORS.primary[400] }}
                 >
-                  Saved listings
+                  {favoritesCount > 0
+                    ? `${favoritesCount} saved listings`
+                    : "Saved listings"}
                 </p>
               </div>
+              {favoritesCount > 0 && (
+                <span
+                  className="min-w-[20px] h-[20px] rounded-full flex items-center justify-center text-xs font-bold text-white"
+                  style={{ background: COLORS.yellow[500] }}
+                >
+                  {favoritesCount > 99 ? "99+" : favoritesCount}
+                </span>
+              )}
               <ChevronRight
                 className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
                 style={{ color: COLORS.primary[400] }}
               />
             </motion.div>
           </Link>
-
-          {/* Recent Views */}
           <Link href="/dashboard/history" onClick={closeAccountMenu}>
             <motion.div
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${
-                isMobile ? "py-4" : "py-3"
-              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
             >
               <div
-                className={`${
-                  isMobile ? "w-11 h-11" : "w-9 h-9"
-                } rounded-lg flex items-center justify-center`}
+                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
                 style={{ background: `${COLORS.yellow[500]}30` }}
               >
                 <Clock
@@ -1179,9 +1351,7 @@ export default function Header({
               </div>
               <div className="flex-1">
                 <p
-                  className={`font-medium ${
-                    isMobile ? "text-base" : "text-sm"
-                  }`}
+                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
                   style={{ color: COLORS.white }}
                 >
                   Recent Views
@@ -1199,20 +1369,14 @@ export default function Header({
               />
             </motion.div>
           </Link>
-
-          {/* Notifications */}
           <Link href="/dashboard/notifications" onClick={closeAccountMenu}>
             <motion.div
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${
-                isMobile ? "py-4" : "py-3"
-              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
             >
               <div
-                className={`${
-                  isMobile ? "w-11 h-11" : "w-9 h-9"
-                } rounded-lg flex items-center justify-center`}
+                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
                 style={{ background: `${COLORS.emerald[500]}30` }}
               >
                 <Bell
@@ -1222,9 +1386,7 @@ export default function Header({
               </div>
               <div className="flex-1">
                 <p
-                  className={`font-medium ${
-                    isMobile ? "text-base" : "text-sm"
-                  }`}
+                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
                   style={{ color: COLORS.white }}
                 >
                   Notifications
@@ -1242,20 +1404,14 @@ export default function Header({
               />
             </motion.div>
           </Link>
-
-          {/* Settings */}
           <Link href="/dashboard/settings" onClick={closeAccountMenu}>
             <motion.div
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${
-                isMobile ? "py-4" : "py-3"
-              } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
             >
               <div
-                className={`${
-                  isMobile ? "w-11 h-11" : "w-9 h-9"
-                } rounded-lg flex items-center justify-center`}
+                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
                 style={{ background: `${COLORS.gray[500]}30` }}
               >
                 <Settings
@@ -1265,9 +1421,7 @@ export default function Header({
               </div>
               <div className="flex-1">
                 <p
-                  className={`font-medium ${
-                    isMobile ? "text-base" : "text-sm"
-                  }`}
+                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
                   style={{ color: COLORS.white }}
                 >
                   Settings
@@ -1285,8 +1439,6 @@ export default function Header({
               />
             </motion.div>
           </Link>
-
-          {/* Admin Panel - Only for ADMIN role */}
           {user?.role?.toUpperCase() === "ADMIN" && (
             <>
               <div
@@ -1297,14 +1449,10 @@ export default function Header({
                 <motion.div
                   whileHover={{ x: 4 }}
                   whileTap={{ scale: 0.98 }}
-                  className={`flex items-center gap-3 px-4 ${
-                    isMobile ? "py-4" : "py-3"
-                  } rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
+                  className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
                 >
                   <div
-                    className={`${
-                      isMobile ? "w-11 h-11" : "w-9 h-9"
-                    } rounded-lg flex items-center justify-center`}
+                    className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
                     style={{ background: `${COLORS.yellow[500]}30` }}
                   >
                     <Settings
@@ -1314,9 +1462,7 @@ export default function Header({
                   </div>
                   <div className="flex-1">
                     <p
-                      className={`font-medium ${
-                        isMobile ? "text-base" : "text-sm"
-                      }`}
+                      className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
                       style={{ color: COLORS.white }}
                     >
                       Admin Panel
@@ -1337,8 +1483,6 @@ export default function Header({
             </>
           )}
         </div>
-
-        {/* Logout Button */}
         <div
           className="p-4 border-t"
           style={{ borderColor: `${COLORS.primary[400]}40` }}
@@ -1348,11 +1492,7 @@ export default function Header({
             whileTap={{ scale: 0.98 }}
             onClick={handleLogout}
             disabled={isLoggingOut}
-            className={`w-full ${
-              isMobile ? "py-4" : "py-3"
-            } px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
-              isMobile ? "text-base" : "text-sm"
-            }`}
+            className={`w-full ${isMobile ? "py-4" : "py-3"} px-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${isMobile ? "text-base" : "text-sm"}`}
             style={{
               background: "rgba(239, 68, 68, 0.2)",
               color: "#f87171",
@@ -1361,12 +1501,12 @@ export default function Header({
           >
             {isLoggingOut ? (
               <>
-                <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />{" "}
                 Signing out...
               </>
             ) : (
               <>
-                <LogOut className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />
+                <LogOut className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`} />{" "}
                 Sign Out
               </>
             )}
@@ -1665,14 +1805,10 @@ export default function Header({
                           </div>
                           <div
                             className="px-2 py-4 border-t"
-                            style={{
-                              borderColor: `${COLORS.primary[400]}40`,
-                            }}
+                            style={{ borderColor: `${COLORS.primary[400]}40` }}
                           >
                             <Link
-                              href={`/properties?search=${encodeURIComponent(
-                                searchQuery,
-                              )}`}
+                              href={`/properties?search=${encodeURIComponent(searchQuery)}`}
                               className="block text-center py-3 px-6 rounded-xl font-semibold text-white transition-all hover:shadow-lg"
                               style={{ background: GRADIENTS.button.primary }}
                               onClick={handleViewAllResults}
@@ -1734,8 +1870,6 @@ export default function Header({
                     </svg>
                   </motion.div>
                 </motion.button>
-
-                {/* Desktop Services Dropdown Menu */}
                 <AnimatePresence>
                   {showServicesMenu && (
                     <motion.div
@@ -1768,9 +1902,7 @@ export default function Header({
                             Comprehensive real estate solutions
                           </p>
                         </div>
-
                         {renderServicesContent(false)}
-
                         <div
                           className="p-4 border-t"
                           style={{ borderColor: `${COLORS.primary[400]}40` }}
@@ -1807,6 +1939,80 @@ export default function Header({
                   <span>Listings</span>
                 </motion.button>
               </Link>
+
+              {/* Favorites button - show when authenticated */}
+              {isAuthenticated && (
+                <div className="relative" ref={favoritesMenuRef}>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowFavoritesMenu(!showFavoritesMenu)}
+                    className="relative w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition"
+                  >
+                    <Heart
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-white"
+                      fill={showFavoritesMenu ? "currentColor" : "none"}
+                    />
+                    {favoritesCount > 0 && (
+                      <span
+                        className="absolute -top-1 -right-1 min-w-[18px] h-[18px] sm:min-w-[20px] sm:h-[20px] rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold text-white"
+                        style={{ background: COLORS.yellow[500] }}
+                      >
+                        {favoritesCount > 99 ? "99+" : favoritesCount}
+                      </span>
+                    )}
+                  </motion.button>
+                  <AnimatePresence>
+                    {showFavoritesMenu && (
+                      <>
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                          onClick={() => setShowFavoritesMenu(false)}
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          transition={{ duration: 0.2 }}
+                          className="fixed lg:absolute z-50 left-4 right-4 lg:left-auto lg:right-0 top-20 lg:top-auto lg:mt-3 w-auto lg:w-96 rounded-2xl shadow-2xl overflow-hidden"
+                          style={{
+                            background: `linear-gradient(135deg, ${COLORS.primary[900]}F5 0%, ${COLORS.emerald[900]}F5 100%)`,
+                            backdropFilter: "blur(20px)",
+                            border: `1px solid ${COLORS.primary[400]}60`,
+                          }}
+                        >
+                          <div
+                            className="lg:hidden flex justify-between items-center px-4 py-3 border-b"
+                            style={{ borderColor: `${COLORS.primary[400]}40` }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Heart
+                                className="w-5 h-5"
+                                style={{ color: COLORS.yellow[400] }}
+                              />
+                              <span className="font-semibold text-white">
+                                My Favorites
+                              </span>
+                            </div>
+                            <motion.button
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => setShowFavoritesMenu(false)}
+                              className="w-8 h-8 rounded-full flex items-center justify-center"
+                              style={{ background: "rgba(255,255,255,0.1)" }}
+                            >
+                              <X className="w-4 h-4 text-white" />
+                            </motion.button>
+                          </div>
+                          {renderFavoritesContent()}
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
               {/* Mobile Menu Button */}
               <motion.button
@@ -1855,8 +2061,6 @@ export default function Header({
                     <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   )}
                 </motion.button>
-
-                {/* Account dropdown */}
                 <AnimatePresence>
                   {showAccountMenu && (
                     <>
@@ -1867,7 +2071,6 @@ export default function Header({
                         className="fixed inset-0 bg-black/50 z-40 lg:hidden"
                         onClick={() => setShowAccountMenu(false)}
                       />
-
                       <motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1896,11 +2099,9 @@ export default function Header({
                             <X className="w-4 h-4 text-white" />
                           </motion.button>
                         </div>
-
                         <div className="hidden lg:block">
                           {renderAccountMenuContent(false)}
                         </div>
-
                         <div className="lg:hidden">
                           {renderAccountMenuContent(true)}
                         </div>
@@ -1927,8 +2128,10 @@ export default function Header({
                 borderColor: `${COLORS.primary[400]}40`,
               }}
             >
+              {/* ... (Mobile menu content similar to existing logic) ... */}
+              {/* I'll let the existing logic handle the mobile menu content rendering since it's already there in the file context */}
+              {/* For brevity, I assume the render functions are working correctly as defined above */}
               <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
-                {/* Listings Link */}
                 <Link href="/properties" onClick={closeMobileMenu}>
                   <motion.div
                     whileTap={{ scale: 0.98 }}
@@ -1943,7 +2146,34 @@ export default function Header({
                     />
                   </motion.div>
                 </Link>
-
+                {/* Favorites Link (Mobile) */}
+                {isAuthenticated && (
+                  <motion.div
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      closeMobileMenu();
+                      setShowFavoritesMenu(true);
+                    }}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl transition active:bg-primary-800/40 cursor-pointer"
+                    style={{ background: "rgba(255,255,255,0.1)" }}
+                  >
+                    <Heart className="w-5 h-5 text-white" />
+                    <span className="font-medium text-white">My Favorites</span>
+                    {favoritesCount > 0 && (
+                      <span
+                        className="min-w-[20px] h-[20px] rounded-full flex items-center justify-center text-xs font-bold text-white"
+                        style={{ background: COLORS.yellow[500] }}
+                      >
+                        {favoritesCount > 99 ? "99+" : favoritesCount}
+                      </span>
+                    )}
+                    <ChevronRight
+                      className="w-4 h-4 ml-auto"
+                      style={{ color: COLORS.primary[300] }}
+                    />
+                  </motion.div>
+                )}
+                {/* ... Services, Contact, Auth buttons (reuse existing patterns) ... */}
                 {/* Services Accordion */}
                 <div>
                   <motion.button
@@ -1977,7 +2207,6 @@ export default function Header({
                       </svg>
                     </motion.div>
                   </motion.button>
-
                   <AnimatePresence>
                     {showMobileServicesMenu && (
                       <motion.div
@@ -1989,7 +2218,6 @@ export default function Header({
                       >
                         <div className="pt-2">
                           {renderServicesContent(true)}
-
                           <div className="pt-3">
                             <Link href="/services" onClick={closeMobileMenu}>
                               <motion.button
@@ -2006,8 +2234,6 @@ export default function Header({
                     )}
                   </AnimatePresence>
                 </div>
-
-                {/* Contact Link */}
                 <Link href="/contact" onClick={closeMobileMenu}>
                   <motion.div
                     whileTap={{ scale: 0.98 }}
@@ -2022,8 +2248,6 @@ export default function Header({
                     />
                   </motion.div>
                 </Link>
-
-                {/* Quick Auth Buttons for Mobile Menu */}
                 {!isAuthenticated && (
                   <div className="pt-2 space-y-2">
                     <Link href="/auth/signin" onClick={closeMobileMenu}>
@@ -2032,8 +2256,7 @@ export default function Header({
                         className="w-full py-3 rounded-xl font-semibold text-white transition flex items-center justify-center gap-2"
                         style={{ background: GRADIENTS.button.primary }}
                       >
-                        <LogIn className="w-5 h-5" />
-                        Sign In
+                        <LogIn className="w-5 h-5" /> Sign In
                       </motion.button>
                     </Link>
                     <Link href="/auth/register" onClick={closeMobileMenu}>
@@ -2045,8 +2268,7 @@ export default function Header({
                           border: `1px solid ${COLORS.primary[400]}60`,
                         }}
                       >
-                        <UserPlus className="w-5 h-5" />
-                        Create Account
+                        <UserPlus className="w-5 h-5" /> Create Account
                       </motion.button>
                     </Link>
                   </div>
@@ -2073,11 +2295,8 @@ export default function Header({
               animate={{ y: 0 }}
               exit={{ y: -100 }}
               className="w-full"
-              style={{
-                background: GRADIENTS.background.hero,
-              }}
+              style={{ background: GRADIENTS.background.hero }}
             >
-              {/* Search Input */}
               <div className="p-4 pt-6">
                 <div className="relative">
                   <Search
@@ -2108,8 +2327,6 @@ export default function Header({
                   </button>
                 </div>
               </div>
-
-              {/* Mobile Search Results */}
               {searchQuery.trim() !== "" && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -2174,9 +2391,7 @@ export default function Header({
                         style={{ background: `${COLORS.primary[900]}80` }}
                       >
                         <Link
-                          href={`/properties?search=${encodeURIComponent(
-                            searchQuery,
-                          )}`}
+                          href={`/properties?search=${encodeURIComponent(searchQuery)}`}
                           className="block w-full text-center py-3 rounded-xl font-semibold text-white transition"
                           style={{ background: GRADIENTS.button.primary }}
                           onClick={handleViewAllResults}
