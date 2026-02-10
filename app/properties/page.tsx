@@ -77,7 +77,6 @@ import {
 import Footer from "@/components/Footer";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import FavoriteButton from "@/components/FavoriteButton";
-
 // Placeholder images by entity type and property type
 const PLACEHOLDER_IMAGES: Record<string, string> = {
   // Property types (Batiment)
