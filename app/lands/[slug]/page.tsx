@@ -687,9 +687,11 @@ export default function LandDetailPage() {
                   <ShareButton
                     entityType="PARCELLE"
                     entityId={parcelle.Id_Parcel}
+                    slug={parcelle.slug}
+                    title={parcelle.title || "Land for Sale"}
+                    description={parcelle.description || ""}
                     variant="default"
                     size="md"
-                    title={parcelle.title || "Land for Sale"}
                   />
                   <motion.button
                     whileHover={{ scale: 1.1 }}

@@ -700,6 +700,8 @@ export default function EstateDetailPage() {
                     entityType="LOTISSEMENT"
                     entityId={lotissement.Id_Lotis}
                     variant="default"
+                    slug={lotissement.slug}
+                    description={lotissement.description || ""}
                     size="md"
                     title={
                       lotissement.title ||
