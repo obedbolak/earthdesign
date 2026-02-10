@@ -8,7 +8,7 @@ import { createPortal } from "react-dom";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import { EntityType } from "@/lib/hooks/useProperties";
 
-// Custom icons for social platforms
+// ── Custom SVG Icons ───────────────────────────────────────
 const FacebookIcon = ({ className }: { className?: string }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
     <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
@@ -45,7 +45,7 @@ const MessengerIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// Types
+// ── Types ──────────────────────────────────────────────────
 type SharePlatform =
   | "whatsapp"
   | "facebook"
@@ -69,10 +69,11 @@ interface Platform {
 interface ShareButtonProps {
   entityType: EntityType;
   entityId: number | string;
-  title: string;
+  title?: string;
   description?: string;
   imageUrl?: string;
   url?: string;
+  slug?: string | null;
   variant?: "default" | "compact" | "icon-only";
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -89,12 +90,70 @@ interface SharePopupProps {
   copied: boolean;
   sharing: SharePlatform | null;
   shareUrl: string;
-  title: string;
+  title?: string;
   description?: string;
   imageUrl?: string;
 }
 
-// Platform configuration
+// ── EntityType → route path ────────────────────────────────
+const ENTITY_ROUTE_MAP: Record<EntityType, string> = {
+  LOTISSEMENT: "estates",
+  PARCELLE: "lands",
+  BATIMENT: "properties",
+};
+
+// ── Dynamic OG meta injection ──────────────────────────────
+function injectMetaTags({
+  title,
+  description,
+  url,
+  imageUrl,
+}: {
+  title?: string;
+  description?: string;
+  url: string;
+  imageUrl?: string;
+  entityType: EntityType;
+}) {
+  document
+    .querySelectorAll('meta[data-dynamic-share="true"]')
+    .forEach((tag) => tag.remove());
+
+  const finalTitle = title || "Property Listing";
+
+  const metaTags: { property?: string; name?: string; content: string }[] = [
+    { property: "og:title", content: finalTitle },
+    { property: "og:description", content: description || finalTitle },
+    { property: "og:url", content: url },
+    { property: "og:type", content: "website" },
+    { property: "og:site_name", content: "Earth Design Engineering Ltd" },
+    { property: "og:locale", content: "fr_CM" },
+    { name: "twitter:card", content: "summary_large_image" },
+    { name: "twitter:title", content: finalTitle },
+    { name: "twitter:description", content: description || finalTitle },
+  ];
+
+  if (imageUrl) {
+    metaTags.push(
+      { property: "og:image", content: imageUrl },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: finalTitle },
+      { name: "twitter:image", content: imageUrl },
+    );
+  }
+
+  metaTags.forEach(({ property, name, content }) => {
+    const meta = document.createElement("meta");
+    if (property) meta.setAttribute("property", property);
+    if (name) meta.setAttribute("name", name);
+    meta.setAttribute("content", content);
+    meta.setAttribute("data-dynamic-share", "true");
+    document.head.appendChild(meta);
+  });
+}
+
+// ── Platform configuration ─────────────────────────────────
 const platforms: Platform[] = [
   {
     id: "whatsapp",
@@ -102,8 +161,10 @@ const platforms: Platform[] = [
     icon: WhatsAppIcon,
     color: "#25D366",
     hoverBg: "hover:bg-[#25D366]/10",
-    getShareUrl: (url: string, title: string, description?: string) =>
-      `https://wa.me/?text=${encodeURIComponent(`*${title}*\n\n${description || ""}\n\n${url}`)}`,
+    getShareUrl: (url, title, description) =>
+      `https://wa.me/?text=${encodeURIComponent(
+        `*${title || "Check this out"}*\n\n${description || ""}\n\n${url}`,
+      )}`,
   },
   {
     id: "facebook",
@@ -111,7 +172,7 @@ const platforms: Platform[] = [
     icon: FacebookIcon,
     color: "#1877F2",
     hoverBg: "hover:bg-[#1877F2]/10",
-    getShareUrl: (url: string) =>
+    getShareUrl: (url) =>
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
   },
   {
@@ -120,8 +181,10 @@ const platforms: Platform[] = [
     icon: TwitterIcon,
     color: "#000000",
     hoverBg: "hover:bg-black/10",
-    getShareUrl: (url: string, title: string) =>
-      `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`,
+    getShareUrl: (url, title) =>
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(
+        title || "Check this out",
+      )}&url=${encodeURIComponent(url)}`,
   },
   {
     id: "linkedin",
@@ -129,7 +192,7 @@ const platforms: Platform[] = [
     icon: LinkedInIcon,
     color: "#0A66C2",
     hoverBg: "hover:bg-[#0A66C2]/10",
-    getShareUrl: (url: string) =>
+    getShareUrl: (url) =>
       `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
   },
   {
@@ -138,8 +201,10 @@ const platforms: Platform[] = [
     icon: TelegramIcon,
     color: "#0088CC",
     hoverBg: "hover:bg-[#0088CC]/10",
-    getShareUrl: (url: string, title: string) =>
-      `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`,
+    getShareUrl: (url, title) =>
+      `https://t.me/share/url?url=${encodeURIComponent(
+        url,
+      )}&text=${encodeURIComponent(title || "Check this out")}`,
   },
   {
     id: "messenger",
@@ -147,8 +212,10 @@ const platforms: Platform[] = [
     icon: MessengerIcon,
     color: "#006AFF",
     hoverBg: "hover:bg-[#006AFF]/10",
-    getShareUrl: (url: string) =>
-      `https://www.facebook.com/dialog/send?link=${encodeURIComponent(url)}&app_id=YOUR_APP_ID&redirect_uri=${encodeURIComponent(url)}`,
+    getShareUrl: (url) =>
+      `https://www.facebook.com/dialog/send?link=${encodeURIComponent(
+        url,
+      )}&app_id=YOUR_APP_ID&redirect_uri=${encodeURIComponent(url)}`,
   },
   {
     id: "email",
@@ -156,17 +223,19 @@ const platforms: Platform[] = [
     icon: Mail,
     color: "#EA4335",
     hoverBg: "hover:bg-[#EA4335]/10",
-    getShareUrl: (url: string, title: string, description?: string) =>
-      `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${description || ""}\n\n${url}`)}`,
+    getShareUrl: (url, title, description) =>
+      `mailto:?subject=${encodeURIComponent(
+        title || "Check this out",
+      )}&body=${encodeURIComponent(`${description || ""}\n\n${url}`)}`,
   },
 ];
 
-// Floating popup component using portal
+// ── Share Dropdown (portal, no overlay) ────────────────────
 function SharePopup({
   isOpen,
   onClose,
   buttonRef,
-  platforms,
+  platforms: platformList,
   onShare,
   onCopyLink,
   copied,
@@ -184,15 +253,16 @@ function SharePopup({
   const [mounted, setMounted] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
 
-  // Handle client-side mounting for portal
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Calculate position
+  // Recalculate on open + scroll/resize
   useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
+    if (!isOpen || !buttonRef.current) return;
+
+    const recalc = () => {
+      const rect = buttonRef.current!.getBoundingClientRect();
       const popupHeight = 420;
       const popupWidth = 320;
       const padding = 16;
@@ -209,13 +279,22 @@ function SharePopup({
       );
 
       const top = showAbove ? rect.top - popupHeight - 12 : rect.bottom + 12;
-
       setPosition({ top, left, showAbove });
-    }
+    };
+
+    recalc();
+    window.addEventListener("scroll", recalc, true);
+    window.addEventListener("resize", recalc);
+    return () => {
+      window.removeEventListener("scroll", recalc, true);
+      window.removeEventListener("resize", recalc);
+    };
   }, [isOpen, buttonRef]);
 
-  // Close on click outside
+  // Close on outside click / Escape
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (e: MouseEvent) => {
       if (
         popupRef.current &&
@@ -231,320 +310,308 @@ function SharePopup({
       if (e.key === "Escape") onClose();
     };
 
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleEscape);
-    }
-
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
   }, [isOpen, onClose, buttonRef]);
 
-  // Don't render on server or if not open
   if (!mounted || !isOpen) return null;
 
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <>
-          {/* Subtle backdrop for mobile */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9998] bg-black/20 backdrop-blur-[2px] sm:bg-transparent sm:backdrop-blur-none"
-            onClick={onClose}
-          />
-
-          {/* Floating Popup */}
-          <motion.div
-            ref={popupRef}
-            initial={{
-              opacity: 0,
-              scale: 0.9,
-              y: position.showAbove ? 10 : -10,
-            }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: position.showAbove ? 10 : -10 }}
-            transition={{ type: "spring", damping: 25, stiffness: 400 }}
-            className="fixed z-[9999] w-[320px]"
+        <motion.div
+          ref={popupRef}
+          initial={{
+            opacity: 0,
+            scale: 0.9,
+            y: position.showAbove ? 10 : -10,
+          }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{
+            opacity: 0,
+            scale: 0.9,
+            y: position.showAbove ? 10 : -10,
+          }}
+          transition={{ type: "spring", damping: 25, stiffness: 400 }}
+          className="fixed z-[9999] w-[320px]"
+          style={{
+            top: position.top,
+            left: position.left,
+          }}
+        >
+          {/* Main popup container */}
+          <div
+            className="relative rounded-3xl overflow-hidden"
             style={{
-              top: position.top,
-              left: position.left,
+              background: "rgba(255, 255, 255, 0.98)",
+              backdropFilter: "blur(20px)",
+              boxShadow: `
+                0 0 0 1px rgba(0, 0, 0, 0.05),
+                0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 10px 15px -3px rgba(0, 0, 0, 0.1),
+                0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 25px 50px -12px rgba(0, 0, 0, 0.25)
+              `,
             }}
           >
-            {/* Main popup container */}
+            {/* Gradient header */}
             <div
-              className="relative rounded-3xl overflow-hidden"
-              style={{
-                background: "rgba(255, 255, 255, 0.98)",
-                backdropFilter: "blur(20px)",
-                boxShadow: `
-                  0 0 0 1px rgba(0, 0, 0, 0.05),
-                  0 4px 6px -1px rgba(0, 0, 0, 0.1),
-                  0 10px 15px -3px rgba(0, 0, 0, 0.1),
-                  0 20px 25px -5px rgba(0, 0, 0, 0.1),
-                  0 25px 50px -12px rgba(0, 0, 0, 0.25)
-                `,
-              }}
+              className="relative px-5 py-4"
+              style={{ background: GRADIENTS.button.primary }}
             >
-              {/* Gradient header */}
-              <div
-                className="relative px-5 py-4"
-                style={{
-                  background: GRADIENTS.button.primary,
-                }}
-              >
-                {/* Decorative elements */}
-                <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2" />
-                <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full bg-white/10 translate-y-1/2 -translate-x-1/2" />
+              {/* Decorative circles */}
+              <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 -translate-y-1/2 translate-x-1/2" />
+              <div className="absolute bottom-0 left-0 w-20 h-20 rounded-full bg-white/10 translate-y-1/2 -translate-x-1/2" />
 
-                <div className="relative flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
-                      <Share2 className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Share</h3>
-                      <p className="text-xs text-white/70">Choose a platform</p>
-                    </div>
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
+                    <Share2 className="w-5 h-5 text-white" />
                   </div>
-                  <motion.button
-                    whileHover={{ scale: 1.1, rotate: 90 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={onClose}
-                    className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center hover:bg-white/30 transition"
-                  >
-                    <X className="w-4 h-4 text-white" />
-                  </motion.button>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Share</h3>
+                    <p className="text-xs text-white/70">Choose a platform</p>
+                  </div>
                 </div>
-
-                {/* Sparkle decoration */}
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 20,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute top-3 right-16"
+                <motion.button
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center hover:bg-white/30 transition"
                 >
-                  <Sparkles className="w-4 h-4 text-white/40" />
-                </motion.div>
+                  <X className="w-4 h-4 text-white" />
+                </motion.button>
               </div>
 
-              {/* Content */}
-              <div className="p-4 space-y-4">
-                {/* Preview card (compact) */}
-                {(imageUrl || title) && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="flex items-center gap-3 p-3 rounded-2xl"
-                    style={{
-                      background: `linear-gradient(135deg, ${COLORS.gray[200]}, ${COLORS.gray[200]})`,
-                      border: `1px solid ${COLORS.gray[200]}`,
-                    }}
-                  >
-                    {imageUrl && (
-                      <img
-                        src={imageUrl}
-                        alt={title}
-                        className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-sm"
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className="font-semibold text-sm line-clamp-1"
-                        style={{ color: COLORS.gray[800] }}
-                      >
-                        {title}
-                      </p>
-                      {description && (
-                        <p
-                          className="text-xs line-clamp-1 mt-0.5"
-                          style={{ color: COLORS.gray[500] }}
-                        >
-                          {description}
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
+              {/* Sparkle */}
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 20,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+                className="absolute top-3 right-16"
+              >
+                <Sparkles className="w-4 h-4 text-white/40" />
+              </motion.div>
+            </div>
 
-                {/* Platform grid */}
-                <div className="grid grid-cols-4 gap-2">
-                  {platforms.map((platform, index) => {
-                    const IconComponent = platform.icon;
-                    return (
-                      <motion.button
-                        key={platform.id}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.05 * index }}
-                        whileHover={{ scale: 1.1, y: -3 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => onShare(platform)}
-                        disabled={sharing !== null}
-                        className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all ${platform.hoverBg}`}
-                        style={{
-                          background:
-                            sharing === platform.id
-                              ? `${platform.color}15`
-                              : "transparent",
-                        }}
-                      >
-                        <motion.div
-                          animate={
-                            sharing === platform.id
-                              ? { scale: [1, 1.1, 1], rotate: [0, 10, -10, 0] }
-                              : {}
-                          }
-                          transition={{
-                            duration: 0.5,
-                            repeat: sharing === platform.id ? Infinity : 0,
-                          }}
-                          className="relative"
-                        >
-                          <div
-                            className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg transition-shadow"
-                            style={{
-                              background: platform.color,
-                              boxShadow: `0 4px 14px ${platform.color}40`,
-                            }}
-                          >
-                            <IconComponent className="w-5 h-5 text-white" />
-                          </div>
-                        </motion.div>
-                        <span
-                          className="text-[10px] font-medium"
-                          style={{ color: COLORS.gray[600] }}
-                        >
-                          {platform.name}
-                        </span>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-
-                {/* Copy link section */}
+            {/* Content */}
+            <div className="p-4 space-y-4">
+              {/* Preview card */}
+              {(imageUrl || title) && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="relative"
+                  transition={{ delay: 0.1 }}
+                  className="flex items-center gap-3 p-3 rounded-2xl"
+                  style={{
+                    background: `linear-gradient(135deg, ${COLORS.gray[200]}, ${COLORS.gray[200]})`,
+                    border: `1px solid ${COLORS.gray[200]}`,
+                  }}
                 >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl overflow-hidden"
-                      style={{
-                        background: COLORS.gray[200],
-                        border: `1px solid ${COLORS.gray[200]}`,
-                      }}
+                  {imageUrl && (
+                    <img
+                      src={imageUrl}
+                      alt={title || "Listing"}
+                      className="w-14 h-14 rounded-xl object-cover flex-shrink-0 shadow-sm"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="font-semibold text-sm line-clamp-1"
+                      style={{ color: COLORS.gray[800] }}
                     >
-                      <Link2
-                        className="w-4 h-4 flex-shrink-0"
-                        style={{ color: COLORS.gray[400] }}
-                      />
-                      <span
-                        className="text-xs truncate flex-1"
-                        style={{ color: COLORS.gray[600] }}
+                      {title}
+                    </p>
+                    {description && (
+                      <p
+                        className="text-xs line-clamp-1 mt-0.5"
+                        style={{ color: COLORS.gray[500] }}
                       >
-                        {shareUrl}
-                      </span>
-                    </div>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={onCopyLink}
-                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
-                      style={{
-                        background: copied
-                          ? "#22c55e"
-                          : GRADIENTS.button.primary,
-                        color: "white",
-                        boxShadow: copied
-                          ? "0 4px 14px rgba(34, 197, 94, 0.4)"
-                          : "0 4px 14px rgba(34, 197, 94, 0.3)",
-                      }}
-                    >
-                      <AnimatePresence mode="wait">
-                        {copied ? (
-                          <motion.div
-                            key="check"
-                            initial={{ scale: 0, rotate: -180 }}
-                            animate={{ scale: 1, rotate: 0 }}
-                            exit={{ scale: 0, rotate: 180 }}
-                            className="flex items-center gap-1"
-                          >
-                            <Check className="w-4 h-4" />
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            key="copy"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            exit={{ scale: 0 }}
-                            className="flex items-center gap-1"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                      {copied ? "Done!" : "Copy"}
-                    </motion.button>
+                        {description}
+                      </p>
+                    )}
                   </div>
+                </motion.div>
+              )}
 
-                  {/* Success message */}
-                  <AnimatePresence>
-                    {copied && (
+              {/* Platform grid */}
+              <div className="grid grid-cols-4 gap-2">
+                {platformList.map((platform, index) => {
+                  const IconComponent = platform.icon;
+                  return (
+                    <motion.button
+                      key={platform.id}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.05 * index }}
+                      whileHover={{ scale: 1.1, y: -3 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => onShare(platform)}
+                      disabled={sharing !== null}
+                      className={`relative flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-all ${platform.hoverBg}`}
+                      style={{
+                        background:
+                          sharing === platform.id
+                            ? `${platform.color}15`
+                            : "transparent",
+                      }}
+                    >
                       <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.9 }}
-                        className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap"
+                        animate={
+                          sharing === platform.id
+                            ? {
+                                scale: [1, 1.1, 1],
+                                rotate: [0, 10, -10, 0],
+                              }
+                            : {}
+                        }
+                        transition={{
+                          duration: 0.5,
+                          repeat: sharing === platform.id ? Infinity : 0,
+                        }}
+                        className="relative"
                       >
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500 text-white text-xs font-medium shadow-lg">
-                          <Check className="w-3 h-3" />
-                          Link copied to clipboard!
+                        <div
+                          className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg transition-shadow"
+                          style={{
+                            background: platform.color,
+                            boxShadow: `0 4px 14px ${platform.color}40`,
+                          }}
+                        >
+                          <IconComponent className="w-5 h-5 text-white" />
                         </div>
                       </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
+                      <span
+                        className="text-[10px] font-medium"
+                        style={{ color: COLORS.gray[600] }}
+                      >
+                        {platform.name}
+                      </span>
+                    </motion.button>
+                  );
+                })}
               </div>
 
-              {/* Bottom accent line */}
-              <div
-                className="h-1"
-                style={{ background: GRADIENTS.button.primary }}
-              />
+              {/* Copy link section */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="relative"
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl overflow-hidden"
+                    style={{
+                      background: COLORS.gray[200],
+                      border: `1px solid ${COLORS.gray[200]}`,
+                    }}
+                  >
+                    <Link2
+                      className="w-4 h-4 flex-shrink-0"
+                      style={{ color: COLORS.gray[400] }}
+                    />
+                    <span
+                      className="text-xs truncate flex-1"
+                      style={{ color: COLORS.gray[600] }}
+                    >
+                      {shareUrl}
+                    </span>
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={onCopyLink}
+                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
+                    style={{
+                      background: copied ? "#22c55e" : GRADIENTS.button.primary,
+                      color: "white",
+                      boxShadow: copied
+                        ? "0 4px 14px rgba(34, 197, 94, 0.4)"
+                        : "0 4px 14px rgba(34, 197, 94, 0.3)",
+                    }}
+                  >
+                    <AnimatePresence mode="wait">
+                      {copied ? (
+                        <motion.div
+                          key="check"
+                          initial={{ scale: 0, rotate: -180 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          exit={{ scale: 0, rotate: 180 }}
+                          className="flex items-center gap-1"
+                        >
+                          <Check className="w-4 h-4" />
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="copy"
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          exit={{ scale: 0 }}
+                          className="flex items-center gap-1"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    {copied ? "Done!" : "Copy"}
+                  </motion.button>
+                </div>
+
+                {/* Success toast */}
+                <AnimatePresence>
+                  {copied && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.9 }}
+                      className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap"
+                    >
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500 text-white text-xs font-medium shadow-lg">
+                        <Check className="w-3 h-3" />
+                        Link copied to clipboard!
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             </div>
 
-            {/* Arrow pointer */}
+            {/* Bottom accent line */}
             <div
-              className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rotate-45"
-              style={{
-                background: position.showAbove
-                  ? "rgba(255, 255, 255, 0.98)"
-                  : GRADIENTS.button.primary,
-                top: position.showAbove ? "calc(100% - 8px)" : "-8px",
-                boxShadow: position.showAbove
-                  ? "2px 2px 4px rgba(0,0,0,0.1)"
-                  : "-2px -2px 4px rgba(0,0,0,0.1)",
-              }}
+              className="h-1"
+              style={{ background: GRADIENTS.button.primary }}
             />
-          </motion.div>
-        </>
+          </div>
+
+          {/* Arrow pointer */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 w-4 h-4 rotate-45"
+            style={{
+              background: position.showAbove
+                ? "rgba(255, 255, 255, 0.98)"
+                : GRADIENTS.button.primary,
+              top: position.showAbove ? "calc(100% - 8px)" : "-8px",
+              boxShadow: position.showAbove
+                ? "2px 2px 4px rgba(0,0,0,0.1)"
+                : "-2px -2px 4px rgba(0,0,0,0.1)",
+            }}
+          />
+        </motion.div>
       )}
     </AnimatePresence>,
     document.body,
   );
 }
 
+// ── Main Component ─────────────────────────────────────────
 export default function ShareButton({
   entityType,
   entityId,
@@ -552,6 +619,7 @@ export default function ShareButton({
   description,
   imageUrl,
   url,
+  slug,
   variant = "default",
   size = "md",
   className = "",
@@ -562,23 +630,41 @@ export default function ShareButton({
   const [sharing, setSharing] = useState<SharePlatform | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Generate share URL
-  const shareUrl =
-    url ||
-    (typeof window !== "undefined"
-      ? `${window.location.origin}/${entityType.toLowerCase()}/${entityId}`
-      : "");
+  // Build canonical share URL: slug → entityId fallback
+  const shareUrl = (() => {
+    if (url) return url;
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const routePrefix = ENTITY_ROUTE_MAP[entityType];
+    const identifier = slug || entityId;
+    return `${origin}/${routePrefix}/${identifier}`;
+  })();
 
-  // Size configurations
   const sizes = {
     sm: { button: "p-1.5", icon: "w-4 h-4", text: "text-xs" },
     md: { button: "p-2", icon: "w-5 h-5", text: "text-sm" },
     lg: { button: "p-3", icon: "w-6 h-6", text: "text-base" },
   };
-
   const sizeConfig = sizes[size];
 
-  // Track share via API
+  // Inject OG meta tags
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      injectMetaTags({
+        title,
+        description,
+        url: shareUrl,
+        imageUrl,
+        entityType,
+      });
+    }
+    return () => {
+      document
+        .querySelectorAll('meta[data-dynamic-share="true"]')
+        .forEach((tag) => tag.remove());
+    };
+  }, [title, description, shareUrl, imageUrl, entityType]);
+
+  // Track share via API (fire-and-forget)
   const trackShare = useCallback(
     async (platform: SharePlatform) => {
       try {
@@ -588,16 +674,14 @@ export default function ShareButton({
           body: JSON.stringify({
             entityType,
             entityId:
-              typeof entityId === "string" ? parseInt(entityId) : entityId,
+              typeof entityId === "string" ? parseInt(entityId, 10) : entityId,
             platform,
           }),
         });
-
         if (!response.ok) {
           const data = await response.json();
           throw new Error(data.error || "Failed to track share");
         }
-
         return true;
       } catch (err) {
         console.error("Failed to track share:", err);
@@ -607,14 +691,15 @@ export default function ShareButton({
     [entityType, entityId],
   );
 
-  // Handle share to platform
+  // Open platform share window
   const handleShare = async (platform: Platform) => {
     setSharing(platform.id);
-
     try {
-      await trackShare(platform.id);
+      trackShare(platform.id); // fire-and-forget
 
-      const shareLink = platform.getShareUrl(shareUrl, title, description);
+      const finalTitle = title || "Check this out";
+      const shareLink = platform.getShareUrl(shareUrl, finalTitle, description);
+
       const width = 600;
       const height = 500;
       const left = window.screenX + (window.outerWidth - width) / 2;
@@ -626,10 +711,7 @@ export default function ShareButton({
         `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`,
       );
 
-      // Close after brief delay
-      setTimeout(() => {
-        setIsOpen(false);
-      }, 500);
+      setTimeout(() => setIsOpen(false), 500);
     } catch (err) {
       console.error("Share error:", err);
     } finally {
@@ -637,46 +719,41 @@ export default function ShareButton({
     }
   };
 
-  // Handle copy link
+  // Copy with clipboard API → execCommand fallback
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      await trackShare("copy");
+      trackShare("copy");
       setTimeout(() => setCopied(false), 2500);
-    } catch (err) {
-      // Fallback
+    } catch {
       const textArea = document.createElement("textarea");
       textArea.value = shareUrl;
-      textArea.style.position = "fixed";
-      textArea.style.opacity = "0";
+      Object.assign(textArea.style, { position: "fixed", opacity: "0" });
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
-
       try {
         document.execCommand("copy");
         setCopied(true);
-        await trackShare("copy");
+        trackShare("copy");
         setTimeout(() => setCopied(false), 2500);
       } catch (copyErr) {
         console.error("Copy failed:", copyErr);
       }
-
       document.body.removeChild(textArea);
     }
   };
 
-  // Toggle popup
+  // Native share on mobile, dropdown on desktop
   const handleButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
 
-    // Try native share first on mobile
     if (navigator.share && window.innerWidth < 768) {
       navigator
         .share({
-          title,
+          title: title || "Check this out",
           text: description,
           url: shareUrl,
         })
@@ -687,7 +764,7 @@ export default function ShareButton({
           }
         });
     } else {
-      setIsOpen(!isOpen);
+      setIsOpen((prev) => !prev);
     }
   };
 
@@ -713,17 +790,11 @@ export default function ShareButton({
         >
           <Share2
             className={sizeConfig.icon}
-            style={{ color: isOpen ? COLORS.primary[600] : COLORS.gray[700] }}
+            style={{
+              color: isOpen ? COLORS.primary[600] : COLORS.gray[700],
+            }}
           />
         </motion.div>
-        {showLabel && (
-          <span
-            className={`${sizeConfig.text} font-medium pr-1`}
-            style={{ color: COLORS.gray[700] }}
-          >
-            Share
-          </span>
-        )}
 
         {/* Active indicator dot */}
         <AnimatePresence>
@@ -739,7 +810,7 @@ export default function ShareButton({
         </AnimatePresence>
       </motion.button>
 
-      {/* Floating Popup */}
+      {/* Floating Dropdown (no overlay) */}
       <SharePopup
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}

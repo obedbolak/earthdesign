@@ -1672,9 +1672,10 @@ export default function HomePage() {
                         <ShareButton
                           entityType={listing._entityType}
                           entityId={getListingId(listing)}
+                          slug={listing.slug}
                           variant="default"
                           size="md"
-                          title=""
+                          title={listing.title || ""}
                         />
                       </div>
                       <div className="absolute top-4 right-4 flex flex-col gap-2">

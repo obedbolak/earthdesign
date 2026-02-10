@@ -737,9 +737,14 @@ export default function PropertyDetailPage() {
                   <ShareButton
                     entityType="BATIMENT"
                     entityId={property.Id_Bat}
-                    variant="default"
-                    size="md"
-                    title={property.title || "Property for Sale"}
+                    title={property?.title || "Property for Sale"}
+                    description={
+                      property?.shortDescription ||
+                      "Check out this amazing property!"
+                    }
+                    imageUrl={property.media?.[0]?.url}
+                    slug={property.slug} // This will create: /properties/business-center-alpha
+                    showLabel={true}
                   />
                   <motion.button
                     whileHover={{ scale: 1.1 }}
