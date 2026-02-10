@@ -5,8 +5,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  Heart,
-  Share2,
   MapPin,
   Bed,
   Bath,
@@ -55,6 +53,7 @@ import {
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import Footer from "@/components/Footer";
 import FavoriteButton from "@/components/FavoriteButton";
+import ShareButton from "@/components/ShareButton";
 
 // =========================================================
 // LOCAL UTILITIES
@@ -144,7 +143,6 @@ const getStatusBgColor = (property: Batiment): string => {
   return "from-gray-500 to-gray-600";
 };
 
-// Video helpers
 const getYouTubeVideoId = (url: string): string | null => {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
@@ -166,6 +164,182 @@ const getYouTubeEmbedUrl = (videoUrl: string): string => {
     return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
   return videoUrl;
 };
+
+// =========================================================
+// GALLERY BADGES COMPONENT
+// =========================================================
+
+function GalleryBadges({ property }: { property: Batiment }) {
+  const [showAll, setShowAll] = useState(false);
+
+  const badges: {
+    label: string;
+    className: string;
+    icon?: React.ReactNode;
+  }[] = [];
+
+  // Status badge
+  badges.push({
+    label:
+      property.listingType === "BOTH"
+        ? "Sale / Rent"
+        : property.listingType === "SALE"
+          ? "For Sale"
+          : property.listingType === "RENT"
+            ? "For Rent"
+            : "Available",
+    className: `bg-gradient-to-r ${
+      property.listingType === "BOTH"
+        ? "from-purple-500 to-indigo-600"
+        : property.listingType === "SALE"
+          ? "from-green-500 to-emerald-600"
+          : property.listingType === "RENT"
+            ? "from-blue-500 to-cyan-600"
+            : "from-gray-500 to-gray-600"
+    } text-white`,
+  });
+
+  // Property type
+  if (property.propertyType) {
+    badges.push({
+      label: getPropertyTypeLabel(property.propertyType, "en"),
+      className: "text-white",
+      icon: <Building2 className="w-3 h-3" />,
+    });
+    // Apply type color via inline style in render
+  }
+
+  if (property.featured) {
+    badges.push({
+      label: "Featured",
+      className: "bg-yellow-500 text-gray-900 font-bold",
+      icon: <Sparkles className="w-3 h-3" />,
+    });
+  }
+
+  if (property.bedrooms && property.bedrooms > 0) {
+    badges.push({
+      label: `${property.bedrooms} Bed${property.bedrooms > 1 ? "s" : ""}`,
+      className: "bg-black/50 backdrop-blur-sm text-white",
+      icon: <Bed className="w-3 h-3" />,
+    });
+  }
+
+  if (property.bathrooms && property.bathrooms > 0) {
+    badges.push({
+      label: `${property.bathrooms} Bath${property.bathrooms > 1 ? "s" : ""}`,
+      className: "bg-black/50 backdrop-blur-sm text-white",
+      icon: <Bath className="w-3 h-3" />,
+    });
+  }
+
+  if (property.surfaceArea) {
+    badges.push({
+      label: formatArea(property.surfaceArea),
+      className: "bg-black/50 backdrop-blur-sm text-white",
+      icon: <Square className="w-3 h-3" />,
+    });
+  }
+
+  if (property.hasParking) {
+    badges.push({
+      label: property.parkingSpaces
+        ? `${property.parkingSpaces} Parking`
+        : "Parking",
+      className: "bg-black/50 backdrop-blur-sm text-white",
+      icon: <Car className="w-3 h-3" />,
+    });
+  }
+
+  if (property.hasElevator) {
+    badges.push({
+      label: "Elevator",
+      className: "bg-black/50 backdrop-blur-sm text-white",
+      icon: <Building2 className="w-3 h-3" />,
+    });
+  }
+
+  const MAX_VISIBLE_MOBILE = 2;
+  const hiddenCount = badges.length - MAX_VISIBLE_MOBILE;
+
+  return (
+    <div className="absolute top-4 left-4 z-20 max-w-[55%] sm:max-w-[60%]">
+      {/* Desktop */}
+      <div className="hidden sm:flex flex-wrap gap-2">
+        {badges.map((badge, idx) => (
+          <span
+            key={idx}
+            className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium shadow-lg flex items-center gap-1 ${badge.className}`}
+            style={
+              idx === 1 && property.propertyType
+                ? { background: getTypeColor(property.propertyType) }
+                : undefined
+            }
+          >
+            {badge.icon}
+            {badge.label}
+          </span>
+        ))}
+      </div>
+
+      {/* Mobile */}
+      <div className="sm:hidden">
+        <div className="flex flex-wrap gap-1.5">
+          {badges
+            .slice(0, showAll ? badges.length : MAX_VISIBLE_MOBILE)
+            .map((badge, idx) => (
+              <motion.span
+                key={idx}
+                initial={
+                  idx >= MAX_VISIBLE_MOBILE ? { opacity: 0, scale: 0.8 } : false
+                }
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  delay:
+                    idx >= MAX_VISIBLE_MOBILE
+                      ? (idx - MAX_VISIBLE_MOBILE) * 0.05
+                      : 0,
+                }}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium shadow-lg flex items-center gap-1 ${badge.className}`}
+                style={
+                  idx === 1 && property.propertyType
+                    ? { background: getTypeColor(property.propertyType) }
+                    : undefined
+                }
+              >
+                {badge.icon}
+                {badge.label}
+              </motion.span>
+            ))}
+
+          {hiddenCount > 0 && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowAll(!showAll);
+              }}
+              className="px-2.5 py-1 rounded-full text-[11px] font-bold shadow-lg flex items-center gap-1 bg-white/90 text-gray-800 hover:bg-white transition"
+            >
+              {showAll ? (
+                <>
+                  <ChevronLeft className="w-3 h-3" />
+                  Less
+                </>
+              ) : (
+                <>
+                  +{hiddenCount}
+                  <ChevronRight className="w-3 h-3" />
+                </>
+              )}
+            </motion.button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // =========================================================
 // MAIN COMPONENT
@@ -239,7 +413,6 @@ export default function PropertyDetailPage() {
       .filter(Boolean);
   };
 
-  // Loading
   if (loading) {
     return (
       <div
@@ -268,7 +441,6 @@ export default function PropertyDetailPage() {
     );
   }
 
-  // Error
   if (error || !property) {
     return (
       <div
@@ -357,7 +529,7 @@ export default function PropertyDetailPage() {
               setIsPlayingVideo(false);
               setShowVideo(false);
             }}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center"
+            className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center hover:bg-white/20 transition"
             style={{ background: "rgba(255,255,255,0.1)" }}
           >
             <XCircle className="w-6 h-6 text-white" />
@@ -367,14 +539,14 @@ export default function PropertyDetailPage() {
             <>
               <button
                 onClick={prevImage}
-                className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center"
+                className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center hover:bg-white/20 transition"
                 style={{ background: "rgba(255,255,255,0.1)" }}
               >
                 <ChevronLeft className="w-7 h-7 text-white" />
               </button>
               <button
                 onClick={nextImage}
-                className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center"
+                className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center hover:bg-white/20 transition"
                 style={{ background: "rgba(255,255,255,0.1)" }}
               >
                 <ChevronRight className="w-7 h-7 text-white" />
@@ -489,7 +661,9 @@ export default function PropertyDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Image Gallery */}
+            {/* ==========================================
+                IMAGE GALLERY — SINGLE aspect-video
+                ========================================== */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -500,6 +674,7 @@ export default function PropertyDetailPage() {
               }}
             >
               <div className="relative aspect-video">
+                {/* Image / Video Display */}
                 {showVideo && videoUrl ? (
                   isPlayingVideo ? (
                     isYouTubeUrl(videoUrl) ? (
@@ -551,55 +726,50 @@ export default function PropertyDetailPage() {
                   />
                 )}
 
-                {/* Actions */}
-                <div className="absolute top-4 right-4 flex gap-2">
+                {/* Action Buttons — top right */}
+                <div className="absolute top-4 right-4 flex gap-2 z-20">
                   <FavoriteButton
-                    entityType="BATIMENT" // ✅ Fixed - use literal string
+                    entityType="BATIMENT"
                     entityId={property.Id_Bat}
-                    variant="overlay"
-                    size="lg"
+                    variant="default"
+                    size="md"
                   />
-                  <button className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center">
-                    <Share2 className="w-5 h-5 text-gray-800" />
-                  </button>
-                  <button
+                  <ShareButton
+                    entityType="BATIMENT"
+                    entityId={property.Id_Bat}
+                    variant="default"
+                    size="md"
+                    title={property.title || "Property for Sale"}
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => setShowLightbox(true)}
-                    className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center"
+                    className="w-10 h-10 bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center transition-all"
                   >
-                    <Maximize2 className="w-5 h-5 text-gray-800" />
-                  </button>
+                    <Maximize2 className="w-5 h-5 text-white" />
+                  </motion.button>
                 </div>
 
-                {/* Badges */}
-                <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                  <span
-                    className={`px-3 py-1 bg-gradient-to-r ${getStatusBgColor(property)} text-white rounded-full text-sm font-medium shadow-lg`}
-                  >
-                    {getListingStatusLabel(property)}
-                  </span>
-                  {property.featured && (
-                    <span className="px-3 py-1 bg-yellow-500 text-gray-900 rounded-full text-sm font-bold shadow-lg flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Featured
-                    </span>
-                  )}
-                </div>
+                {/* Badges — top left */}
+                <GalleryBadges property={property} />
 
-                {/* Navigation */}
+                {/* Image Navigation */}
                 {!showVideo && images.length > 1 && (
                   <>
                     <button
                       onClick={prevImage}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition z-10"
                     >
                       <ChevronLeft className="w-6 h-6" />
                     </button>
                     <button
                       onClick={nextImage}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition z-10"
                     >
                       <ChevronRight className="w-6 h-6" />
                     </button>
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/60 rounded-full text-white text-sm">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-sm z-10">
                       {currentImageIndex + 1} / {images.length}
                     </div>
                   </>
@@ -677,7 +847,9 @@ export default function PropertyDetailPage() {
                 {property.propertyType && (
                   <span
                     className="px-3 py-1 rounded-full text-sm font-medium text-white"
-                    style={{ background: getTypeColor(property.propertyType) }}
+                    style={{
+                      background: getTypeColor(property.propertyType),
+                    }}
                   >
                     {getPropertyTypeLabel(property.propertyType, "en")}
                   </span>
@@ -689,12 +861,10 @@ export default function PropertyDetailPage() {
                 )}
               </div>
 
-              {/* Title */}
               <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
                 {property.title || "Property Details"}
               </h1>
 
-              {/* Location */}
               <div className="flex items-center gap-2 mb-6 text-gray-300">
                 <MapPin
                   className="w-5 h-5"
@@ -763,7 +933,9 @@ export default function PropertyDetailPage() {
                     Number(property.rentPrice) > 0 && (
                       <div
                         className="mt-4 pt-4 border-t"
-                        style={{ borderColor: "rgba(255,255,255,0.2)" }}
+                        style={{
+                          borderColor: "rgba(255,255,255,0.2)",
+                        }}
                       >
                         <p className="text-sm mb-1 text-gray-400">
                           Also Available for Rent
@@ -849,19 +1021,26 @@ export default function PropertyDetailPage() {
                     {property.hasParking && (
                       <span
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
-                        style={{ background: "rgba(255,255,255,0.1)" }}
+                        style={{
+                          background: "rgba(255,255,255,0.1)",
+                        }}
                       >
                         <Car
                           className="w-5 h-5"
                           style={{ color: COLORS.primary[400] }}
                         />
                         Parking
+                        {property.parkingSpaces
+                          ? ` (${property.parkingSpaces})`
+                          : ""}
                       </span>
                     )}
                     {property.hasGenerator && (
                       <span
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
-                        style={{ background: "rgba(255,255,255,0.1)" }}
+                        style={{
+                          background: "rgba(255,255,255,0.1)",
+                        }}
                       >
                         <Zap
                           className="w-5 h-5"
@@ -873,7 +1052,9 @@ export default function PropertyDetailPage() {
                     {property.hasElevator && (
                       <span
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
-                        style={{ background: "rgba(255,255,255,0.1)" }}
+                        style={{
+                          background: "rgba(255,255,255,0.1)",
+                        }}
                       >
                         <Building2
                           className="w-5 h-5"
@@ -885,7 +1066,9 @@ export default function PropertyDetailPage() {
                     {property.hasPool && (
                       <span
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
-                        style={{ background: "rgba(255,255,255,0.1)" }}
+                        style={{
+                          background: "rgba(255,255,255,0.1)",
+                        }}
                       >
                         <Droplets
                           className="w-5 h-5"
@@ -897,7 +1080,9 @@ export default function PropertyDetailPage() {
                     {property.hasGarden && (
                       <span
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
-                        style={{ background: "rgba(255,255,255,0.1)" }}
+                        style={{
+                          background: "rgba(255,255,255,0.1)",
+                        }}
                       >
                         <TreePine
                           className="w-5 h-5"
@@ -909,7 +1094,9 @@ export default function PropertyDetailPage() {
                     {property.hasSecurity && (
                       <span
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
-                        style={{ background: "rgba(255,255,255,0.1)" }}
+                        style={{
+                          background: "rgba(255,255,255,0.1)",
+                        }}
                       >
                         <CheckCircle2
                           className="w-5 h-5"
@@ -921,7 +1108,9 @@ export default function PropertyDetailPage() {
                     {property.hasAirConditioning && (
                       <span
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
-                        style={{ background: "rgba(255,255,255,0.1)" }}
+                        style={{
+                          background: "rgba(255,255,255,0.1)",
+                        }}
                       >
                         <Power
                           className="w-5 h-5"
@@ -934,7 +1123,9 @@ export default function PropertyDetailPage() {
                       <span
                         key={idx}
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-white"
-                        style={{ background: "rgba(255,255,255,0.1)" }}
+                        style={{
+                          background: "rgba(255,255,255,0.1)",
+                        }}
                       >
                         <CheckCircle2
                           className="w-4 h-4"
@@ -956,7 +1147,9 @@ export default function PropertyDetailPage() {
                   {property.surfaceArea && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <Square
                         className="w-5 h-5"
@@ -973,7 +1166,9 @@ export default function PropertyDetailPage() {
                   {property.bedrooms && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <Bed
                         className="w-5 h-5"
@@ -990,7 +1185,9 @@ export default function PropertyDetailPage() {
                   {property.bathrooms && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <Bath
                         className="w-5 h-5"
@@ -1007,7 +1204,9 @@ export default function PropertyDetailPage() {
                   {property.kitchens && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <Utensils
                         className="w-5 h-5"
@@ -1024,7 +1223,9 @@ export default function PropertyDetailPage() {
                   {property.livingRooms && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <Sofa
                         className="w-5 h-5"
@@ -1041,7 +1242,9 @@ export default function PropertyDetailPage() {
                   {property.totalFloors && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <Layers
                         className="w-5 h-5"
@@ -1058,7 +1261,9 @@ export default function PropertyDetailPage() {
                   {property.floorLevel && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <Building2
                         className="w-5 h-5"
@@ -1075,7 +1280,9 @@ export default function PropertyDetailPage() {
                   {property.doorNumber && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <DoorOpen
                         className="w-5 h-5"
@@ -1092,7 +1299,9 @@ export default function PropertyDetailPage() {
                   {property.totalUnits && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <Grid3X3
                         className="w-5 h-5"
@@ -1109,7 +1318,9 @@ export default function PropertyDetailPage() {
                   {property.parkingSpaces && (
                     <div
                       className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{ background: "rgba(255,255,255,0.05)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.05)",
+                      }}
                     >
                       <Car
                         className="w-5 h-5"
@@ -1179,7 +1390,6 @@ export default function PropertyDetailPage() {
 
           {/* Right Column - Contact */}
           <div className="space-y-6">
-            {/* Contact Card */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1322,7 +1532,9 @@ export default function PropertyDetailPage() {
                 {hasVideo && (
                   <div
                     className="flex items-center justify-between p-3 rounded-xl"
-                    style={{ background: "rgba(255,255,255,0.05)" }}
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                    }}
                   >
                     <div className="flex items-center gap-2">
                       <Video
@@ -1337,12 +1549,14 @@ export default function PropertyDetailPage() {
                 {property.featured && (
                   <div
                     className="flex items-center justify-between p-3 rounded-xl"
-                    style={{ background: "rgba(255,255,255,0.05)" }}
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                    }}
                   >
                     <div className="flex items-center gap-2">
                       <Sparkles
                         className="w-5 h-5"
-                        style={{ color: COLORS.yellow[400] }}
+                        style={{ color: "#facc15" }}
                       />
                       <span className="text-gray-300">Featured</span>
                     </div>
@@ -1443,15 +1657,29 @@ export default function PropertyDetailPage() {
                             : isForRent(related) &&
                                 related.rentPrice &&
                                 Number(related.rentPrice) > 0
-                              ? `${formatPriceCompact(related.rentPrice)}/month`
+                              ? `${formatPriceCompact(related.rentPrice)}/mo`
                               : "Prix sur demande"}
                         </p>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center"
-                        >
-                          <ChevronRight className="w-5 h-5 text-gray-800" />
-                        </motion.button>
+                        <div className="flex items-center gap-2 text-sm text-gray-400">
+                          {related.bedrooms && related.bedrooms > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Bed className="w-3.5 h-3.5" />
+                              {related.bedrooms}
+                            </span>
+                          )}
+                          {related.bathrooms && related.bathrooms > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Bath className="w-3.5 h-3.5" />
+                              {related.bathrooms}
+                            </span>
+                          )}
+                          {related.surfaceArea && (
+                            <span className="flex items-center gap-1">
+                              <Square className="w-3.5 h-3.5" />
+                              {formatArea(related.surfaceArea)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </Link>

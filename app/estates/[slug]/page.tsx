@@ -5,8 +5,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  Heart,
-  Share2,
   MapPin,
   Square,
   ArrowLeft,
@@ -30,11 +28,9 @@ import {
   Power,
   Droplets,
   FileText,
-  Home,
   Grid3X3,
   Users,
   Calendar,
-  Ruler,
   TreePine,
 } from "lucide-react";
 import Link from "next/link";
@@ -48,12 +44,11 @@ import {
   formatPrice,
   formatArea,
   getCategoryLabel,
-  isForSale,
-  isForRent,
 } from "@/lib/hooks/useProperties";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import Footer from "@/components/Footer";
 import FavoriteButton from "@/components/FavoriteButton";
+import ShareButton from "@/components/ShareButton";
 
 // =========================================================
 // LOCAL UTILITIES
@@ -135,7 +130,6 @@ function getStatusBgColor(lotissement: Lotissement): string {
   return "from-gray-500 to-gray-600";
 }
 
-// Video helpers
 const getYouTubeVideoId = (url: string): string | null => {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
@@ -159,6 +153,165 @@ const getYouTubeEmbedUrl = (videoUrl: string): string => {
 };
 
 // =========================================================
+// GALLERY BADGES COMPONENT
+// =========================================================
+
+function GalleryBadges({ lotissement }: { lotissement: Lotissement }) {
+  const [showAll, setShowAll] = useState(false);
+
+  const badges: {
+    label: string;
+    className: string;
+    icon?: React.ReactNode;
+  }[] = [];
+
+  badges.push({
+    label:
+      lotissement.listingType === "BOTH"
+        ? "Sale / Rent"
+        : lotissement.listingType === "SALE"
+          ? "For Sale"
+          : lotissement.listingType === "RENT"
+            ? "For Rent"
+            : "Available",
+    className: `bg-gradient-to-r ${
+      lotissement.listingType === "BOTH"
+        ? "from-purple-500 to-indigo-600"
+        : lotissement.listingType === "SALE"
+          ? "from-green-500 to-emerald-600"
+          : lotissement.listingType === "RENT"
+            ? "from-blue-500 to-cyan-600"
+            : "from-gray-500 to-gray-600"
+    } text-white`,
+  });
+
+  badges.push({
+    label: "Estate",
+    className: "bg-orange-500 text-white",
+    icon: <Grid3X3 className="w-3 h-3" />,
+  });
+
+  if (lotissement.featured) {
+    badges.push({
+      label: "Featured",
+      className: "bg-yellow-500 text-gray-900 font-bold",
+      icon: <Sparkles className="w-3 h-3" />,
+    });
+  }
+
+  if (lotissement.hasRoadAccess) {
+    badges.push({
+      label: "Road Access",
+      className: "bg-emerald-600 text-white",
+      icon: <Route className="w-3 h-3" />,
+    });
+  }
+
+  if (lotissement.hasElectricity) {
+    badges.push({
+      label: "Electricity",
+      className: "bg-yellow-600 text-white",
+      icon: <Power className="w-3 h-3" />,
+    });
+  }
+
+  if (lotissement.hasWater) {
+    badges.push({
+      label: "Water",
+      className: "bg-blue-600 text-white",
+      icon: <Droplets className="w-3 h-3" />,
+    });
+  }
+
+  if (lotissement.Nbre_lots) {
+    badges.push({
+      label: `${lotissement.Nbre_lots} Lots`,
+      className: "bg-black/50 backdrop-blur-sm text-white",
+      icon: <Layers className="w-3 h-3" />,
+    });
+  }
+
+  if (lotissement.Surface) {
+    badges.push({
+      label: formatArea(lotissement.Surface),
+      className: "bg-black/50 backdrop-blur-sm text-white",
+      icon: <Square className="w-3 h-3" />,
+    });
+  }
+
+  const MAX_VISIBLE_MOBILE = 2;
+  const hiddenCount = badges.length - MAX_VISIBLE_MOBILE;
+
+  return (
+    <div className="absolute top-4 left-4 z-20 max-w-[55%] sm:max-w-[60%]">
+      {/* Desktop */}
+      <div className="hidden sm:flex flex-wrap gap-2">
+        {badges.map((badge, idx) => (
+          <span
+            key={idx}
+            className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium shadow-lg flex items-center gap-1 ${badge.className}`}
+          >
+            {badge.icon}
+            {badge.label}
+          </span>
+        ))}
+      </div>
+
+      {/* Mobile */}
+      <div className="sm:hidden">
+        <div className="flex flex-wrap gap-1.5">
+          {badges
+            .slice(0, showAll ? badges.length : MAX_VISIBLE_MOBILE)
+            .map((badge, idx) => (
+              <motion.span
+                key={idx}
+                initial={
+                  idx >= MAX_VISIBLE_MOBILE ? { opacity: 0, scale: 0.8 } : false
+                }
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  delay:
+                    idx >= MAX_VISIBLE_MOBILE
+                      ? (idx - MAX_VISIBLE_MOBILE) * 0.05
+                      : 0,
+                }}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium shadow-lg flex items-center gap-1 ${badge.className}`}
+              >
+                {badge.icon}
+                {badge.label}
+              </motion.span>
+            ))}
+
+          {hiddenCount > 0 && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowAll(!showAll);
+              }}
+              className="px-2.5 py-1 rounded-full text-[11px] font-bold shadow-lg flex items-center gap-1 bg-white/90 text-gray-800 hover:bg-white transition"
+            >
+              {showAll ? (
+                <>
+                  <ChevronLeft className="w-3 h-3" />
+                  Less
+                </>
+              ) : (
+                <>
+                  +{hiddenCount}
+                  <ChevronRight className="w-3 h-3" />
+                </>
+              )}
+            </motion.button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
 // MAIN COMPONENT
 // =========================================================
 
@@ -167,16 +320,13 @@ export default function EstateDetailPage() {
   const router = useRouter();
   const slugOrId = params?.slug as string;
 
-  // Fetch estate by slug or ID
   const { data: lotissement, loading, error } = useLotissementBySlug(slugOrId);
 
-  // Fetch all lotissements for related
   const { data: allLotissements } = useLotissements({
     status: "PUBLISHED",
     limit: 50,
   });
 
-  // UI State
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
@@ -186,13 +336,11 @@ export default function EstateDetailPage() {
   );
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  // Related lotissements
   const relatedLotissements = useMemo(() => {
     if (!lotissement || !allLotissements.length) return [];
     return getSimilarLotissements(lotissement, allLotissements, 6);
   }, [lotissement, allLotissements]);
 
-  // Mouse tracking
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
@@ -201,7 +349,6 @@ export default function EstateDetailPage() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Images and video
   const images = useMemo(
     () => (lotissement ? getListingImages(lotissement) : []),
     [lotissement],
@@ -213,7 +360,6 @@ export default function EstateDetailPage() {
   const hasImages = images.length > 0;
   const hasVideo = !!videoUrl;
 
-  // Navigation
   const nextImage = () => {
     if (images.length > 0) {
       setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -234,7 +380,6 @@ export default function EstateDetailPage() {
     return images[currentImageIndex] || PLACEHOLDER_IMAGE;
   };
 
-  // Loading state
   if (loading) {
     return (
       <div
@@ -263,7 +408,6 @@ export default function EstateDetailPage() {
     );
   }
 
-  // Error state
   if (error || !lotissement) {
     return (
       <div
@@ -352,7 +496,7 @@ export default function EstateDetailPage() {
               setIsPlayingVideo(false);
               setShowVideo(false);
             }}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center"
+            className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center hover:bg-white/20 transition"
             style={{ background: "rgba(255,255,255,0.1)" }}
           >
             <XCircle className="w-6 h-6 text-white" />
@@ -362,14 +506,14 @@ export default function EstateDetailPage() {
             <>
               <button
                 onClick={prevImage}
-                className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center"
+                className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center hover:bg-white/20 transition"
                 style={{ background: "rgba(255,255,255,0.1)" }}
               >
                 <ChevronLeft className="w-7 h-7 text-white" />
               </button>
               <button
                 onClick={nextImage}
-                className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center"
+                className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center hover:bg-white/20 transition"
                 style={{ background: "rgba(255,255,255,0.1)" }}
               >
                 <ChevronRight className="w-7 h-7 text-white" />
@@ -481,7 +625,9 @@ export default function EstateDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Image Gallery */}
+            {/* ==========================================
+                IMAGE GALLERY — SINGLE aspect-video
+                ========================================== */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -492,6 +638,7 @@ export default function EstateDetailPage() {
               }}
             >
               <div className="relative aspect-video">
+                {/* Image / Video Display */}
                 {showVideo && videoUrl ? (
                   isPlayingVideo ? (
                     isYouTubeUrl(videoUrl) ? (
@@ -541,58 +688,54 @@ export default function EstateDetailPage() {
                   />
                 )}
 
-                {/* Actions */}
-                <div className="absolute top-4 right-4 flex gap-2">
+                {/* Action Buttons — top right */}
+                <div className="absolute top-4 right-4 flex gap-2 z-20">
                   <FavoriteButton
-                    entityType="LOTISSEMENT" // ✅ Fixed - use literal string
+                    entityType="LOTISSEMENT"
                     entityId={lotissement.Id_Lotis}
-                    variant="overlay"
-                    size="lg"
+                    variant="default"
+                    size="md"
                   />
-                  <button className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center">
-                    <Share2 className="w-5 h-5 text-gray-800" />
-                  </button>
-                  <button
+                  <ShareButton
+                    entityType="LOTISSEMENT"
+                    entityId={lotissement.Id_Lotis}
+                    variant="default"
+                    size="md"
+                    title={
+                      lotissement.title ||
+                      lotissement.Lieudit ||
+                      "Estate for Sale"
+                    }
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => setShowLightbox(true)}
-                    className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center"
+                    className="w-10 h-10 bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center transition-all"
                   >
-                    <Maximize2 className="w-5 h-5 text-gray-800" />
-                  </button>
+                    <Maximize2 className="w-5 h-5 text-white" />
+                  </motion.button>
                 </div>
 
-                {/* Badges */}
-                <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                  <span
-                    className={`px-3 py-1 bg-gradient-to-r ${getStatusBgColor(lotissement)} text-white rounded-full text-sm font-medium shadow-lg`}
-                  >
-                    {getListingStatusLabel(lotissement)}
-                  </span>
-                  <span className="px-3 py-1 bg-orange-500 text-white rounded-full text-sm font-medium shadow-lg flex items-center gap-1">
-                    <Grid3X3 className="w-3 h-3" /> Estate
-                  </span>
-                  {lotissement.featured && (
-                    <span className="px-3 py-1 bg-yellow-500 text-gray-900 rounded-full text-sm font-bold shadow-lg flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Featured
-                    </span>
-                  )}
-                </div>
+                {/* Badges — top left */}
+                <GalleryBadges lotissement={lotissement} />
 
-                {/* Navigation */}
+                {/* Image Navigation */}
                 {!showVideo && images.length > 1 && (
                   <>
                     <button
                       onClick={prevImage}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition z-10"
                     >
                       <ChevronLeft className="w-6 h-6" />
                     </button>
                     <button
                       onClick={nextImage}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition z-10"
                     >
                       <ChevronRight className="w-6 h-6" />
                     </button>
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/60 rounded-full text-white text-sm">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-sm z-10">
                       {currentImageIndex + 1} / {images.length}
                     </div>
                   </>
@@ -851,7 +994,6 @@ export default function EstateDetailPage() {
               {/* Tab Content */}
               {activeTab === "overview" && (
                 <>
-                  {/* Description */}
                   <div className="mb-6">
                     <h2 className="text-xl font-bold text-white mb-4">
                       Description
@@ -863,7 +1005,6 @@ export default function EstateDetailPage() {
                     </p>
                   </div>
 
-                  {/* Features */}
                   <div>
                     <h2 className="text-xl font-bold text-white mb-4">
                       Estate Details
@@ -872,7 +1013,9 @@ export default function EstateDetailPage() {
                       {lotissement.Surface && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <Square
                             className="w-5 h-5"
@@ -892,7 +1035,9 @@ export default function EstateDetailPage() {
                       {lotissement.Num_TF && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <FileText
                             className="w-5 h-5"
@@ -912,7 +1057,9 @@ export default function EstateDetailPage() {
                       {lotissement.Nom_proprio && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <Users
                             className="w-5 h-5"
@@ -930,7 +1077,9 @@ export default function EstateDetailPage() {
                       {lotissement.Nbre_lots && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <Layers
                             className="w-5 h-5"
@@ -950,7 +1099,9 @@ export default function EstateDetailPage() {
                       {lotissement.Date_approb && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <Calendar
                             className="w-5 h-5"
@@ -970,7 +1121,9 @@ export default function EstateDetailPage() {
                       {lotissement.Nom_cons && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <Building2
                             className="w-5 h-5"
@@ -988,7 +1141,9 @@ export default function EstateDetailPage() {
                       {lotissement.Geo_exe && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <Map
                             className="w-5 h-5"
@@ -1008,7 +1163,9 @@ export default function EstateDetailPage() {
                       {lotissement.Lieudit && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <MapPin
                             className="w-5 h-5"
@@ -1026,7 +1183,9 @@ export default function EstateDetailPage() {
                       {lotissement.hasRoadAccess && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <Route
                             className="w-5 h-5"
@@ -1044,7 +1203,9 @@ export default function EstateDetailPage() {
                       {lotissement.hasElectricity && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <Power
                             className="w-5 h-5"
@@ -1062,7 +1223,9 @@ export default function EstateDetailPage() {
                       {lotissement.hasWater && (
                         <div
                           className="flex items-center gap-3 p-4 rounded-xl"
-                          style={{ background: "rgba(255,255,255,0.05)" }}
+                          style={{
+                            background: "rgba(255,255,255,0.05)",
+                          }}
                         >
                           <Droplets
                             className="w-5 h-5"
@@ -1135,7 +1298,9 @@ export default function EstateDetailPage() {
                             {parcel.price && Number(parcel.price) > 0 && (
                               <span
                                 className="font-semibold"
-                                style={{ color: COLORS.primary[400] }}
+                                style={{
+                                  color: COLORS.primary[400],
+                                }}
                               >
                                 {formatPriceCompact(parcel.price)}
                               </span>
@@ -1188,11 +1353,6 @@ export default function EstateDetailPage() {
                   >
                     {getLocationString(lotissement)}
                   </p>
-                  {/* {lotissement.address && (
-                    <p className="text-sm mt-1 text-gray-400">
-                      {lotissement.address}
-                    </p>
-                  )} */}
                 </div>
               </div>
             </motion.div>

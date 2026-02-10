@@ -418,6 +418,64 @@ function sortListings(listings: Listing[], sortBy: SortOption): Listing[] {
   }
 }
 
+// Compact hero features — max 3 on mobile, max 5 on desktop
+function HeroFeatures({ listing }: { listing: Listing }) {
+  const features: { icon: React.ComponentType<any>; label: string }[] = [];
+
+  if (listing._entityType === "BATIMENT") {
+    const b = listing as Batiment;
+    if (b.bedrooms != null && b.bedrooms > 0)
+      features.push({
+        icon: Bed,
+        label: `${b.bedrooms} Bed${b.bedrooms > 1 ? "s" : ""}`,
+      });
+    if (b.bathrooms != null && b.bathrooms > 0)
+      features.push({
+        icon: Bath,
+        label: `${b.bathrooms} Bath${b.bathrooms > 1 ? "s" : ""}`,
+      });
+    if (b.surfaceArea)
+      features.push({ icon: Square, label: formatArea(b.surfaceArea) });
+    if (b.parkingSpaces && b.parkingSpaces > 0)
+      features.push({ icon: Car, label: `${b.parkingSpaces} Parking` });
+    if (b.hasElevator) features.push({ icon: Building2, label: "Elevator" });
+  } else if (listing._entityType === "PARCELLE") {
+    const p = listing as Parcelle;
+    if (p.Sup) features.push({ icon: Square, label: formatArea(p.Sup) });
+    if (p.approvedForBuilding)
+      features.push({ icon: Building2, label: "Build Ready" });
+    if (p.zoningType) features.push({ icon: Map, label: p.zoningType });
+  } else if (listing._entityType === "LOTISSEMENT") {
+    const l = listing as Lotissement;
+    if (l.Surface)
+      features.push({ icon: Square, label: formatArea(l.Surface) });
+    if (l.Nbre_lots)
+      features.push({ icon: Layers, label: `${l.Nbre_lots} Lots` });
+    if (l.hasElectricity) features.push({ icon: Power, label: "Power" });
+    if (l.hasWater) features.push({ icon: Droplets, label: "Water" });
+    if (l.hasRoadAccess) features.push({ icon: Route, label: "Road" });
+  }
+
+  if (features.length === 0) return null;
+
+  return (
+    <>
+      {features.map((feat, i) => (
+        <span
+          key={i}
+          // Hide 4th+ feature on small screens
+          className={`flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm ${
+            i >= 3 ? "hidden sm:flex" : ""
+          }`}
+        >
+          <feat.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-80" />
+          <span className="whitespace-nowrap">{feat.label}</span>
+        </span>
+      ))}
+    </>
+  );
+}
+
 export default function HomePage() {
   // Fetch all listings combined
   const { listings, loading, error, refetch } = useAllListings({
@@ -1155,7 +1213,7 @@ export default function HomePage() {
             >
               {loading ? (
                 <div className="aspect-[4/3] bg-white/10 rounded-2xl sm:rounded-3xl animate-pulse flex items-center justify-center">
-                  <div className="inline-block animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-4 border-white border-t-transparent"></div>
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-4 border-white border-t-transparent" />
                 </div>
               ) : error ? (
                 <div className="aspect-[4/3] bg-white/10 rounded-2xl sm:rounded-3xl flex items-center justify-center">
@@ -1175,6 +1233,7 @@ export default function HomePage() {
                   className="group relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl cursor-pointer"
                   onClick={() => handleViewListing(currentHeroListing)}
                 >
+                  {/* Image */}
                   <img
                     src={getListingImage(currentHeroListing)}
                     alt={currentHeroListing.title || "Featured Listing"}
@@ -1184,116 +1243,111 @@ export default function HomePage() {
                       target.src = getPlaceholderImage(currentHeroListing);
                     }}
                   />
-                  <div
-                    style={{ background: GRADIENTS.overlay.darkReverse }}
-                    className="absolute inset-0"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-8 lg:p-10">
-                    <div className="flex items-center gap-2 mb-3 sm:mb-4">
-                      <motion.span
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-1 px-3 sm:px-5 py-1.5 sm:py-2 text-white rounded-full text-sm sm:text-base font-bold"
-                        style={{ background: GRADIENTS.button.primary }}
-                      >
-                        {React.createElement(
-                          entityTypeIcons[currentHeroListing._entityType],
-                          { className: "w-4 h-4" },
-                        )}
-                        {getTypeLabel(currentHeroListing)}
-                      </motion.span>
-                      <span
-                        className="px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium text-white/90"
-                        style={{ background: "rgba(255,255,255,0.2)" }}
-                      >
-                        {getEntityTypeLabel(
-                          currentHeroListing._entityType,
-                          "en",
-                        )}
-                      </span>
-                    </div>
-                    <motion.h2
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="text-xl sm:text-3xl lg:text-4xl font-extrabold mb-2 sm:mb-3 leading-tight line-clamp-2"
+
+                  {/* Gradient overlay — stronger at bottom for text readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+                  {/* TOP LEFT — Type badge only */}
+                  <div className="absolute top-3 sm:top-5 left-3 sm:left-5 z-10">
+                    <motion.span
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 text-white rounded-full text-xs sm:text-sm font-bold backdrop-blur-md"
+                      style={{ background: "rgba(0,0,0,0.5)" }}
                     >
-                      {currentHeroListing.title || "Featured Listing"}
-                    </motion.h2>
-                    <motion.p
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="flex items-center gap-2 text-sm sm:text-lg opacity-90 mb-3 sm:mb-4"
-                    >
-                      <MapPin className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" />
-                      <span className="truncate">
-                        {getLocationString(currentHeroListing)}
-                      </span>
-                    </motion.p>
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="flex items-center gap-4 sm:gap-6 text-sm sm:text-base flex-wrap"
-                    >
-                      {renderListingFeatures(currentHeroListing)}
-                    </motion.div>
+                      {React.createElement(
+                        entityTypeIcons[currentHeroListing._entityType],
+                        { className: "w-3.5 h-3.5 sm:w-4 sm:h-4" },
+                      )}
+                      {getTypeLabel(currentHeroListing)}
+                    </motion.span>
                   </div>
-                  <div className="absolute top-4 sm:top-6 right-4 sm:right-6 flex flex-col gap-2">
+
+                  {/* TOP RIGHT — Status + Price (max 2 badges, horizontal on mobile) */}
+                  <div className="absolute top-3 sm:top-5 right-3 sm:right-5 z-10 flex items-center gap-2">
                     <span
-                      className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl"
+                      className="text-white px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-md"
                       style={{ background: getStatusColor(currentHeroListing) }}
                     >
                       {getListingStatusLabel(currentHeroListing)}
                     </span>
                     {currentHeroListing.price !== null &&
                       Number(currentHeroListing.price) > 0 && (
-                        <span
-                          className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl text-center"
-                          style={{ background: "rgba(0,0,0,0.6)" }}
-                        >
+                        <span className="text-white px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-md bg-black/50">
                           {formatPriceCompact(
                             currentHeroListing.price,
                             currentHeroListing.currency,
                           )}
-                        </span>
-                      )}
-                    {currentHeroListing._entityType === "BATIMENT" &&
-                      (currentHeroListing as Batiment).rentPrice &&
-                      Number((currentHeroListing as Batiment).rentPrice) >
-                        0 && (
-                        <span
-                          className="text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl text-center"
-                          style={{ background: "rgba(0,0,0,0.6)" }}
-                        >
-                          {formatPriceCompact(
-                            (currentHeroListing as Batiment).rentPrice,
-                            currentHeroListing.currency,
+                          {currentHeroListing.listingType === "RENT" && (
+                            <span className="text-[10px] sm:text-xs font-normal opacity-80">
+                              /mo
+                            </span>
                           )}
-                          /mo
                         </span>
                       )}
                   </div>
-                  <div className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2">
-                    {featuredListings.slice(0, 5).map((_, idx) => (
-                      <motion.button
-                        key={idx}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCurrentHeroIndex(idx);
-                        }}
-                        whileHover={{ scale: 1.2 }}
-                        className="w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all"
-                        style={{
-                          background:
-                            idx === currentHeroIndex
-                              ? COLORS.primary[400]
-                              : "rgba(255,255,255,0.5)",
-                          width: idx === currentHeroIndex ? "24px" : undefined,
-                        }}
-                      />
-                    ))}
+
+                  {/* BOTTOM CONTENT — Clean info block with reserved space for dots */}
+                  <div className="absolute bottom-0 left-0 right-0 z-10">
+                    {/* Main info */}
+                    <div className="px-4 sm:px-8 pb-12 sm:pb-14">
+                      {/* Title */}
+                      <motion.h2
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-white mb-1.5 sm:mb-2 leading-tight line-clamp-1 sm:line-clamp-2"
+                      >
+                        {currentHeroListing.title || "Featured Listing"}
+                      </motion.h2>
+
+                      {/* Location */}
+                      <motion.p
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="flex items-center gap-1.5 text-xs sm:text-sm text-white/80 mb-2 sm:mb-3"
+                      >
+                        <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                        <span className="truncate">
+                          {getLocationString(currentHeroListing)}
+                        </span>
+                      </motion.p>
+
+                      {/* Key features — LIMITED to max 3 on mobile, 4 on desktop */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="flex items-center gap-3 sm:gap-4 text-white/90"
+                      >
+                        <HeroFeatures listing={currentHeroListing} />
+                      </motion.div>
+                    </div>
+
+                    {/* Pagination dots — in their own reserved bar */}
+                    <div className="relative z-20 flex justify-center gap-1.5 sm:gap-2 pb-3 sm:pb-5 bg-gradient-to-t from-black/60 to-transparent pt-2">
+                      {featuredListings.slice(0, 8).map((_, idx) => (
+                        <motion.button
+                          key={idx}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentHeroIndex(idx);
+                          }}
+                          whileHover={{ scale: 1.3 }}
+                          className="h-1.5 sm:h-2 rounded-full transition-all duration-300"
+                          style={{
+                            background:
+                              idx === currentHeroIndex
+                                ? COLORS.primary[400]
+                                : "rgba(255,255,255,0.4)",
+                            width: idx === currentHeroIndex ? "24px" : "8px",
+                            minWidth: idx === currentHeroIndex ? "24px" : "8px",
+                          }}
+                          aria-label={`Go to slide ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
                   </div>
                 </motion.div>
               ) : (
@@ -1435,10 +1489,54 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Entity Type Tabs */}
-      <section className="relative z-20 py-6 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-wrap justify-center gap-3 mb-8">
+      {/* ============================================
+    SECTION 1: ENTITY TABS + LISTINGS (MERGED)
+    ============================================ */}
+      <section className="relative z-20 py-12 sm:py-16 bg-gradient-to-b from-transparent to-black/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          {/* Section Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-8 sm:mb-12"
+          >
+            <div
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-4"
+              style={{ background: "rgba(34, 197, 94, 0.1)" }}
+            >
+              <Sparkles
+                className="w-4 h-4"
+                style={{ color: COLORS.primary[400] }}
+              />
+              <span
+                className="text-sm font-semibold"
+                style={{ color: COLORS.primary[400] }}
+              >
+                Browse Properties
+              </span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-3">
+              {selectedEntityType === "ALL"
+                ? "Featured Listings"
+                : `Featured ${getEntityTypeLabel(selectedEntityType as EntityType, "en")}s`}
+            </h2>
+            <p
+              className="text-lg sm:text-xl max-w-2xl mx-auto"
+              style={{ color: COLORS.gray[300] }}
+            >
+              Discover our latest{" "}
+              {selectedEntityType === "ALL"
+                ? "properties, lands, and estates"
+                : getEntityTypeLabel(
+                    selectedEntityType as EntityType,
+                    "en",
+                  ).toLowerCase() + "s"}
+            </p>
+          </motion.div>
+
+          {/* Entity Type Tabs — directly above listings */}
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-8 sm:mb-10">
             {quickEntityTypes.map((type) => {
               const isActive = selectedEntityType === type;
               const Icon =
@@ -1449,7 +1547,7 @@ export default function HomePage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedEntityType(type)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition ${
+                  className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl font-semibold transition text-sm sm:text-base ${
                     isActive ? "text-white" : "text-white/70 hover:text-white"
                   }`}
                   style={{
@@ -1459,10 +1557,20 @@ export default function HomePage() {
                     boxShadow: isActive ? SHADOWS.glow : "none",
                   }}
                 >
-                  <Icon className="w-5 h-5" />
-                  {type === "ALL"
-                    ? "All"
-                    : getEntityTypeLabel(type as EntityType, "en")}
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="hidden sm:inline">
+                    {type === "ALL"
+                      ? "All"
+                      : getEntityTypeLabel(type as EntityType, "en")}
+                  </span>
+                  <span className="sm:hidden">
+                    {type === "ALL"
+                      ? "All"
+                      : getEntityTypeLabel(type as EntityType, "en").slice(
+                          0,
+                          4,
+                        )}
+                  </span>
                   {type !== "ALL" && stats.byEntityType && (
                     <span
                       className="ml-1 px-2 py-0.5 rounded-full text-xs"
@@ -1478,306 +1586,6 @@ export default function HomePage() {
                 </motion.button>
               );
             })}
-          </div>
-        </div>
-      </section>
-
-      {/* Services Section */}
-      <section className="relative z-20 py-6 sm:py-24 px-4">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-12 sm:mb-16"
-          >
-            <div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6"
-              style={{ background: "rgba(34, 197, 94, 0.1)" }}
-            >
-              <Sparkles
-                className="w-4 h-4"
-                style={{ color: COLORS.primary[400] }}
-              />
-              <span
-                className="text-sm font-semibold"
-                style={{ color: COLORS.primary[400] }}
-              >
-                Our Services
-              </span>
-            </div>
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
-              Comprehensive Real Estate Solutions
-            </h2>
-            <p
-              className="text-xl max-w-3xl mx-auto"
-              style={{ color: COLORS.gray[300] }}
-            >
-              From land surveys to construction and property management, we
-              provide end-to-end services for all your real estate needs
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            {services.map((service, index) => (
-              <Link href={`/services/${service.id}`} key={index}>
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.15 }}
-                  whileHover={{ y: -12, scale: 1.02 }}
-                  className="group backdrop-blur-lg rounded-3xl p-8 border-2 transition-all duration-500 cursor-pointer"
-                  style={{
-                    background: "rgba(255, 255, 255, 0.05)",
-                    borderColor: "rgba(255, 255, 255, 0.1)",
-                  }}
-                >
-                  <motion.div
-                    whileHover={{ rotate: 360, scale: 1.1 }}
-                    transition={{ duration: 0.6 }}
-                    className={`mb-6 w-20 h-20 rounded-2xl bg-gradient-to-br ${service.gradient} flex items-center justify-center shadow-2xl`}
-                    style={{
-                      boxShadow: `0 10px 40px ${COLORS.primary[500]}40`,
-                    }}
-                  >
-                    <service.icon className="w-10 h-10 text-white" />
-                  </motion.div>
-
-                  <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-green-400 transition">
-                    {service.title}
-                  </h3>
-
-                  <p
-                    className="text-base mb-6 leading-relaxed"
-                    style={{ color: COLORS.gray[300] }}
-                  >
-                    {service.description}
-                  </p>
-
-                  <ul className="space-y-2 mb-6">
-                    {service.features.map((feature, idx) => (
-                      <motion.li
-                        key={idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: index * 0.15 + idx * 0.1 }}
-                        className="flex items-center gap-2 text-sm"
-                        style={{ color: COLORS.gray[400] }}
-                      >
-                        <div
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ background: COLORS.primary[400] }}
-                        />
-                        {feature}
-                      </motion.li>
-                    ))}
-                  </ul>
-
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="w-full px-6 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
-                    style={{
-                      background: "rgba(255, 255, 255, 0.1)",
-                      color: COLORS.white,
-                      border: `1px solid rgba(255, 255, 255, 0.2)`,
-                    }}
-                  >
-                    Learn More
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </motion.button>
-                </motion.div>
-              </Link>
-            ))}
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mt-12"
-          >
-            <p className="text-lg mb-6" style={{ color: COLORS.gray[300] }}>
-              Need a custom solution? We're here to help with your specific
-              requirements.
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => router.push("/contact")}
-              className="px-8 py-4 rounded-xl font-bold text-lg transition"
-              style={{
-                background: GRADIENTS.button.primary,
-                color: COLORS.white,
-                boxShadow: SHADOWS.glow,
-              }}
-            >
-              Request a Quote
-            </motion.button>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section className="relative z-20 py-16 sm:py-24 px-4 bg-gradient-to-b from-black/30 to-transparent">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12 sm:mb-16"
-          >
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
-              How We Work
-            </h2>
-            <p
-              className="text-xl max-w-2xl mx-auto"
-              style={{ color: COLORS.gray[300] }}
-            >
-              Simple, transparent process from consultation to completion
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[
-              {
-                step: "01",
-                title: "Consultation",
-                desc: "Share your requirements and vision with our expert team",
-              },
-              {
-                step: "02",
-                title: "Site Visit",
-                desc: "We assess the property or land with professional surveys",
-              },
-              {
-                step: "03",
-                title: "Proposal",
-                desc: "Receive a detailed plan and transparent pricing",
-              },
-              {
-                step: "04",
-                title: "Execution",
-                desc: "We deliver quality work on time and within budget",
-              },
-            ].map((item, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="relative text-center"
-              >
-                {idx < 3 && (
-                  <div
-                    className="hidden md:block absolute top-12 left-1/2 w-full h-0.5"
-                    style={{
-                      background: `linear-gradient(to right, ${COLORS.primary[500]}, transparent)`,
-                    }}
-                  />
-                )}
-
-                <motion.div
-                  whileHover={{ scale: 1.1, rotate: 360 }}
-                  transition={{ duration: 0.6 }}
-                  className="relative z-10 mx-auto mb-4 w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white"
-                  style={{
-                    background: GRADIENTS.button.primary,
-                    boxShadow: SHADOWS.glow,
-                  }}
-                >
-                  {item.step}
-                </motion.div>
-
-                <h3 className="text-xl font-bold text-white mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-sm" style={{ color: COLORS.gray[400] }}>
-                  {item.desc}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Feature Cards Section */}
-      <section className="relative z-20 py-1 sm:py-24 px-4">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
-              Why Choose Earth Design
-            </h2>
-            <p className="text-xl" style={{ color: COLORS.gray[300] }}>
-              Experience excellence in every transaction
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -8, scale: 1.02 }}
-                className="group p-6 sm:p-8 rounded-3xl backdrop-blur-sm transition cursor-pointer border"
-                style={{
-                  background: "rgba(255, 255, 255, 0.05)",
-                  borderColor: "rgba(255, 255, 255, 0.1)",
-                }}
-              >
-                <motion.div
-                  whileHover={{ rotate: 360 }}
-                  transition={{ duration: 0.6 }}
-                  className={`mb-4 w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center shadow-lg`}
-                >
-                  <feature.icon className="w-7 h-7 text-white" />
-                </motion.div>
-                <h3 className="text-2xl text-white mb-2 font-bold group-hover:text-green-400 transition">
-                  {feature.title}
-                </h3>
-                <p
-                  style={{ color: COLORS.gray[300] }}
-                  className="group-hover:text-gray-200 transition"
-                >
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Listings Section */}
-      <section className="relative z-20 py-1 sm:py-2 bg-gradient-to-b from-transparent to-black/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl sm:text-5xl font-extrabold text-white mb-4">
-              {selectedEntityType === "ALL"
-                ? "Featured Listings"
-                : `Featured ${getEntityTypeLabel(selectedEntityType as EntityType, "en")}s`}
-            </h2>
-            <p className="text-xl" style={{ color: COLORS.gray[300] }}>
-              Discover our latest{" "}
-              {selectedEntityType === "ALL"
-                ? "listings"
-                : getEntityTypeLabel(
-                    selectedEntityType as EntityType,
-                    "en",
-                  ).toLowerCase() + "s"}
-            </p>
           </div>
 
           {/* Listings Grid */}
@@ -1866,7 +1674,7 @@ export default function HomePage() {
                           entityId={getListingId(listing)}
                           variant="default"
                           size="md"
-                          title={""}
+                          title=""
                         />
                       </div>
                       <div className="absolute top-4 right-4 flex flex-col gap-2">
@@ -1917,7 +1725,6 @@ export default function HomePage() {
                       </p>
 
                       <div className="mb-4">
-                        {/* Price display */}
                         {listing.price !== null &&
                           Number(listing.price) > 0 && (
                             <p
@@ -1927,8 +1734,6 @@ export default function HomePage() {
                               {formatPrice(listing.price, listing.currency)}
                             </p>
                           )}
-
-                        {/* Rent Price for Batiments */}
                         {listing._entityType === "BATIMENT" &&
                           (listing as Batiment).rentPrice &&
                           Number((listing as Batiment).rentPrice) > 0 && (
@@ -1950,8 +1755,6 @@ export default function HomePage() {
                               /month
                             </p>
                           )}
-
-                        {/* Price on Request */}
                         {(!listing.price || Number(listing.price) === 0) &&
                           (listing._entityType !== "BATIMENT" ||
                             !(listing as Batiment).rentPrice ||
@@ -1963,8 +1766,6 @@ export default function HomePage() {
                               Price on Request
                             </p>
                           )}
-
-                        {/* Price per sqm */}
                         {listing.pricePerSqM &&
                           Number(listing.pricePerSqM) > 0 && (
                             <p
@@ -1984,10 +1785,9 @@ export default function HomePage() {
                         className="flex items-center gap-4 text-sm mb-2 flex-wrap"
                         style={{ color: COLORS.gray[300] }}
                       >
-                        {/* Entity-specific features */}
                         {listing._entityType === "BATIMENT" && (
                           <>
-                            {(listing as Batiment).bedrooms !== null &&
+                            {(listing as Batiment).bedrooms != null &&
                               (listing as Batiment).bedrooms! > 0 && (
                                 <div className="flex items-center gap-2">
                                   <Bed
@@ -1997,7 +1797,7 @@ export default function HomePage() {
                                   <span>{(listing as Batiment).bedrooms}</span>
                                 </div>
                               )}
-                            {(listing as Batiment).bathrooms !== null &&
+                            {(listing as Batiment).bathrooms != null &&
                               (listing as Batiment).bathrooms! > 0 && (
                                 <div className="flex items-center gap-2">
                                   <Bath
@@ -2009,8 +1809,6 @@ export default function HomePage() {
                               )}
                           </>
                         )}
-
-                        {/* Surface for all types */}
                         {getSurfaceDisplay(listing) && (
                           <div className="flex items-center gap-2">
                             <Square
@@ -2022,8 +1820,6 @@ export default function HomePage() {
                             </span>
                           </div>
                         )}
-
-                        {/* Lotissement specific */}
                         {listing._entityType === "LOTISSEMENT" &&
                           (listing as Lotissement).Nbre_lots && (
                             <div className="flex items-center gap-2">
@@ -2050,7 +1846,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mt-12"
+              className="text-center mt-10 sm:mt-12"
             >
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -2070,7 +1866,683 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FAQ Section */}
+      {/* ============================================
+    SECTION 2: SERVICES
+    ============================================ */}
+      <section className="relative z-20 py-16 sm:py-24 px-4">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-12 sm:mb-16"
+          >
+            <div
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6"
+              style={{ background: "rgba(34, 197, 94, 0.1)" }}
+            >
+              <Sparkles
+                className="w-4 h-4"
+                style={{ color: COLORS.primary[400] }}
+              />
+              <span
+                className="text-sm font-semibold"
+                style={{ color: COLORS.primary[400] }}
+              >
+                Our Services
+              </span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
+              Comprehensive Real Estate Solutions
+            </h2>
+            <p
+              className="text-lg sm:text-xl max-w-3xl mx-auto"
+              style={{ color: COLORS.gray[300] }}
+            >
+              From land surveys to construction and property management, we
+              provide end-to-end services for all your real estate needs
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {services.map((service, index) => (
+              <Link href={`/services/${service.id}`} key={index}>
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.15 }}
+                  whileHover={{ y: -12, scale: 1.02 }}
+                  className="group backdrop-blur-lg rounded-3xl p-8 border-2 transition-all duration-500 cursor-pointer h-full"
+                  style={{
+                    background: "rgba(255, 255, 255, 0.05)",
+                    borderColor: "rgba(255, 255, 255, 0.1)",
+                  }}
+                >
+                  <motion.div
+                    whileHover={{ rotate: 360, scale: 1.1 }}
+                    transition={{ duration: 0.6 }}
+                    className={`mb-6 w-20 h-20 rounded-2xl bg-gradient-to-br ${service.gradient} flex items-center justify-center shadow-2xl`}
+                    style={{
+                      boxShadow: `0 10px 40px ${COLORS.primary[500]}40`,
+                    }}
+                  >
+                    <service.icon className="w-10 h-10 text-white" />
+                  </motion.div>
+
+                  <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-green-400 transition">
+                    {service.title}
+                  </h3>
+                  <p
+                    className="text-base mb-6 leading-relaxed"
+                    style={{ color: COLORS.gray[300] }}
+                  >
+                    {service.description}
+                  </p>
+
+                  <ul className="space-y-2 mb-6">
+                    {service.features.map((feature, idx) => (
+                      <motion.li
+                        key={idx}
+                        initial={{ opacity: 0, x: -10 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: index * 0.15 + idx * 0.1 }}
+                        className="flex items-center gap-2 text-sm"
+                        style={{ color: COLORS.gray[400] }}
+                      >
+                        <div
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ background: COLORS.primary[400] }}
+                        />
+                        {feature}
+                      </motion.li>
+                    ))}
+                  </ul>
+
+                  <div
+                    className="w-full px-6 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
+                    style={{
+                      background: "rgba(255, 255, 255, 0.1)",
+                      color: COLORS.white,
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                    }}
+                  >
+                    Learn More
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </motion.div>
+              </Link>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mt-12"
+          >
+            <p className="text-lg mb-6" style={{ color: COLORS.gray[300] }}>
+              Need a custom solution? We're here to help with your specific
+              requirements.
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push("/contact")}
+              className="px-8 py-4 rounded-xl font-bold text-lg transition"
+              style={{
+                background: GRADIENTS.button.primary,
+                color: COLORS.white,
+                boxShadow: SHADOWS.glow,
+              }}
+            >
+              Request a Quote
+            </motion.button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ============================================
+    SECTION 3: WHY CHOOSE US
+    ============================================ */}
+      <section className="relative z-20 py-16 sm:py-24 px-4">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
+              Why Choose Earth Design
+            </h2>
+            <p
+              className="text-lg sm:text-xl"
+              style={{ color: COLORS.gray[300] }}
+            >
+              Experience excellence in every transaction
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -8, scale: 1.02 }}
+                className="group p-6 sm:p-8 rounded-3xl backdrop-blur-sm transition cursor-pointer border"
+                style={{
+                  background: "rgba(255, 255, 255, 0.05)",
+                  borderColor: "rgba(255, 255, 255, 0.1)",
+                }}
+              >
+                <motion.div
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.6 }}
+                  className={`mb-4 w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center shadow-lg`}
+                >
+                  <feature.icon className="w-7 h-7 text-white" />
+                </motion.div>
+                <h3 className="text-xl sm:text-2xl text-white mb-2 font-bold group-hover:text-green-400 transition">
+                  {feature.title}
+                </h3>
+                <p
+                  style={{ color: COLORS.gray[300] }}
+                  className="group-hover:text-gray-200 transition"
+                >
+                  {feature.description}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================
+    SECTION 4: TESTIMONIALS
+    ============================================ */}
+      <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <div className="max-w-7xl mx-auto relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 sm:mb-16"
+          >
+            <div
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6"
+              style={{ background: "rgba(34, 197, 94, 0.1)" }}
+            >
+              <Heart
+                className="w-4 h-4"
+                style={{ color: COLORS.primary[400] }}
+              />
+              <span
+                className="text-sm font-semibold"
+                style={{ color: COLORS.primary[400] }}
+              >
+                Testimonials
+              </span>
+            </div>
+            <h2
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6"
+              style={{ color: COLORS.white }}
+            >
+              What Our Clients Say
+            </h2>
+            <p
+              className="text-lg sm:text-xl max-w-2xl mx-auto"
+              style={{ color: COLORS.gray[300] }}
+            >
+              Join hundreds of satisfied homeowners and investors
+            </p>
+          </motion.div>
+
+          {/* Desktop: Circular Orbit Testimonials */}
+          <div
+            className="hidden lg:block relative h-[500px] w-full"
+            style={{ perspective: "1000px" }}
+          >
+            {/* Rotating orbit ring */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+                className="w-[600px] h-[200px] rounded-full border-2 border-dashed opacity-20"
+                style={{ borderColor: COLORS.primary[500] }}
+              />
+            </div>
+
+            {/* Center glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+              <motion.div
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.5, 0.8, 0.5],
+                }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="w-20 h-20 rounded-full"
+                style={{
+                  background: GRADIENTS.button.primary,
+                  boxShadow: `0 0 60px ${COLORS.primary[500]}80`,
+                }}
+              />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                <Star className="w-8 h-8 text-white" />
+              </div>
+            </div>
+
+            {/* Testimonial cards */}
+            {testimonials.map((testimonial, idx) => {
+              const { x, y, scale, opacity, zIndex, isActive } =
+                getCircularPosition(
+                  idx,
+                  testimonials.length,
+                  currentTestimonialIndex,
+                );
+
+              return (
+                <motion.div
+                  key={idx}
+                  animate={{
+                    x: x,
+                    y: y,
+                    scale: isActive ? 1 : scale * 0.85,
+                    opacity: isActive ? 1 : opacity * 0.5,
+                    zIndex: isActive ? 100 : zIndex,
+                    filter: isActive ? "blur(0px)" : "blur(2px)",
+                  }}
+                  transition={{
+                    duration: 0.8,
+                    ease: [0.4, 0, 0.2, 1],
+                  }}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80"
+                  style={{
+                    transformStyle: "preserve-3d",
+                    pointerEvents: isActive ? "auto" : "none",
+                  }}
+                >
+                  <motion.div
+                    whileHover={isActive ? { scale: 1.05 } : {}}
+                    className="rounded-3xl p-6 border-2 transition-all duration-500"
+                    style={{
+                      // KEY FIX: Solid backgrounds instead of transparent
+                      background: isActive
+                        ? `linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(16, 85, 40, 0.9) 100%)`
+                        : `linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%)`,
+                      borderColor: isActive
+                        ? COLORS.primary[500]
+                        : "rgba(255, 255, 255, 0.08)",
+                      boxShadow: isActive
+                        ? `0 25px 60px rgba(0, 0, 0, 0.5), 0 0 40px ${COLORS.primary[500]}30, inset 0 1px 0 rgba(255,255,255,0.1)`
+                        : "0 4px 20px rgba(0, 0, 0, 0.3)",
+                      // KEY FIX: Hide backface so cards behind don't show through
+                      backfaceVisibility: "hidden",
+                      WebkitBackfaceVisibility: "hidden",
+                    }}
+                  >
+                    {/* Stars */}
+                    <div className="flex gap-1 mb-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-5 h-5 ${
+                            i < testimonial.rating ? "fill-current" : ""
+                          }`}
+                          style={{
+                            color:
+                              i < testimonial.rating
+                                ? isActive
+                                  ? COLORS.primary[300]
+                                  : COLORS.primary[500]
+                                : COLORS.gray[700],
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Quote */}
+                    <p
+                      className="text-base mb-6 leading-relaxed line-clamp-4"
+                      style={{
+                        color: isActive ? COLORS.gray[200] : COLORS.gray[400],
+                      }}
+                    >
+                      &ldquo;{testimonial.text}&rdquo;
+                    </p>
+
+                    {/* Author */}
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white flex-shrink-0"
+                        style={{
+                          background: isActive
+                            ? GRADIENTS.button.primary
+                            : `linear-gradient(135deg, ${COLORS.gray[600]}, ${COLORS.gray[700]})`,
+                          boxShadow: isActive
+                            ? `0 4px 15px ${COLORS.primary[500]}40`
+                            : "none",
+                        }}
+                      >
+                        {testimonial.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p
+                          className="font-bold"
+                          style={{
+                            color: isActive ? COLORS.white : COLORS.gray[400],
+                          }}
+                        >
+                          {testimonial.name}
+                        </p>
+                        <p
+                          className="text-sm"
+                          style={{
+                            color: isActive
+                              ? COLORS.primary[300]
+                              : COLORS.gray[600],
+                          }}
+                        >
+                          {testimonial.role}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Desktop pagination dots */}
+          <div className="hidden lg:flex justify-center gap-3 mt-8">
+            {testimonials.map((_, idx) => (
+              <motion.button
+                key={idx}
+                onClick={() => setCurrentTestimonialIndex(idx)}
+                whileHover={{ scale: 1.3 }}
+                whileTap={{ scale: 0.9 }}
+                className="relative h-3 rounded-full transition-all duration-300"
+                style={{
+                  background:
+                    idx === currentTestimonialIndex
+                      ? COLORS.primary[400]
+                      : "rgba(255,255,255,0.3)",
+                  width: idx === currentTestimonialIndex ? "32px" : "12px",
+                }}
+              >
+                {idx === currentTestimonialIndex && (
+                  <motion.div
+                    layoutId="activeTestimonialDot"
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: GRADIENTS.button.primary,
+                      boxShadow: `0 0 20px ${COLORS.primary[500]}`,
+                    }}
+                  />
+                )}
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Mobile/Tablet — Show only active + peek neighbors */}
+          <div className="lg:hidden relative overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentTestimonialIndex}
+                initial={{ opacity: 0, x: 80 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -80 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="rounded-2xl p-6 sm:p-8 border-2"
+                style={{
+                  background: `linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(16, 85, 40, 0.6) 100%)`,
+                  borderColor: COLORS.primary[500],
+                  boxShadow: `0 20px 50px rgba(0, 0, 0, 0.4), 0 0 30px ${COLORS.primary[500]}20`,
+                }}
+              >
+                {/* Stars */}
+                <div className="flex gap-1 mb-4">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-5 h-5 ${
+                        i < testimonials[currentTestimonialIndex].rating
+                          ? "fill-current"
+                          : ""
+                      }`}
+                      style={{
+                        color:
+                          i < testimonials[currentTestimonialIndex].rating
+                            ? COLORS.primary[300]
+                            : COLORS.gray[700],
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Quote */}
+                <p
+                  className="text-base sm:text-lg mb-6 leading-relaxed"
+                  style={{ color: COLORS.gray[200] }}
+                >
+                  &ldquo;{testimonials[currentTestimonialIndex].text}&rdquo;
+                </p>
+
+                {/* Author */}
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white flex-shrink-0"
+                    style={{
+                      background: GRADIENTS.button.primary,
+                      boxShadow: `0 4px 15px ${COLORS.primary[500]}40`,
+                    }}
+                  >
+                    {testimonials[currentTestimonialIndex].name.charAt(0)}
+                  </div>
+                  <div>
+                    <p
+                      className="font-bold text-lg"
+                      style={{ color: COLORS.white }}
+                    >
+                      {testimonials[currentTestimonialIndex].name}
+                    </p>
+                    <p
+                      className="text-sm"
+                      style={{ color: COLORS.primary[300] }}
+                    >
+                      {testimonials[currentTestimonialIndex].role}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Preview cards — subtle peek of neighbors */}
+            <div className="flex gap-3 mt-4">
+              {testimonials.map((testimonial, idx) => {
+                if (idx === currentTestimonialIndex) return null;
+                return (
+                  <motion.button
+                    key={idx}
+                    onClick={() => setCurrentTestimonialIndex(idx)}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="flex-1 rounded-xl p-3 border text-left transition-all hover:border-white/30"
+                    style={{
+                      background: "rgba(20, 20, 20, 0.9)",
+                      borderColor: "rgba(255, 255, 255, 0.08)",
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                        style={{
+                          background: `linear-gradient(135deg, ${COLORS.gray[600]}, ${COLORS.gray[700]})`,
+                        }}
+                      >
+                        {testimonial.name.charAt(0)}
+                      </div>
+                      <span
+                        className="text-xs font-medium truncate"
+                        style={{ color: COLORS.gray[400] }}
+                      >
+                        {testimonial.name}
+                      </span>
+                    </div>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-2.5 h-2.5 ${
+                            i < testimonial.rating ? "fill-current" : ""
+                          }`}
+                          style={{
+                            color:
+                              i < testimonial.rating
+                                ? COLORS.primary[500]
+                                : COLORS.gray[700],
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            {/* Mobile dots */}
+            <div className="flex justify-center gap-2 mt-6">
+              {testimonials.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentTestimonialIndex(idx)}
+                  className="h-2 rounded-full transition-all duration-300"
+                  style={{
+                    background:
+                      idx === currentTestimonialIndex
+                        ? COLORS.primary[400]
+                        : "rgba(255,255,255,0.3)",
+                    width: idx === currentTestimonialIndex ? "24px" : "8px",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================
+    SECTION 5: HOW IT WORKS
+    ============================================ */}
+      <section className="relative z-20 py-16 sm:py-24 px-4 bg-gradient-to-b from-black/30 to-transparent">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12 sm:mb-16"
+          >
+            <div
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6"
+              style={{ background: "rgba(34, 197, 94, 0.1)" }}
+            >
+              <Sparkles
+                className="w-4 h-4"
+                style={{ color: COLORS.primary[400] }}
+              />
+              <span
+                className="text-sm font-semibold"
+                style={{ color: COLORS.primary[400] }}
+              >
+                Our Process
+              </span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mb-4">
+              How We Work
+            </h2>
+            <p
+              className="text-lg sm:text-xl max-w-2xl mx-auto"
+              style={{ color: COLORS.gray[300] }}
+            >
+              Simple, transparent process from consultation to completion
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+            {[
+              {
+                step: "01",
+                title: "Consultation",
+                desc: "Share your requirements and vision with our expert team",
+              },
+              {
+                step: "02",
+                title: "Site Visit",
+                desc: "We assess the property or land with professional surveys",
+              },
+              {
+                step: "03",
+                title: "Proposal",
+                desc: "Receive a detailed plan and transparent pricing",
+              },
+              {
+                step: "04",
+                title: "Execution",
+                desc: "We deliver quality work on time and within budget",
+              },
+            ].map((item, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="relative text-center"
+              >
+                {/* Connector line — only between items on desktop */}
+                {idx < 3 && (
+                  <div
+                    className="hidden md:block absolute top-12 left-1/2 w-full h-0.5"
+                    style={{
+                      background: `linear-gradient(to right, ${COLORS.primary[500]}, transparent)`,
+                    }}
+                  />
+                )}
+
+                <motion.div
+                  whileHover={{ scale: 1.1, rotate: 360 }}
+                  transition={{ duration: 0.6 }}
+                  className="relative z-10 mx-auto mb-4 w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white"
+                  style={{
+                    background: GRADIENTS.button.primary,
+                    boxShadow: SHADOWS.glow,
+                  }}
+                >
+                  {item.step}
+                </motion.div>
+
+                <h3 className="text-xl font-bold text-white mb-2">
+                  {item.title}
+                </h3>
+                <p className="text-sm" style={{ color: COLORS.gray[400] }}>
+                  {item.desc}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================
+    SECTION 6: FAQ
+    ============================================ */}
       <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="max-w-4xl mx-auto relative z-10">
           <motion.div
@@ -2174,317 +2646,26 @@ export default function HomePage() {
             <p className="text-lg mb-4" style={{ color: COLORS.gray[300] }}>
               Still have questions?
             </p>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => router.push("/contact")}
               className="px-8 py-4 rounded-xl font-bold transition"
               style={{
                 background: GRADIENTS.button.primary,
                 color: COLORS.white,
+                boxShadow: SHADOWS.glow,
               }}
             >
               Contact Us
-            </button>
+            </motion.button>
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <div className="max-w-7xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12 sm:mb-16"
-          >
-            <div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6"
-              style={{ background: "rgba(34, 197, 94, 0.1)" }}
-            >
-              <Heart
-                className="w-4 h-4"
-                style={{ color: COLORS.primary[400] }}
-              />
-              <span
-                className="text-sm font-semibold"
-                style={{ color: COLORS.primary[400] }}
-              >
-                Testimonials
-              </span>
-            </div>
-            <h2
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6"
-              style={{ color: COLORS.white }}
-            >
-              What Our Clients Say
-            </h2>
-            <p
-              className="text-lg sm:text-xl max-w-2xl mx-auto"
-              style={{ color: COLORS.gray[300] }}
-            >
-              Join hundreds of satisfied homeowners and investors
-            </p>
-          </motion.div>
-
-          {/* Desktop: Circular Orbit Testimonials */}
-          <div
-            className="hidden lg:block relative h-[500px] w-full"
-            style={{ perspective: "1000px" }}
-          >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-                className="w-[600px] h-[200px] rounded-full border-2 border-dashed opacity-20"
-                style={{ borderColor: COLORS.primary[500] }}
-              />
-            </div>
-
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-              <motion.div
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.5, 0.8, 0.5],
-                }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="w-20 h-20 rounded-full"
-                style={{
-                  background: GRADIENTS.button.primary,
-                  boxShadow: `0 0 60px ${COLORS.primary[500]}80`,
-                }}
-              />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                <Star className="w-8 h-8 text-white" />
-              </div>
-            </div>
-
-            {testimonials.map((testimonial, idx) => {
-              const { x, y, scale, opacity, zIndex, isActive } =
-                getCircularPosition(
-                  idx,
-                  testimonials.length,
-                  currentTestimonialIndex,
-                );
-
-              return (
-                <motion.div
-                  key={idx}
-                  animate={{
-                    x: x,
-                    y: y,
-                    scale: scale,
-                    opacity: opacity,
-                    zIndex: zIndex,
-                  }}
-                  transition={{
-                    duration: 0.8,
-                    ease: [0.4, 0, 0.2, 1],
-                  }}
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80"
-                  style={{ transformStyle: "preserve-3d" }}
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className={`backdrop-blur-xl rounded-3xl p-6 border-2 transition-all duration-300 ${
-                      isActive ? "shadow-2xl" : "shadow-lg"
-                    }`}
-                    style={{
-                      background: isActive
-                        ? "rgba(34, 197, 94, 0.15)"
-                        : "rgba(255, 255, 255, 0.08)",
-                      borderColor: isActive
-                        ? COLORS.primary[500]
-                        : "rgba(255, 255, 255, 0.15)",
-                      boxShadow: isActive
-                        ? `0 0 40px ${COLORS.primary[500]}40`
-                        : "none",
-                    }}
-                  >
-                    <div className="flex gap-1 mb-4">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-5 h-5 ${
-                            i < testimonial.rating ? "fill-current" : ""
-                          }`}
-                          style={{
-                            color:
-                              i < testimonial.rating
-                                ? COLORS.primary[400]
-                                : COLORS.gray[600],
-                          }}
-                        />
-                      ))}
-                    </div>
-
-                    <p
-                      className="text-base mb-6 leading-relaxed line-clamp-4"
-                      style={{
-                        color: isActive ? COLORS.gray[200] : COLORS.gray[300],
-                      }}
-                    >
-                      "{testimonial.text}"
-                    </p>
-
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold text-white"
-                        style={{ background: GRADIENTS.button.primary }}
-                      >
-                        {testimonial.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p
-                          className="font-bold"
-                          style={{ color: COLORS.white }}
-                        >
-                          {testimonial.name}
-                        </p>
-                        <p
-                          className="text-sm"
-                          style={{ color: COLORS.gray[400] }}
-                        >
-                          {testimonial.role}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              );
-            })}
-          </div>
-
-          <div className="hidden lg:flex justify-center gap-3 mt-8">
-            {testimonials.map((_, idx) => (
-              <motion.button
-                key={idx}
-                onClick={() => setCurrentTestimonialIndex(idx)}
-                whileHover={{ scale: 1.3 }}
-                whileTap={{ scale: 0.9 }}
-                className="relative w-3 h-3 rounded-full transition-all duration-300"
-                style={{
-                  background:
-                    idx === currentTestimonialIndex
-                      ? COLORS.primary[400]
-                      : "rgba(255,255,255,0.3)",
-                  width: idx === currentTestimonialIndex ? "32px" : "12px",
-                }}
-              >
-                {idx === currentTestimonialIndex && (
-                  <motion.div
-                    layoutId="activeIndicator"
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      background: GRADIENTS.button.primary,
-                      boxShadow: `0 0 20px ${COLORS.primary[500]}`,
-                    }}
-                  />
-                )}
-              </motion.button>
-            ))}
-          </div>
-
-          {/* Mobile/Tablet Testimonials */}
-          <div className="lg:hidden relative">
-            <div className="flex flex-col gap-4">
-              {testimonials.map((testimonial, idx) => {
-                const displayOrder =
-                  (idx - currentTestimonialIndex + testimonials.length) %
-                  testimonials.length;
-                const isFirst = displayOrder === 0;
-
-                return (
-                  <motion.div
-                    key={idx}
-                    layout
-                    animate={{
-                      scale: isFirst ? 1 : 0.95,
-                      opacity: isFirst ? 1 : 0.7,
-                    }}
-                    transition={{ duration: 0.5, ease: "easeInOut" }}
-                    className={`backdrop-blur-lg rounded-2xl p-6 border transition-all ${
-                      isFirst ? "border-2" : ""
-                    }`}
-                    style={{
-                      background: isFirst
-                        ? "rgba(34, 197, 94, 0.1)"
-                        : "rgba(255, 255, 255, 0.05)",
-                      borderColor: isFirst
-                        ? COLORS.primary[500]
-                        : "rgba(255, 255, 255, 0.1)",
-                      order: displayOrder,
-                    }}
-                  >
-                    <div className="flex gap-1 mb-4">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < testimonial.rating ? "fill-current" : ""
-                          }`}
-                          style={{
-                            color:
-                              i < testimonial.rating
-                                ? COLORS.primary[400]
-                                : COLORS.gray[600],
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <p
-                      className="text-base mb-6"
-                      style={{ color: COLORS.gray[300] }}
-                    >
-                      "{testimonial.text}"
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white"
-                        style={{ background: GRADIENTS.button.primary }}
-                      >
-                        {testimonial.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p
-                          className="font-bold"
-                          style={{ color: COLORS.white }}
-                        >
-                          {testimonial.name}
-                        </p>
-                        <p
-                          className="text-sm"
-                          style={{ color: COLORS.gray[400] }}
-                        >
-                          {testimonial.role}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            <div className="flex justify-center gap-2 mt-6">
-              {testimonials.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentTestimonialIndex(idx)}
-                  className="w-2 h-2 rounded-full transition-all"
-                  style={{
-                    background:
-                      idx === currentTestimonialIndex
-                        ? COLORS.primary[400]
-                        : "rgba(255,255,255,0.3)",
-                    width: idx === currentTestimonialIndex ? "20px" : "8px",
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
+      {/* ============================================
+    SECTION 7: FINAL CTA
+    ============================================ */}
       <section className="relative py-16 sm:py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto relative z-10">
           <motion.div
@@ -2512,7 +2693,9 @@ export default function HomePage() {
               estate journey
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleViewAllProperties}
                 className="px-8 py-4 rounded-xl font-bold transition"
                 style={{
@@ -2522,8 +2705,10 @@ export default function HomePage() {
                 }}
               >
                 Browse Listings
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => router.push("/contact")}
                 className="px-8 py-4 rounded-xl font-bold border-2 transition"
                 style={{
@@ -2533,13 +2718,13 @@ export default function HomePage() {
                 }}
               >
                 Schedule Consultation
-              </button>
+              </motion.button>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Footer Component */}
+      {/* Footer */}
       <Footer />
 
       {/* Bottom Glow */}

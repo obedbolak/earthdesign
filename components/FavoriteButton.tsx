@@ -1,8 +1,7 @@
 // components/FavoriteButton.tsx
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Heart, Loader2 } from "lucide-react";
 import {
   useFavoriteButton,
@@ -16,7 +15,6 @@ interface FavoriteButtonProps {
   size?: "sm" | "md" | "lg";
   variant?: "default" | "overlay" | "minimal";
   className?: string;
-  showToast?: boolean;
 }
 
 export default function FavoriteButton({
@@ -25,14 +23,12 @@ export default function FavoriteButton({
   size = "md",
   variant = "default",
   className = "",
-  showToast = true,
 }: FavoriteButtonProps) {
   const router = useRouter();
   const { isFavorite, isLoading, isAuthenticated, toggle } = useFavoriteButton(
     entityType,
     entityId,
   );
-  const [showMessage, setShowMessage] = useState<string | null>(null);
 
   const sizeClasses = {
     sm: "w-8 h-8",
@@ -57,10 +53,6 @@ export default function FavoriteButton({
     e.stopPropagation();
 
     if (!isAuthenticated) {
-      if (showToast) {
-        setShowMessage("Please sign in to save favorites");
-        setTimeout(() => setShowMessage(null), 3000);
-      }
       router.push(
         "/auth/signin?callbackUrl=" +
           encodeURIComponent(window.location.pathname),
@@ -68,81 +60,54 @@ export default function FavoriteButton({
       return;
     }
 
-    const result = await toggle();
-
-    if (showToast && result.success) {
-      setShowMessage(
-        result.isFavorite ? "Added to favorites!" : "Removed from favorites",
-      );
-      setTimeout(() => setShowMessage(null), 2000);
-    } else if (showToast && result.error) {
-      setShowMessage(result.error);
-      setTimeout(() => setShowMessage(null), 3000);
-    }
+    await toggle();
   };
 
   return (
-    <div className="relative">
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={handleClick}
-        disabled={isLoading}
-        className={`
-          ${sizeClasses[size]}
-          ${variantClasses[variant]}
-          rounded-full flex items-center justify-center
-          transition-all duration-200
-          disabled:opacity-50 disabled:cursor-not-allowed
-          ${className}
-        `}
-        aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-      >
-        {isLoading ? (
-          <Loader2
-            className={`${iconSizes[size]} animate-spin text-gray-500`}
-          />
-        ) : (
-          <motion.div
-            initial={false}
-            animate={isFavorite ? { scale: [1, 1.3, 1] } : { scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Heart
-              className={`
-                ${iconSizes[size]}
-                transition-colors duration-200
-                ${
-                  isFavorite
-                    ? "fill-red-500 text-red-500"
-                    : variant === "overlay"
-                      ? "text-white"
+    <motion.button
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.85 }}
+      onClick={handleClick}
+      disabled={isLoading}
+      className={`
+        ${sizeClasses[size]}
+        ${variantClasses[variant]}
+        rounded-full flex items-center justify-center
+        transition-all duration-200
+        disabled:opacity-50 disabled:cursor-not-allowed
+        ${className}
+      `}
+      aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+    >
+      {isLoading ? (
+        <Loader2
+          className={`${iconSizes[size]} animate-spin ${
+            variant === "overlay" ? "text-white/70" : "text-gray-400"
+          }`}
+        />
+      ) : (
+        <motion.div
+          initial={false}
+          animate={isFavorite ? { scale: [1, 1.4, 0.9, 1.1, 1] } : { scale: 1 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
+          <Heart
+            className={`
+              ${iconSizes[size]}
+              transition-colors duration-200
+              ${
+                isFavorite
+                  ? "fill-red-500 text-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.5)]"
+                  : variant === "overlay"
+                    ? "text-white hover:text-red-400"
+                    : variant === "minimal"
+                      ? "text-gray-500 hover:text-red-500"
                       : "text-gray-600 hover:text-red-500"
-                }
-              `}
-            />
-          </motion.div>
-        )}
-      </motion.button>
-
-      {/* Toast Message */}
-      <AnimatePresence>
-        {showMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, x: "-50%" }}
-            animate={{ opacity: 1, y: 0, x: "-50%" }}
-            exit={{ opacity: 0, y: -10, x: "-50%" }}
-            className="absolute bottom-full left-1/2 mb-2 px-3 py-1.5 
-                       bg-gray-900 text-white text-xs font-medium rounded-lg
-                       whitespace-nowrap shadow-lg z-50"
-          >
-            {showMessage}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
-              <div className="border-4 border-transparent border-t-gray-900" />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+              }
+            `}
+          />
+        </motion.div>
+      )}
+    </motion.button>
   );
 }

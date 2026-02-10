@@ -49,6 +49,7 @@ import {
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import Footer from "@/components/Footer";
 import FavoriteButton from "@/components/FavoriteButton";
+import ShareButton from "@/components/ShareButton";
 
 // =========================================================
 // LOCAL UTILITIES
@@ -139,6 +140,167 @@ const getYouTubeEmbedUrl = (videoUrl: string): string => {
 };
 
 // =========================================================
+// GALLERY BADGES COMPONENT
+// =========================================================
+
+function GalleryBadges({ parcelle }: { parcelle: Parcelle }) {
+  const [showAll, setShowAll] = useState(false);
+
+  const badges: {
+    label: string;
+    className: string;
+    icon?: React.ReactNode;
+  }[] = [];
+
+  // Status badge (always shown)
+  badges.push({
+    label:
+      parcelle.listingType === "BOTH"
+        ? "Sale / Rent"
+        : parcelle.listingType === "SALE"
+          ? "For Sale"
+          : parcelle.listingType === "RENT"
+            ? "For Rent"
+            : "Available",
+    className: `bg-gradient-to-r ${
+      parcelle.listingType === "BOTH"
+        ? "from-purple-500 to-indigo-600"
+        : parcelle.listingType === "SALE"
+          ? "from-green-500 to-emerald-600"
+          : parcelle.listingType === "RENT"
+            ? "from-blue-500 to-cyan-600"
+            : "from-gray-500 to-gray-600"
+    } text-white`,
+  });
+
+  // Type badge
+  badges.push({
+    label: "Land",
+    className: "bg-blue-500 text-white",
+    icon: <Map className="w-3 h-3" />,
+  });
+
+  if (parcelle.featured) {
+    badges.push({
+      label: "Featured",
+      className: "bg-yellow-500 text-gray-900 font-bold",
+      icon: <Sparkles className="w-3 h-3" />,
+    });
+  }
+
+  if (parcelle.approvedForBuilding) {
+    badges.push({
+      label: "Build Approved",
+      className: "bg-emerald-500 text-white",
+      icon: <CheckCircle2 className="w-3 h-3" />,
+    });
+  }
+
+  if (parcelle.Cloture) {
+    badges.push({
+      label: "Fenced",
+      className: "bg-amber-600 text-white",
+      icon: <CheckCircle2 className="w-3 h-3" />,
+    });
+  }
+
+  if (parcelle.isForDevelopment) {
+    badges.push({
+      label: "Development",
+      className: "bg-orange-500 text-white",
+      icon: <TreePine className="w-3 h-3" />,
+    });
+  }
+
+  if (parcelle.zoningType) {
+    badges.push({
+      label: parcelle.zoningType,
+      className: "bg-indigo-500 text-white",
+      icon: <Map className="w-3 h-3" />,
+    });
+  }
+
+  if (parcelle.Sup) {
+    badges.push({
+      label: formatArea(parcelle.Sup),
+      className: "bg-black/50 backdrop-blur-sm text-white",
+      icon: <Square className="w-3 h-3" />,
+    });
+  }
+
+  const MAX_VISIBLE_MOBILE = 2;
+  const hiddenCount = badges.length - MAX_VISIBLE_MOBILE;
+
+  return (
+    <div className="absolute top-4 left-4 z-20 max-w-[55%] sm:max-w-[60%]">
+      {/* Desktop — show all badges */}
+      <div className="hidden sm:flex flex-wrap gap-2">
+        {badges.map((badge, idx) => (
+          <span
+            key={idx}
+            className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium shadow-lg flex items-center gap-1 ${badge.className}`}
+          >
+            {badge.icon}
+            {badge.label}
+          </span>
+        ))}
+      </div>
+
+      {/* Mobile — show limited + "more" button */}
+      <div className="sm:hidden">
+        <div className="flex flex-wrap gap-1.5">
+          {badges
+            .slice(0, showAll ? badges.length : MAX_VISIBLE_MOBILE)
+            .map((badge, idx) => (
+              <motion.span
+                key={idx}
+                initial={
+                  idx >= MAX_VISIBLE_MOBILE ? { opacity: 0, scale: 0.8 } : false
+                }
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  delay:
+                    idx >= MAX_VISIBLE_MOBILE
+                      ? (idx - MAX_VISIBLE_MOBILE) * 0.05
+                      : 0,
+                }}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium shadow-lg flex items-center gap-1 ${badge.className}`}
+              >
+                {badge.icon}
+                {badge.label}
+              </motion.span>
+            ))}
+
+          {hiddenCount > 0 && (
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowAll(!showAll);
+              }}
+              className="px-2.5 py-1 rounded-full text-[11px] font-bold shadow-lg flex items-center gap-1 bg-white/90 text-gray-800 hover:bg-white transition"
+            >
+              {showAll ? (
+                <>
+                  <ChevronLeft className="w-3 h-3" />
+                  Less
+                </>
+              ) : (
+                <>
+                  +{hiddenCount}
+                  <ChevronRight className="w-3 h-3" />
+                </>
+              )}
+            </motion.button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================
 // MAIN COMPONENT
 // =========================================================
 
@@ -147,29 +309,24 @@ export default function LandDetailPage() {
   const router = useRouter();
   const slugOrId = params?.slug as string;
 
-  // Fetch land by slug or ID
   const { data: parcelle, loading, error } = useParcelleBySlug(slugOrId);
 
-  // Fetch all parcelles for related
   const { data: allParcelles } = useParcelles({
     status: "PUBLISHED",
     limit: 50,
   });
 
-  // UI State
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
   const [isPlayingVideo, setIsPlayingVideo] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
-  // Related parcelles
   const relatedParcelles = useMemo(() => {
     if (!parcelle || !allParcelles.length) return [];
     return getSimilarParcelles(parcelle, allParcelles, 6);
   }, [parcelle, allParcelles]);
 
-  // Mouse tracking
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
@@ -178,7 +335,6 @@ export default function LandDetailPage() {
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
-  // Images and video
   const images = useMemo(
     () => (parcelle ? getListingImages(parcelle) : []),
     [parcelle],
@@ -190,7 +346,6 @@ export default function LandDetailPage() {
   const hasImages = images.length > 0;
   const hasVideo = !!videoUrl;
 
-  // Navigation
   const nextImage = () => {
     if (images.length > 0) {
       setCurrentImageIndex((prev) => (prev + 1) % images.length);
@@ -329,7 +484,7 @@ export default function LandDetailPage() {
               setIsPlayingVideo(false);
               setShowVideo(false);
             }}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center"
+            className="absolute top-6 right-6 w-12 h-12 rounded-full flex items-center justify-center hover:bg-white/20 transition"
             style={{ background: "rgba(255,255,255,0.1)" }}
           >
             <XCircle className="w-6 h-6 text-white" />
@@ -339,14 +494,14 @@ export default function LandDetailPage() {
             <>
               <button
                 onClick={prevImage}
-                className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center"
+                className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center hover:bg-white/20 transition"
                 style={{ background: "rgba(255,255,255,0.1)" }}
               >
                 <ChevronLeft className="w-7 h-7 text-white" />
               </button>
               <button
                 onClick={nextImage}
-                className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center"
+                className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center hover:bg-white/20 transition"
                 style={{ background: "rgba(255,255,255,0.1)" }}
               >
                 <ChevronRight className="w-7 h-7 text-white" />
@@ -458,7 +613,9 @@ export default function LandDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Image Gallery */}
+            {/* ==========================================
+                IMAGE GALLERY — SINGLE aspect-video div
+                ========================================== */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -469,6 +626,7 @@ export default function LandDetailPage() {
               }}
             >
               <div className="relative aspect-video">
+                {/* Image / Video Display */}
                 {showVideo && videoUrl ? (
                   isPlayingVideo ? (
                     isYouTubeUrl(videoUrl) ? (
@@ -518,58 +676,50 @@ export default function LandDetailPage() {
                   />
                 )}
 
-                {/* Actions */}
-                <div className="absolute top-4 right-4 flex gap-2">
+                {/* Action Buttons — top right */}
+                <div className="absolute top-4 right-4 flex gap-2 z-20">
                   <FavoriteButton
                     entityType="PARCELLE"
                     entityId={parcelle.Id_Parcel}
-                    variant="overlay"
-                    size="lg"
+                    variant="default"
+                    size="md"
                   />
-                  <button className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center">
-                    <Share2 className="w-5 h-5 text-gray-800" />
-                  </button>
-                  <button
+                  <ShareButton
+                    entityType="PARCELLE"
+                    entityId={parcelle.Id_Parcel}
+                    variant="default"
+                    size="md"
+                    title={parcelle.title || "Land for Sale"}
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => setShowLightbox(true)}
-                    className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center"
+                    className="w-10 h-10 bg-black/30 hover:bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center transition-all"
                   >
-                    <Maximize2 className="w-5 h-5 text-gray-800" />
-                  </button>
+                    <Maximize2 className="w-5 h-5 text-white" />
+                  </motion.button>
                 </div>
 
-                {/* Badges */}
-                <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                  <span
-                    className={`px-3 py-1 bg-gradient-to-r ${getStatusBgColor(parcelle)} text-white rounded-full text-sm font-medium shadow-lg`}
-                  >
-                    {getListingStatusLabel(parcelle)}
-                  </span>
-                  <span className="px-3 py-1 bg-blue-500 text-white rounded-full text-sm font-medium shadow-lg flex items-center gap-1">
-                    <Map className="w-3 h-3" /> Land
-                  </span>
-                  {parcelle.featured && (
-                    <span className="px-3 py-1 bg-yellow-500 text-gray-900 rounded-full text-sm font-bold shadow-lg flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Featured
-                    </span>
-                  )}
-                </div>
+                {/* Badges — top left */}
+                <GalleryBadges parcelle={parcelle} />
 
-                {/* Navigation */}
+                {/* Image Navigation */}
                 {!showVideo && images.length > 1 && (
                   <>
                     <button
                       onClick={prevImage}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition z-10"
                     >
                       <ChevronLeft className="w-6 h-6" />
                     </button>
                     <button
                       onClick={nextImage}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 rounded-full flex items-center justify-center text-white"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center text-white transition z-10"
                     >
                       <ChevronRight className="w-6 h-6" />
                     </button>
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/60 rounded-full text-white text-sm">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/60 backdrop-blur-sm rounded-full text-white text-sm z-10">
                       {currentImageIndex + 1} / {images.length}
                     </div>
                   </>
@@ -907,11 +1057,6 @@ export default function LandDetailPage() {
                   >
                     {getLocationString(parcelle)}
                   </p>
-                  {/* {parcelle.address && (
-                    <p className="text-sm mt-1 text-gray-400">
-                      {parcelle.address}
-                    </p>
-                  )} */}
                 </div>
               </div>
             </motion.div>
