@@ -1,4 +1,4 @@
-// app/estates/[slug]/page.tsx
+// File: app/estates/[slug]/page.tsx
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -55,7 +55,10 @@ import ShareButton from "@/components/ShareButton";
 // LOCAL UTILITIES
 // =========================================================
 
-function formatPriceCompact(price: string | number | null | undefined): string {
+function formatPriceCompact(
+  price: string | number | null | undefined,
+  currency = "XAF",
+): string {
   if (price == null || price === "") return "N/A";
   const numPrice = typeof price === "string" ? parseFloat(price) : price;
   if (isNaN(numPrice) || numPrice <= 0) return "N/A";
@@ -848,22 +851,23 @@ export default function EstateDetailPage() {
                   {lotissement.price && Number(lotissement.price) > 0 ? (
                     <>
                       <p className="text-sm mb-1 text-gray-400">Price</p>
-                      <p
-                        className="text-3xl font-bold"
-                        style={{ color: COLORS.primary[400] }}
-                      >
-                        {formatPrice(lotissement.price, lotissement.currency)}
-                      </p>
+                      {/* Only show price/m² if available, otherwise fallback to total price or pricePerSqM if that's the only one */}
                       {lotissement.pricePerSqM &&
-                        Number(lotissement.pricePerSqM) > 0 && (
-                          <p className="text-sm mt-1 text-gray-400">
-                            {formatPrice(
-                              lotissement.pricePerSqM,
-                              lotissement.currency,
-                            )}
-                            /m²
-                          </p>
-                        )}
+                      Number(lotissement.pricePerSqM) > 0 ? (
+                        <p
+                          className="text-3xl font-bold"
+                          style={{ color: COLORS.primary[400] }}
+                        >
+                          {formatPriceCompact(lotissement.pricePerSqM)} XAF/m²
+                        </p>
+                      ) : (
+                        <p
+                          className="text-3xl font-bold"
+                          style={{ color: COLORS.primary[400] }}
+                        >
+                          {formatPrice(lotissement.price, lotissement.currency)}
+                        </p>
+                      )}
                     </>
                   ) : (
                     <>
@@ -1775,9 +1779,12 @@ export default function EstateDetailPage() {
                           className="text-xl font-bold"
                           style={{ color: COLORS.primary[400] }}
                         >
-                          {related.price && Number(related.price) > 0
-                            ? formatPriceCompact(related.price)
-                            : "Prix sur demande"}
+                          {related.pricePerSqM &&
+                          Number(related.pricePerSqM) > 0
+                            ? `${formatPriceCompact(related.pricePerSqM)} XAF/m²`
+                            : related.price && Number(related.price) > 0
+                              ? formatPriceCompact(related.price)
+                              : "Prix sur demande"}
                         </p>
                         <div className="flex items-center gap-3 text-sm text-gray-400">
                           {related.Surface && (

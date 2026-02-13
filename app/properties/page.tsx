@@ -39,16 +39,17 @@ import {
   Power,
   Droplets,
   Route,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
-// ✅ NEW - Only import what exists
 import {
-  // Hooks
   useAllListings,
   useBatiments,
   useLotissements,
   useParcelles,
-  // Types
   Listing,
   Lotissement,
   Parcelle,
@@ -59,7 +60,6 @@ import {
   PropertyCategory,
   ListingType,
   ListingFilters,
-  // Utility functions
   getListingId,
   getListingUrl,
   getListingPrimaryImage,
@@ -77,9 +77,9 @@ import {
 import Footer from "@/components/Footer";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import FavoriteButton from "@/components/FavoriteButton";
-// Placeholder images by entity type and property type
+
+// Placeholder images
 const PLACEHOLDER_IMAGES: Record<string, string> = {
-  // Property types (Batiment)
   VILLA:
     "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=800&h=600&fit=crop&q=80",
   APARTMENT:
@@ -99,7 +99,6 @@ const PLACEHOLDER_IMAGES: Record<string, string> = {
   WAREHOUSE:
     "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&h=600&fit=crop&q=80",
   SHOP: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800&h=600&fit=crop&q=80",
-  // Entity type defaults
   LOTISSEMENT:
     "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=800&h=600&fit=crop&q=80",
   PARCELLE:
@@ -110,29 +109,24 @@ const PLACEHOLDER_IMAGES: Record<string, string> = {
     "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&h=600&fit=crop&q=80",
 };
 
-// Entity type icons
 const ENTITY_ICONS: Record<EntityType, React.ComponentType<any>> = {
   LOTISSEMENT: Layers,
   PARCELLE: Map,
   BATIMENT: Building2,
 };
 
-// Get listing image (primary or placeholder)
 const getListingImage = (listing: Listing): string => {
   const primaryImage = getListingPrimaryImage(listing);
   if (primaryImage) return primaryImage;
-
   if (listing._entityType === "BATIMENT") {
     const batiment = listing as Batiment;
     if (batiment.propertyType && PLACEHOLDER_IMAGES[batiment.propertyType]) {
       return PLACEHOLDER_IMAGES[batiment.propertyType];
     }
   }
-
   return PLACEHOLDER_IMAGES[listing._entityType] || PLACEHOLDER_IMAGES.default;
 };
 
-// Get placeholder image
 const getPlaceholderImage = (
   entityType: EntityType,
   propertyType?: PropertyType,
@@ -143,7 +137,6 @@ const getPlaceholderImage = (
   return PLACEHOLDER_IMAGES[entityType] || PLACEHOLDER_IMAGES.default;
 };
 
-// Get listing status label
 const getListingStatusLabel = (listing: Listing): string => {
   if (listing.listingType === "BOTH") return "Sale / Rent";
   if (listing.listingType === "SALE") return "For Sale";
@@ -151,7 +144,6 @@ const getListingStatusLabel = (listing: Listing): string => {
   return "Available";
 };
 
-// Get status color
 const getStatusColor = (listing: Listing): string => {
   if (listing.listingType === "BOTH") return COLORS.primary[500];
   if (listing.listingType === "SALE") return "#22c55e";
@@ -159,7 +151,6 @@ const getStatusColor = (listing: Listing): string => {
   return COLORS.gray[500];
 };
 
-// Get type label for display
 const getTypeLabel = (listing: Listing): string => {
   if (listing._entityType === "BATIMENT") {
     const batiment = listing as Batiment;
@@ -170,16 +161,72 @@ const getTypeLabel = (listing: Listing): string => {
   return getEntityTypeLabel(listing._entityType, "en");
 };
 
-// Get surface area
 const getSurfaceDisplay = (listing: Listing): number | null => {
   return getListingSurface(listing);
 };
 
 // =========================================================
+// PRICE DISPLAY HELPER — uses pricePerSqM for lands/estates
+// =========================================================
+function getDisplayPrice(listing: Listing): {
+  value: string | number | null | undefined;
+  suffix: string;
+  label: string;
+} {
+  if (
+    listing._entityType === "LOTISSEMENT" ||
+    listing._entityType === "PARCELLE"
+  ) {
+    const entity = listing as any;
+    const pricePerSqM =
+      entity.pricePerSqM ??
+      entity.pricePerSqm ??
+      entity.pricePerMsq ??
+      entity.pricePermsq ??
+      entity.price_per_msq ??
+      entity.price_per_sqm ??
+      null;
+
+    if (pricePerSqM && Number(pricePerSqM) > 0) {
+      return { value: pricePerSqM, suffix: " /m²", label: "Price/m²" };
+    }
+    if (listing.price && Number(listing.price) > 0) {
+      return { value: listing.price, suffix: "", label: "Price" };
+    }
+    return { value: null, suffix: "", label: "Price/m²" };
+  }
+
+  if (listing.price && Number(listing.price) > 0) {
+    return {
+      value: listing.price,
+      suffix: "",
+      label: listing.listingType === "RENT" ? "Rent" : "Price",
+    };
+  }
+
+  if (
+    listing._entityType === "BATIMENT" &&
+    (listing as Batiment).rentPrice &&
+    Number((listing as Batiment).rentPrice) > 0
+  ) {
+    return {
+      value: (listing as Batiment).rentPrice,
+      suffix: "/mo",
+      label: "Rent",
+    };
+  }
+
+  return {
+    value: null,
+    suffix: "",
+    label: listing.listingType === "RENT" ? "Rent" : "Price",
+  };
+}
+
+// =========================================================
 // LOCAL TYPES & UTILITY FUNCTIONS
 // =========================================================
 
-// Property Categories array (not exported from hook)
 const PropertyCategories: PropertyCategory[] = [
   "LAND",
   "RESIDENTIAL",
@@ -188,7 +235,6 @@ const PropertyCategories: PropertyCategory[] = [
   "MIXED",
 ];
 
-// ListingStats interface
 interface ListingStats {
   total: number;
   published: number;
@@ -200,7 +246,6 @@ interface ListingStats {
   averagePrice: number;
 }
 
-// Sort options type
 type SortOption =
   | "newest"
   | "oldest"
@@ -211,7 +256,12 @@ type SortOption =
   | "views-desc"
   | "favorites-desc";
 
-// Format price compact
+// =========================================================
+// PAGINATION CONFIG
+// =========================================================
+const ITEMS_PER_PAGE_OPTIONS = [12, 24, 48];
+const DEFAULT_ITEMS_PER_PAGE = 12;
+
 function formatPriceCompact(
   price: string | number | null | undefined,
   currency = "XAF",
@@ -225,7 +275,6 @@ function formatPriceCompact(
   return numPrice.toLocaleString("fr-CM");
 }
 
-// Calculate listing stats
 function calculateListingStats(listings: Listing[]): ListingStats {
   const published = listings.filter((l) => l.listingStatus === "PUBLISHED");
 
@@ -267,7 +316,6 @@ function calculateListingStats(listings: Listing[]): ListingStats {
   };
 }
 
-// Search listings locally
 function searchListings(listings: Listing[], query: string): Listing[] {
   if (!query.trim()) return listings;
   const terms = query.toLowerCase().split(/\s+/);
@@ -285,7 +333,6 @@ function searchListings(listings: Listing[], query: string): Listing[] {
   });
 }
 
-// Sort listings locally
 function sortListings(listings: Listing[], sortBy: SortOption): Listing[] {
   const sorted = [...listings];
   switch (sortBy) {
@@ -332,15 +379,265 @@ function sortListings(listings: Listing[], sortBy: SortOption): Listing[] {
   }
 }
 
+// =========================================================
+// PAGINATION COMPONENT
+// =========================================================
+function PaginationControls({
+  currentPage,
+  totalPages,
+  totalItems,
+  itemsPerPage,
+  onPageChange,
+  onItemsPerPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (count: number) => void;
+}) {
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  // Generate page numbers to show
+  const getPageNumbers = (): (number | "...")[] => {
+    const pages: (number | "...")[] = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible + 2) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+
+      if (currentPage > 3) {
+        pages.push("...");
+      }
+
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (currentPage < totalPages - 2) {
+        pages.push("...");
+      }
+
+      pages.push(totalPages);
+    }
+
+    return pages;
+  };
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mt-8 sm:mt-10 md:mt-12"
+    >
+      <div
+        className="rounded-2xl border p-4 sm:p-6"
+        style={{
+          background: `${COLORS.primary[800]}40`,
+          borderColor: `${COLORS.primary[600]}30`,
+          backdropFilter: "blur(10px)",
+        }}
+      >
+        {/* Top row: showing info + items per page */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <p
+            className="text-xs sm:text-sm"
+            style={{ color: COLORS.primary[300] }}
+          >
+            Showing{" "}
+            <strong className="text-white">
+              {startItem}-{endItem}
+            </strong>{" "}
+            of <strong className="text-white">{totalItems}</strong> listings
+          </p>
+
+          <div className="flex items-center gap-2">
+            <span
+              className="text-xs sm:text-sm"
+              style={{ color: COLORS.primary[400] }}
+            >
+              Per page:
+            </span>
+            <div className="flex gap-1">
+              {ITEMS_PER_PAGE_OPTIONS.map((count) => (
+                <motion.button
+                  key={count}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => onItemsPerPageChange(count)}
+                  className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-medium transition"
+                  style={{
+                    background:
+                      itemsPerPage === count
+                        ? GRADIENTS.button.primary
+                        : `${COLORS.white}10`,
+                    color: COLORS.white,
+                  }}
+                >
+                  {count}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Pagination buttons */}
+        <div className="flex items-center justify-center gap-1 sm:gap-1.5">
+          {/* First page */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onPageChange(1)}
+            disabled={currentPage === 1}
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              background: `${COLORS.white}10`,
+              color: COLORS.white,
+            }}
+          >
+            <ChevronsLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </motion.button>
+
+          {/* Previous page */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              background: `${COLORS.white}10`,
+              color: COLORS.white,
+            }}
+          >
+            <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </motion.button>
+
+          {/* Page numbers */}
+          <div className="flex items-center gap-1 sm:gap-1.5 mx-1 sm:mx-2">
+            {getPageNumbers().map((page, idx) =>
+              page === "..." ? (
+                <span
+                  key={`ellipsis-${idx}`}
+                  className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center text-xs sm:text-sm"
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  •••
+                </span>
+              ) : (
+                <motion.button
+                  key={page}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => onPageChange(page as number)}
+                  className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center text-xs sm:text-sm font-semibold transition"
+                  style={{
+                    background:
+                      currentPage === page
+                        ? GRADIENTS.button.primary
+                        : `${COLORS.white}10`,
+                    color: COLORS.white,
+                    boxShadow:
+                      currentPage === page
+                        ? `0 4px 15px ${COLORS.primary[500]}40`
+                        : "none",
+                  }}
+                >
+                  {page}
+                </motion.button>
+              ),
+            )}
+          </div>
+
+          {/* Next page */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              background: `${COLORS.white}10`,
+              color: COLORS.white,
+            }}
+          >
+            <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </motion.button>
+
+          {/* Last page */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onPageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center transition disabled:opacity-30 disabled:cursor-not-allowed"
+            style={{
+              background: `${COLORS.white}10`,
+              color: COLORS.white,
+            }}
+          >
+            <ChevronsRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </motion.button>
+        </div>
+
+        {/* Quick jump (for many pages) */}
+        {totalPages > 10 && (
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <span className="text-xs" style={{ color: COLORS.primary[400] }}>
+              Go to page:
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={totalPages}
+              placeholder={String(currentPage)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const val = parseInt((e.target as HTMLInputElement).value);
+                  if (val >= 1 && val <= totalPages) {
+                    onPageChange(val);
+                    (e.target as HTMLInputElement).value = "";
+                  }
+                }
+              }}
+              className="w-16 px-2 py-1.5 rounded-lg text-xs text-center focus:outline-none focus:ring-2 focus:ring-green-500"
+              style={{
+                background: `${COLORS.primary[700]}80`,
+                color: COLORS.white,
+              }}
+            />
+            <span className="text-xs" style={{ color: COLORS.primary[400] }}>
+              of {totalPages}
+            </span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// =========================================================
+// MAIN COMPONENT
+// =========================================================
+
 export default function AllPropertiesPage() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams?.get("search") || "";
 
-  // Fetch all listings
   const { listings, loading, error, refetch } = useAllListings({
     status: "PUBLISHED",
     limit: 200,
   });
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedEntityType, setSelectedEntityType] = useState<
@@ -369,14 +666,18 @@ export default function AllPropertiesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
 
-  // Calculate stats
+  // =========================================================
+  // PAGINATION STATES
+  // =========================================================
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE);
+
   const stats = useMemo(() => calculateListingStats(listings), [listings]);
 
   // Handle URL parameters
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
-    // Handle listing type parameter
     const listingType = params.get("listingType");
     if (
       listingType === "SALE" ||
@@ -386,7 +687,6 @@ export default function AllPropertiesPage() {
       setSelectedListingType(listingType);
     }
 
-    // Handle entity type parameter
     const entityType = params.get("entityType");
     if (
       entityType === "LOTISSEMENT" ||
@@ -396,44 +696,45 @@ export default function AllPropertiesPage() {
       setSelectedEntityType(entityType);
     }
 
-    // Handle category parameter
     const category = params.get("category");
     if (category && PropertyCategories.includes(category as PropertyCategory)) {
       setSelectedCategory(category as PropertyCategory);
     }
 
-    // Handle property type parameter
     const propertyType = params.get("propertyType");
     if (propertyType && PropertyTypes.includes(propertyType as PropertyType)) {
       setSelectedPropertyType(propertyType as PropertyType);
     }
+
+    // Handle page from URL
+    const page = params.get("page");
+    if (page) {
+      const pageNum = parseInt(page);
+      if (pageNum > 0) setCurrentPage(pageNum);
+    }
   }, []);
 
-  // Handle search input change
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-
+    setCurrentPage(1); // Reset to page 1 on search
     if (value.length > 0 && showFilters) {
       setShowFilters(false);
     }
   };
 
-  // Filter and sort listings
+  // Filter and sort listings (all of them)
   const filteredListings = useMemo(() => {
     let result = listings.filter((l) => l.listingStatus === "PUBLISHED");
 
-    // Filter by entity type
     if (selectedEntityType !== "ALL") {
       result = result.filter((l) => l._entityType === selectedEntityType);
     }
 
-    // Filter by category
     if (selectedCategory !== "ALL") {
       result = result.filter((l) => l.category === selectedCategory);
     }
 
-    // Filter by property type (Batiment only)
     if (selectedPropertyType !== "ALL") {
       result = result.filter(
         (l) =>
@@ -442,7 +743,6 @@ export default function AllPropertiesPage() {
       );
     }
 
-    // Filter by listing type
     if (selectedListingType !== "ALL") {
       result = result.filter(
         (l) =>
@@ -450,7 +750,6 @@ export default function AllPropertiesPage() {
       );
     }
 
-    // Filter by price
     if (minPrice) {
       const min = parseInt(minPrice);
       result = result.filter((l) => {
@@ -466,7 +765,6 @@ export default function AllPropertiesPage() {
       });
     }
 
-    // Filter by bedrooms (Batiment only)
     if (minBedrooms) {
       const min = parseInt(minBedrooms);
       result = result.filter((l) => {
@@ -476,7 +774,6 @@ export default function AllPropertiesPage() {
       });
     }
 
-    // Filter by parking (Batiment only)
     if (hasParking !== undefined) {
       result = result.filter((l) => {
         if (l._entityType !== "BATIMENT") return !hasParking;
@@ -484,7 +781,6 @@ export default function AllPropertiesPage() {
       });
     }
 
-    // Filter by generator (Batiment only)
     if (hasGenerator !== undefined) {
       result = result.filter((l) => {
         if (l._entityType !== "BATIMENT") return !hasGenerator;
@@ -492,12 +788,10 @@ export default function AllPropertiesPage() {
       });
     }
 
-    // Apply search
     if (searchQuery.trim()) {
       result = searchListings(result, searchQuery);
     }
 
-    // Apply sort
     result = sortListings(result, sortBy);
 
     return result;
@@ -516,7 +810,42 @@ export default function AllPropertiesPage() {
     sortBy,
   ]);
 
-  // Entity types for filter
+  // =========================================================
+  // PAGINATION COMPUTED VALUES
+  // =========================================================
+  const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
+
+  // Ensure current page is valid when filters change
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  // Get current page items
+  const paginatedListings = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredListings.slice(startIndex, endIndex);
+  }, [filteredListings, currentPage, itemsPerPage]);
+
+  // Handle page change with scroll to top
+  const handlePageChange = useCallback(
+    (page: number) => {
+      if (page < 1 || page > totalPages) return;
+      setCurrentPage(page);
+      // Scroll to top of listings
+      window.scrollTo({ top: 300, behavior: "smooth" });
+    },
+    [totalPages],
+  );
+
+  // Handle items per page change
+  const handleItemsPerPageChange = useCallback((count: number) => {
+    setItemsPerPage(count);
+    setCurrentPage(1); // Reset to page 1
+  }, []);
+
   const entityTypes: (EntityType | "ALL")[] = [
     "ALL",
     "BATIMENT",
@@ -524,7 +853,7 @@ export default function AllPropertiesPage() {
     "LOTISSEMENT",
   ];
 
-  // Clear all filters
+  // Clear all filters — also reset pagination
   const clearFilters = useCallback(() => {
     setSelectedEntityType("ALL");
     setSelectedCategory("ALL");
@@ -538,9 +867,9 @@ export default function AllPropertiesPage() {
     setSearchQuery("");
     setSortBy("newest");
     setShowFilters(false);
+    setCurrentPage(1);
   }, []);
 
-  // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
     return (
       selectedEntityType !== "ALL" ||
@@ -563,6 +892,22 @@ export default function AllPropertiesPage() {
     minBedrooms,
     hasParking,
     hasGenerator,
+  ]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    selectedEntityType,
+    selectedCategory,
+    selectedPropertyType,
+    selectedListingType,
+    minPrice,
+    maxPrice,
+    minBedrooms,
+    hasParking,
+    hasGenerator,
+    sortBy,
   ]);
 
   const hasSearchQuery = searchQuery.trim() !== "";
@@ -659,6 +1004,40 @@ export default function AllPropertiesPage() {
     return null;
   };
 
+  // Render price display
+  const renderPriceDisplay = (listing: Listing, size: "sm" | "lg" = "sm") => {
+    const dp = getDisplayPrice(listing);
+
+    if (dp.value && Number(dp.value) > 0) {
+      return (
+        <p
+          className={
+            size === "lg"
+              ? "text-base sm:text-lg md:text-xl lg:text-2xl font-bold"
+              : "text-sm sm:text-base md:text-lg font-bold"
+          }
+          style={{ color: COLORS.primary[300] }}
+        >
+          {formatPriceCompact(dp.value, listing.currency)}
+          {dp.suffix}
+        </p>
+      );
+    }
+
+    return (
+      <p
+        className={
+          size === "lg"
+            ? "text-sm sm:text-base md:text-lg font-semibold"
+            : "text-xs sm:text-sm font-semibold"
+        }
+        style={{ color: COLORS.primary[400] }}
+      >
+        Prix sur demande
+      </p>
+    );
+  };
+
   // Render grid card
   const renderGridCard = (listing: Listing, index: number) => {
     const EntityIcon = ENTITY_ICONS[listing._entityType];
@@ -697,7 +1076,6 @@ export default function AllPropertiesPage() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
-            {/* Status badges */}
             <div className="absolute top-2 sm:top-3 left-2 sm:left-3 flex gap-1.5 sm:gap-2 flex-wrap">
               <span
                 className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold backdrop-blur-sm"
@@ -722,7 +1100,6 @@ export default function AllPropertiesPage() {
               )}
             </div>
 
-            {/* Entity type badge */}
             <div className="absolute top-2 sm:top-3 right-12 sm:right-14">
               <span
                 className="px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium backdrop-blur-sm flex items-center gap-1"
@@ -736,7 +1113,6 @@ export default function AllPropertiesPage() {
               </span>
             </div>
 
-            {/* Action buttons */}
             <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex gap-1.5 sm:gap-2">
               <FavoriteButton
                 entityType={listing._entityType}
@@ -746,14 +1122,12 @@ export default function AllPropertiesPage() {
               />
             </div>
 
-            {/* Feature badges */}
             <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 flex gap-1.5 sm:gap-2 flex-wrap">
               {renderListingFeatures(listing)}
             </div>
           </div>
 
           <div className="p-3 sm:p-4 md:p-5">
-            {/* Type badge */}
             <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3 flex-wrap">
               <span
                 className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg text-[10px] sm:text-xs font-medium flex items-center gap-1"
@@ -778,12 +1152,10 @@ export default function AllPropertiesPage() {
               )}
             </div>
 
-            {/* Title */}
             <h3 className="text-sm sm:text-base md:text-lg font-bold text-white mb-1.5 sm:mb-2 line-clamp-2 group-hover:text-green-300 transition">
               {listing.title || "Untitled Listing"}
             </h3>
 
-            {/* Location */}
             <div
               className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm mb-3 sm:mb-4"
               style={{ color: COLORS.primary[300] }}
@@ -795,7 +1167,6 @@ export default function AllPropertiesPage() {
               <span className="truncate">{getLocationString(listing)}</span>
             </div>
 
-            {/* Price and area */}
             <div
               className="flex items-center justify-between pt-3 sm:pt-4 border-t"
               style={{ borderColor: `${COLORS.primary[600]}40` }}
@@ -810,34 +1181,7 @@ export default function AllPropertiesPage() {
                 </span>
               </div>
               <div className="text-right">
-                {listing.price && Number(listing.price) > 0 ? (
-                  <p
-                    className="text-sm sm:text-base md:text-lg font-bold"
-                    style={{ color: COLORS.primary[300] }}
-                  >
-                    {formatPriceCompact(listing.price, listing.currency)}
-                  </p>
-                ) : listing._entityType === "BATIMENT" &&
-                  (listing as Batiment).rentPrice &&
-                  Number((listing as Batiment).rentPrice) > 0 ? (
-                  <p
-                    className="text-sm sm:text-base md:text-lg font-bold"
-                    style={{ color: COLORS.primary[300] }}
-                  >
-                    {formatPriceCompact(
-                      (listing as Batiment).rentPrice,
-                      listing.currency,
-                    )}
-                    /mo
-                  </p>
-                ) : (
-                  <p
-                    className="text-xs sm:text-sm font-semibold"
-                    style={{ color: COLORS.primary[400] }}
-                  >
-                    Prix sur demande
-                  </p>
-                )}
+                {renderPriceDisplay(listing, "sm")}
               </div>
             </div>
           </div>
@@ -850,6 +1194,7 @@ export default function AllPropertiesPage() {
   const renderListCard = (listing: Listing, index: number) => {
     const EntityIcon = ENTITY_ICONS[listing._entityType];
     const surface = getSurfaceDisplay(listing);
+    const dp = getDisplayPrice(listing);
 
     return (
       <motion.div
@@ -867,7 +1212,6 @@ export default function AllPropertiesPage() {
             borderColor: `${COLORS.primary[600]}40`,
           }}
         >
-          {/* Image */}
           <div className="relative w-full sm:w-48 md:w-64 lg:w-72 xl:w-80 h-48 sm:h-auto flex-shrink-0">
             <img
               src={getListingImage(listing)}
@@ -914,7 +1258,6 @@ export default function AllPropertiesPage() {
             </div>
           </div>
 
-          {/* Content */}
           <div className="flex-1 p-4 sm:p-5 md:p-6">
             <div className="flex items-start justify-between mb-2 sm:mb-3">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -961,12 +1304,10 @@ export default function AllPropertiesPage() {
               </div>
             </div>
 
-            {/* Title */}
             <h3 className="text-base sm:text-lg md:text-xl font-bold text-white mb-1.5 sm:mb-2 group-hover:text-green-300 transition line-clamp-1 sm:line-clamp-none">
               {listing.title || "Untitled Listing"}
             </h3>
 
-            {/* Short description */}
             {listing.shortDescription && (
               <p
                 className="text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2"
@@ -976,7 +1317,6 @@ export default function AllPropertiesPage() {
               </p>
             )}
 
-            {/* Location */}
             <div
               className="flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4"
               style={{ color: COLORS.primary[300] }}
@@ -990,7 +1330,6 @@ export default function AllPropertiesPage() {
               </span>
             </div>
 
-            {/* Stats row */}
             <div
               className="flex items-center gap-3 sm:gap-4 md:gap-6 pt-3 sm:pt-4 border-t flex-wrap"
               style={{ borderColor: `${COLORS.primary[600]}40` }}
@@ -1015,7 +1354,6 @@ export default function AllPropertiesPage() {
                 </div>
               )}
 
-              {/* Entity-specific stats */}
               {listing._entityType === "BATIMENT" && (
                 <>
                   {(listing as Batiment).bedrooms !== null &&
@@ -1125,42 +1463,14 @@ export default function AllPropertiesPage() {
                 </>
               )}
 
-              {/* Price */}
               <div className="ml-auto text-right">
                 <p
                   className="text-[10px] sm:text-xs"
                   style={{ color: COLORS.primary[400] }}
                 >
-                  {listing.listingType === "RENT" ? "Rent" : "Price"}
+                  {dp.label}
                 </p>
-                {listing.price && Number(listing.price) > 0 ? (
-                  <p
-                    className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold"
-                    style={{ color: COLORS.primary[300] }}
-                  >
-                    {formatPriceCompact(listing.price, listing.currency)}
-                  </p>
-                ) : listing._entityType === "BATIMENT" &&
-                  (listing as Batiment).rentPrice &&
-                  Number((listing as Batiment).rentPrice) > 0 ? (
-                  <p
-                    className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold"
-                    style={{ color: COLORS.primary[300] }}
-                  >
-                    {formatPriceCompact(
-                      (listing as Batiment).rentPrice,
-                      listing.currency,
-                    )}
-                    /mo
-                  </p>
-                ) : (
-                  <p
-                    className="text-sm sm:text-base md:text-lg font-semibold"
-                    style={{ color: COLORS.primary[400] }}
-                  >
-                    Prix sur demande
-                  </p>
-                )}
+                {renderPriceDisplay(listing, "lg")}
               </div>
             </div>
           </div>
@@ -1332,7 +1642,6 @@ export default function AllPropertiesPage() {
                   </div>
                 )}
               </div>
-
               <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
                 <span className="hidden xl:inline opacity-80">
                   📍 Yaoundé, Cameroon
@@ -1348,7 +1657,6 @@ export default function AllPropertiesPage() {
         {/* Main header */}
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-2 sm:gap-3 md:gap-4 py-2 sm:py-3 md:py-4">
-            {/* Logo */}
             <Link href="/" className="flex-shrink-0">
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -1368,7 +1676,6 @@ export default function AllPropertiesPage() {
               </motion.div>
             </Link>
 
-            {/* Search bar */}
             <div className="hidden sm:flex flex-1 max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl 2xl:max-w-2xl mx-2 md:mx-4 items-center gap-2">
               <div className="relative flex-1">
                 <Search
@@ -1388,7 +1695,10 @@ export default function AllPropertiesPage() {
                 />
                 {searchQuery && (
                   <button
-                    onClick={() => setSearchQuery("")}
+                    onClick={() => {
+                      setSearchQuery("");
+                      setCurrentPage(1);
+                    }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition"
                   >
                     <X
@@ -1399,7 +1709,6 @@ export default function AllPropertiesPage() {
                 )}
               </div>
 
-              {/* Filter button */}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -1429,9 +1738,7 @@ export default function AllPropertiesPage() {
               </motion.button>
             </div>
 
-            {/* Right actions */}
             <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
-              {/* Mobile search toggle */}
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -1441,7 +1748,6 @@ export default function AllPropertiesPage() {
                 <Search className="w-4 h-4 text-white" />
               </motion.button>
 
-              {/* Mobile filter toggle */}
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
@@ -1462,7 +1768,6 @@ export default function AllPropertiesPage() {
                 )}
               </motion.button>
 
-              {/* Home button */}
               <Link href="/">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -1477,7 +1782,6 @@ export default function AllPropertiesPage() {
             </div>
           </div>
 
-          {/* Mobile search bar */}
           <AnimatePresence>
             {showMobileSearch && (
               <motion.div
@@ -1505,7 +1809,10 @@ export default function AllPropertiesPage() {
                   />
                   {searchQuery && (
                     <button
-                      onClick={() => setSearchQuery("")}
+                      onClick={() => {
+                        setSearchQuery("");
+                        setCurrentPage(1);
+                      }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100 transition"
                     >
                       <X
@@ -1597,7 +1904,6 @@ export default function AllPropertiesPage() {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
-                  {/* Entity Type */}
                   <div>
                     <label
                       className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
@@ -1633,7 +1939,6 @@ export default function AllPropertiesPage() {
                     </select>
                   </div>
 
-                  {/* Category */}
                   <div>
                     <label
                       className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
@@ -1673,7 +1978,6 @@ export default function AllPropertiesPage() {
                     </select>
                   </div>
 
-                  {/* Listing Type */}
                   <div>
                     <label
                       className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
@@ -1716,7 +2020,6 @@ export default function AllPropertiesPage() {
                     </select>
                   </div>
 
-                  {/* Property Type (only for Batiment) */}
                   {(selectedEntityType === "ALL" ||
                     selectedEntityType === "BATIMENT") && (
                     <div>
@@ -1759,7 +2062,6 @@ export default function AllPropertiesPage() {
                     </div>
                   )}
 
-                  {/* Min Price */}
                   <div>
                     <label
                       className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
@@ -1781,7 +2083,6 @@ export default function AllPropertiesPage() {
                     />
                   </div>
 
-                  {/* Max Price */}
                   <div>
                     <label
                       className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
@@ -1803,7 +2104,6 @@ export default function AllPropertiesPage() {
                     />
                   </div>
 
-                  {/* Min Bedrooms (only for Batiment) */}
                   {(selectedEntityType === "ALL" ||
                     selectedEntityType === "BATIMENT") && (
                     <div>
@@ -1842,7 +2142,6 @@ export default function AllPropertiesPage() {
                     </div>
                   )}
 
-                  {/* Sort By */}
                   <div>
                     <label
                       className="block text-[10px] sm:text-xs md:text-sm font-medium mb-1 sm:mb-2"
@@ -1894,7 +2193,6 @@ export default function AllPropertiesPage() {
                   </div>
                 </div>
 
-                {/* Amenities & Actions */}
                 <div
                   className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t"
                   style={{ borderColor: `${COLORS.primary[600]}40` }}
@@ -1981,9 +2279,16 @@ export default function AllPropertiesPage() {
             <p className="text-sm sm:text-base md:text-lg font-semibold text-white">
               {filteredListings.length}{" "}
               {filteredListings.length === 1 ? "Listing" : "Listings"}
+              {totalPages > 1 && (
+                <span
+                  className="text-xs sm:text-sm font-normal ml-2"
+                  style={{ color: COLORS.primary[400] }}
+                >
+                  (Page {currentPage} of {totalPages})
+                </span>
+              )}
             </p>
 
-            {/* Show active search query */}
             {hasSearchQuery && (
               <motion.span
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -1997,7 +2302,10 @@ export default function AllPropertiesPage() {
               >
                 <Search className="w-2.5 h-2.5 sm:w-3 sm:h-3" />"{searchQuery}"
                 <button
-                  onClick={() => setSearchQuery("")}
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCurrentPage(1);
+                  }}
                   className="ml-1 hover:bg-white/10 rounded-full p-0.5"
                 >
                   <X className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
@@ -2005,7 +2313,6 @@ export default function AllPropertiesPage() {
               </motion.span>
             )}
 
-            {/* Show active entity type filter */}
             {selectedEntityType !== "ALL" && (
               <motion.span
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -2031,7 +2338,6 @@ export default function AllPropertiesPage() {
               </motion.span>
             )}
 
-            {/* Show active filters indicator */}
             {hasActiveFilters && (
               <motion.button
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -2053,7 +2359,6 @@ export default function AllPropertiesPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 md:gap-3">
-            {/* Entity type quick filters */}
             <div className="hidden lg:flex items-center gap-1 mr-2">
               {entityTypes.map((type) => {
                 const isActive = selectedEntityType === type;
@@ -2082,7 +2387,6 @@ export default function AllPropertiesPage() {
               })}
             </div>
 
-            {/* View mode buttons */}
             {[
               { mode: "grid" as const, icon: Grid3x3, label: "Grid" },
               { mode: "list" as const, icon: List, label: "List" },
@@ -2197,7 +2501,7 @@ export default function AllPropertiesPage() {
             </motion.button>
           </div>
         ) : viewMode === "map" ? (
-          // Map view
+          // Map view — uses ALL filtered listings (no pagination)
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -2267,7 +2571,7 @@ export default function AllPropertiesPage() {
                   style={{ borderColor: `${COLORS.primary[700]}40` }}
                 >
                   {filteredListings
-                    .slice(0, 20)
+                    .slice(0, 50)
                     .map((listing, index) =>
                       renderMapSidebarItem(listing, index),
                     )}
@@ -2276,41 +2580,31 @@ export default function AllPropertiesPage() {
             </div>
           </motion.div>
         ) : viewMode === "grid" ? (
-          // Grid view
+          // Grid view — uses PAGINATED listings
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-            {filteredListings.map((listing, index) =>
+            {paginatedListings.map((listing, index) =>
               renderGridCard(listing, index),
             )}
           </div>
         ) : (
-          // List view
+          // List view — uses PAGINATED listings
           <div className="space-y-3 sm:space-y-4">
-            {filteredListings.map((listing, index) =>
+            {paginatedListings.map((listing, index) =>
               renderListCard(listing, index),
             )}
           </div>
         )}
 
-        {/* Load more / Pagination */}
-        {filteredListings.length > 0 && filteredListings.length >= 20 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mt-8 sm:mt-10 md:mt-12"
-          >
-            <p className="text-sm mb-4" style={{ color: COLORS.primary[400] }}>
-              Showing {filteredListings.length} listings
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => refetch()}
-              className="px-6 py-3 rounded-xl font-semibold text-white"
-              style={{ background: GRADIENTS.button.primary }}
-            >
-              Refresh Listings
-            </motion.button>
-          </motion.div>
+        {/* Pagination Controls */}
+        {viewMode !== "map" && filteredListings.length > 0 && (
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredListings.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
         )}
       </main>
 

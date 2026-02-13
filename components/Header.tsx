@@ -38,7 +38,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import { useFavorites } from "@/lib/hooks/useFavorites";
-
 import { signOut } from "next-auth/react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import {
@@ -59,8 +58,12 @@ import {
   getPropertyTypeLabel,
   getEntityTypeLabel,
 } from "@/lib/hooks/useProperties";
+import StatsBar, { ListingStats } from "@/components/StatsBar";
 
-// Fallback images if media is missing
+// =========================================================
+// CONSTANTS
+// =========================================================
+
 const PLACEHOLDER_IMAGES: Record<string, string> = {
   VILLA:
     "https://images.unsplash.com/photo-1613490493576-7fde63acd811?w=400&h=300&fit=crop&q=80",
@@ -124,7 +127,9 @@ const ENTITY_ICONS: Record<EntityType, React.ComponentType<any>> = {
   BATIMENT: Building2,
 };
 
-// --- Helper Functions ---
+// =========================================================
+// HELPER FUNCTIONS
+// =========================================================
 
 function formatPriceCompact(
   price: string | number | null | undefined,
@@ -156,12 +161,9 @@ function searchListings(listings: Listing[], query: string): Listing[] {
   });
 }
 
-// Local helper for search results images
 const getSearchListingImage = (listing: Listing): string => {
   const primaryImage = getListingPrimaryImage(listing);
   if (primaryImage) return primaryImage;
-
-  // Use property type placeholder if available
   if (listing._entityType === "BATIMENT") {
     const batiment = listing as Batiment;
     if (batiment.propertyType && PLACEHOLDER_IMAGES[batiment.propertyType]) {
@@ -171,7 +173,6 @@ const getSearchListingImage = (listing: Listing): string => {
   return PLACEHOLDER_IMAGES[listing._entityType] || PLACEHOLDER_IMAGES.default;
 };
 
-// Local helper for search result status
 const getSearchStatusLabel = (listing: Listing): string => {
   if (listing.listingType === "BOTH") return "Sale / Rent";
   if (listing.listingType === "SALE") return "For Sale";
@@ -200,17 +201,20 @@ const getPlaceholderImage = (entityType: EntityType): string => {
   return PLACEHOLDER_IMAGES[entityType] || PLACEHOLDER_IMAGES.default;
 };
 
-export default function Header({
-  stats,
-  onSearchClick,
-}: {
-  stats: any;
+// =========================================================
+// HEADER PROPS
+// =========================================================
+interface HeaderProps {
+  stats: ListingStats;
   onSearchClick?: () => void;
-}) {
+}
+
+// =========================================================
+// HEADER COMPONENT
+// =========================================================
+export default function Header({ stats, onSearchClick }: HeaderProps) {
   const { listings } = useAllListings({ status: "PUBLISHED", limit: 100 });
   const { user, isLoading, isAuthenticated } = useAuth();
-
-  // Favorites Hook
   const {
     favorites,
     count: favoritesCount,
@@ -407,24 +411,18 @@ export default function Header({
   };
 
   // --- Favorite Helpers ---
-
-  // 1. URL Generator matching useProperties.ts logic exactly
   const getFavoriteUrl = (favorite: any): string => {
     const entity =
       favorite.lotissement || favorite.parcelle || favorite.batiment;
     if (!entity) return "/properties";
-
     const id = entity.Id_Lotis || entity.Id_Parcel || entity.Id_Bat;
     const slug = entity.slug || id;
-
     if (favorite.entityType === "LOTISSEMENT") return `/estates/${slug}`;
     if (favorite.entityType === "PARCELLE") return `/lands/${slug}`;
     if (favorite.entityType === "BATIMENT") return `/properties/${slug}`;
-
     return "/properties";
   };
 
-  // 2. Data Extractor
   const getFavoriteDetails = (favorite: any) => {
     const entity =
       favorite.lotissement || favorite.parcelle || favorite.batiment;
@@ -442,18 +440,14 @@ export default function Header({
     let bedrooms: number | null = null;
     let bathrooms: number | null = null;
 
-    // Helper to robustly find image url
     const getPrimaryImage = (media: any[] | undefined): string | null => {
       if (!media || !Array.isArray(media) || media.length === 0) return null;
-      // 1. Try Primary Image
       const primary = media.find((m: any) => m.isPrimary);
       if (primary?.url) return primary.url;
-      // 2. Try any Image
       const anyImage = media.find(
         (m: any) => m.type === "image" || m.type === "IMAGE",
       );
       if (anyImage?.url) return anyImage.url;
-      // 3. Fallback to first item with a url
       if (media[0]?.url) return media[0].url;
       return null;
     };
@@ -481,7 +475,6 @@ export default function Header({
       propertyType = bat.propertyType;
       bedrooms = bat.bedrooms;
       bathrooms = bat.bathrooms;
-
       const foundImage = getPrimaryImage(bat.media);
       if (foundImage) {
         image = foundImage;
@@ -702,7 +695,10 @@ export default function Header({
               <div className="absolute top-3 right-3">
                 <span
                   className="px-2 py-1 rounded-lg text-xs font-medium backdrop-blur-sm"
-                  style={{ background: "rgba(0,0,0,0.5)", color: COLORS.white }}
+                  style={{
+                    background: "rgba(0,0,0,0.5)",
+                    color: COLORS.white,
+                  }}
                 >
                   {getEntityTypeLabel(listing._entityType, "en")}
                 </span>
@@ -840,9 +836,6 @@ export default function Header({
   );
 
   const renderFavoritesContent = () => {
-    // Uncomment to debug if images are still missing
-    // console.log("Favorites data in header:", favorites);
-
     if (favoritesLoading) {
       return (
         <div className="p-8 flex flex-col items-center justify-center">
@@ -1036,7 +1029,6 @@ export default function Header({
     }
 
     if (!isAuthenticated) {
-      // Guest View
       return (
         <>
           <div
@@ -1254,191 +1246,97 @@ export default function Header({
         <div
           className={`p-2 ${isMobile ? "max-h-[40vh] overflow-y-auto" : ""}`}
         >
-          <Link href="/dashboard" onClick={closeAccountMenu}>
-            <motion.div
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-            >
-              <div
-                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
-                style={{ background: `${COLORS.primary[500]}30` }}
+          {[
+            {
+              href: "/dashboard",
+              icon: UserCircle,
+              label: "Dashboard",
+              sub: "Manage your account",
+              iconBg: `${COLORS.primary[500]}30`,
+              iconColor: COLORS.primary[300],
+            },
+            {
+              href: "/dashboard/favorites",
+              icon: Heart,
+              label: "My Favorites",
+              sub:
+                favoritesCount > 0
+                  ? `${favoritesCount} saved listings`
+                  : "Saved listings",
+              iconBg: `${COLORS.yellow[300]}30`,
+              iconColor: COLORS.yellow[400],
+              badge: favoritesCount > 0 ? favoritesCount : undefined,
+            },
+            {
+              href: "/dashboard/history",
+              icon: Clock,
+              label: "Recent Views",
+              sub: "Browsing history",
+              iconBg: `${COLORS.yellow[500]}30`,
+              iconColor: COLORS.yellow[400],
+            },
+            {
+              href: "/dashboard/notifications",
+              icon: Bell,
+              label: "Notifications",
+              sub: "Alerts & updates",
+              iconBg: `${COLORS.emerald[500]}30`,
+              iconColor: COLORS.emerald[400],
+            },
+            {
+              href: "/dashboard/settings",
+              icon: Settings,
+              label: "Settings",
+              sub: "Account preferences",
+              iconBg: `${COLORS.gray[500]}30`,
+              iconColor: COLORS.gray[400],
+            },
+          ].map((item) => (
+            <Link key={item.href} href={item.href} onClick={closeAccountMenu}>
+              <motion.div
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
               >
-                <UserCircle
+                <div
+                  className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
+                  style={{ background: item.iconBg }}
+                >
+                  <item.icon
+                    className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
+                    style={{ color: item.iconColor }}
+                  />
+                </div>
+                <div className="flex-1">
+                  <p
+                    className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
+                    style={{ color: COLORS.white }}
+                  >
+                    {item.label}
+                  </p>
+                  <p
+                    className={`${isMobile ? "text-sm" : "text-xs"}`}
+                    style={{ color: COLORS.primary[400] }}
+                  >
+                    {item.sub}
+                  </p>
+                </div>
+                {item.badge && (
+                  <span
+                    className="min-w-[20px] h-[20px] rounded-full flex items-center justify-center text-xs font-bold text-white"
+                    style={{ background: COLORS.yellow[500] }}
+                  >
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
+                <ChevronRight
                   className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                  style={{ color: COLORS.primary[300] }}
-                />
-              </div>
-              <div className="flex-1">
-                <p
-                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
-                  style={{ color: COLORS.white }}
-                >
-                  Dashboard
-                </p>
-                <p
-                  className={`${isMobile ? "text-sm" : "text-xs"}`}
                   style={{ color: COLORS.primary[400] }}
-                >
-                  Manage your account
-                </p>
-              </div>
-              <ChevronRight
-                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                style={{ color: COLORS.primary[400] }}
-              />
-            </motion.div>
-          </Link>
-          <Link href="/dashboard/favorites" onClick={closeAccountMenu}>
-            <motion.div
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-            >
-              <div
-                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
-                style={{ background: `${COLORS.yellow[300]}30` }}
-              >
-                <Heart
-                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                  style={{ color: COLORS.yellow[400] }}
                 />
-              </div>
-              <div className="flex-1">
-                <p
-                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
-                  style={{ color: COLORS.white }}
-                >
-                  My Favorites
-                </p>
-                <p
-                  className={`${isMobile ? "text-sm" : "text-xs"}`}
-                  style={{ color: COLORS.primary[400] }}
-                >
-                  {favoritesCount > 0
-                    ? `${favoritesCount} saved listings`
-                    : "Saved listings"}
-                </p>
-              </div>
-              {favoritesCount > 0 && (
-                <span
-                  className="min-w-[20px] h-[20px] rounded-full flex items-center justify-center text-xs font-bold text-white"
-                  style={{ background: COLORS.yellow[500] }}
-                >
-                  {favoritesCount > 99 ? "99+" : favoritesCount}
-                </span>
-              )}
-              <ChevronRight
-                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                style={{ color: COLORS.primary[400] }}
-              />
-            </motion.div>
-          </Link>
-          <Link href="/dashboard/history" onClick={closeAccountMenu}>
-            <motion.div
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-            >
-              <div
-                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
-                style={{ background: `${COLORS.yellow[500]}30` }}
-              >
-                <Clock
-                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                  style={{ color: COLORS.yellow[400] }}
-                />
-              </div>
-              <div className="flex-1">
-                <p
-                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
-                  style={{ color: COLORS.white }}
-                >
-                  Recent Views
-                </p>
-                <p
-                  className={`${isMobile ? "text-sm" : "text-xs"}`}
-                  style={{ color: COLORS.primary[400] }}
-                >
-                  Browsing history
-                </p>
-              </div>
-              <ChevronRight
-                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                style={{ color: COLORS.primary[400] }}
-              />
-            </motion.div>
-          </Link>
-          <Link href="/dashboard/notifications" onClick={closeAccountMenu}>
-            <motion.div
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-            >
-              <div
-                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
-                style={{ background: `${COLORS.emerald[500]}30` }}
-              >
-                <Bell
-                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                  style={{ color: COLORS.emerald[400] }}
-                />
-              </div>
-              <div className="flex-1">
-                <p
-                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
-                  style={{ color: COLORS.white }}
-                >
-                  Notifications
-                </p>
-                <p
-                  className={`${isMobile ? "text-sm" : "text-xs"}`}
-                  style={{ color: COLORS.primary[400] }}
-                >
-                  Alerts & updates
-                </p>
-              </div>
-              <ChevronRight
-                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                style={{ color: COLORS.primary[400] }}
-              />
-            </motion.div>
-          </Link>
-          <Link href="/dashboard/settings" onClick={closeAccountMenu}>
-            <motion.div
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              className={`flex items-center gap-3 px-4 ${isMobile ? "py-4" : "py-3"} rounded-xl transition-all cursor-pointer active:bg-white/10 hover:bg-white/10`}
-            >
-              <div
-                className={`${isMobile ? "w-11 h-11" : "w-9 h-9"} rounded-lg flex items-center justify-center`}
-                style={{ background: `${COLORS.gray[500]}30` }}
-              >
-                <Settings
-                  className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                  style={{ color: COLORS.gray[400] }}
-                />
-              </div>
-              <div className="flex-1">
-                <p
-                  className={`font-medium ${isMobile ? "text-base" : "text-sm"}`}
-                  style={{ color: COLORS.white }}
-                >
-                  Settings
-                </p>
-                <p
-                  className={`${isMobile ? "text-sm" : "text-xs"}`}
-                  style={{ color: COLORS.primary[400] }}
-                >
-                  Account preferences
-                </p>
-              </div>
-              <ChevronRight
-                className={`${isMobile ? "w-5 h-5" : "w-4 h-4"}`}
-                style={{ color: COLORS.primary[400] }}
-              />
-            </motion.div>
-          </Link>
+              </motion.div>
+            </Link>
+          ))}
+
           {user?.role?.toUpperCase() === "ADMIN" && (
             <>
               <div
@@ -1516,6 +1414,9 @@ export default function Header({
     );
   };
 
+  // =========================================================
+  // RENDER
+  // =========================================================
   return (
     <>
       <motion.header
@@ -1528,104 +1429,8 @@ export default function Header({
           borderColor: `${COLORS.primary[700]}4D`,
         }}
       >
-        {/* Top bar with stats */}
-        <div
-          className="border-b"
-          style={{
-            background: `${COLORS.primary[950]}80`,
-            borderColor: `${COLORS.primary[700]}80`,
-          }}
-        >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="flex items-center justify-between py-2 text-xs sm:text-sm text-white">
-              <div className="hidden sm:flex items-center gap-4 md:gap-8">
-                <div className="flex items-center gap-2">
-                  <Home
-                    className="w-4 h-4"
-                    style={{ color: COLORS.yellow[400] }}
-                  />
-                  <span>
-                    <strong style={{ color: COLORS.yellow[400] }}>
-                      {stats.published}
-                    </strong>{" "}
-                    Listings
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4" style={{ color: "#22c55e" }} />
-                  <span>
-                    <strong style={{ color: "#22c55e" }}>
-                      {stats.byEntityType?.BATIMENT || 0}
-                    </strong>{" "}
-                    Properties
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Map className="w-4 h-4" style={{ color: "#3b82f6" }} />
-                  <span>
-                    <strong style={{ color: "#3b82f6" }}>
-                      {stats.byEntityType?.PARCELLE || 0}
-                    </strong>{" "}
-                    Lands
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4" style={{ color: "#a855f7" }} />
-                  <span>
-                    <strong style={{ color: "#a855f7" }}>
-                      {stats.byEntityType?.LOTISSEMENT || 0}
-                    </strong>{" "}
-                    Estates
-                  </span>
-                </div>
-                {stats.featured > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Sparkles
-                      className="w-4 h-4"
-                      style={{ color: COLORS.yellow[400] }}
-                    />
-                    <span>
-                      <strong style={{ color: COLORS.yellow[400] }}>
-                        {stats.featured}
-                      </strong>{" "}
-                      Featured
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="flex sm:hidden items-center gap-3 text-xs">
-                <span>
-                  <strong style={{ color: COLORS.yellow[400] }}>
-                    {stats.published}
-                  </strong>{" "}
-                  Listings
-                </span>
-                <span>•</span>
-                <span>
-                  <strong style={{ color: "#22c55e" }}>
-                    {stats.byEntityType?.BATIMENT || 0}
-                  </strong>{" "}
-                  Props
-                </span>
-                <span>•</span>
-                <span>
-                  <strong style={{ color: "#3b82f6" }}>
-                    {stats.byEntityType?.PARCELLE || 0}
-                  </strong>{" "}
-                  Lands
-                </span>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className="hidden lg:inline opacity-80">
-                  📍 Yaoundé, Cameroon
-                </span>
-                <span className="opacity-80 hidden sm:inline">
-                  📞 +237 652 149 121
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* ✅ EXTRACTED: Stats Bar Component */}
+        <StatsBar stats={stats} variant="desktop" />
 
         {/* Main header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
@@ -1940,7 +1745,7 @@ export default function Header({
                 </motion.button>
               </Link>
 
-              {/* Favorites button - show when authenticated */}
+              {/* Favorites button */}
               {isAuthenticated && (
                 <div className="relative" ref={favoritesMenuRef}>
                   <motion.button
@@ -2114,6 +1919,9 @@ export default function Header({
           </div>
         </div>
 
+        {/* ✅ EXTRACTED: Mobile Stats Bar */}
+        <StatsBar stats={stats} variant="mobile" />
+
         {/* Mobile Menu Overlay */}
         <AnimatePresence>
           {isMobileMenuOpen && (
@@ -2128,9 +1936,6 @@ export default function Header({
                 borderColor: `${COLORS.primary[400]}40`,
               }}
             >
-              {/* ... (Mobile menu content similar to existing logic) ... */}
-              {/* I'll let the existing logic handle the mobile menu content rendering since it's already there in the file context */}
-              {/* For brevity, I assume the render functions are working correctly as defined above */}
               <div className="max-w-7xl mx-auto px-4 py-4 space-y-3">
                 <Link href="/properties" onClick={closeMobileMenu}>
                   <motion.div
@@ -2146,7 +1951,6 @@ export default function Header({
                     />
                   </motion.div>
                 </Link>
-                {/* Favorites Link (Mobile) */}
                 {isAuthenticated && (
                   <motion.div
                     whileTap={{ scale: 0.98 }}
@@ -2173,8 +1977,6 @@ export default function Header({
                     />
                   </motion.div>
                 )}
-                {/* ... Services, Contact, Auth buttons (reuse existing patterns) ... */}
-                {/* Services Accordion */}
                 <div>
                   <motion.button
                     whileTap={{ scale: 0.98 }}

@@ -82,6 +82,7 @@ import {
 import Link from "next/link";
 import FavoriteButton from "@/components/FavoriteButton";
 import ShareButton from "@/components/ShareButton";
+import { useListingStats } from "@/components/StatsBar";
 
 const faqs = [
   {
@@ -549,8 +550,7 @@ export default function HomePage() {
   }, [mouseX, mouseY]);
 
   // Calculate stats from listings
-  const stats = useMemo(() => calculateListingStats(listings), [listings]);
-
+  const { stats } = useListingStats();
   // Featured listings for hero carousel (prioritize batiments with images)
   const featuredListings = useMemo(() => {
     const featured = listings.filter(

@@ -830,19 +830,17 @@ export default function LandDetailPage() {
                 className="flex flex-wrap items-baseline gap-8 py-6 border-y"
                 style={{ borderColor: "rgba(255,255,255,0.2)" }}
               >
-                <div>
+                <div className="flex items-center gap-2">
                   {parcelle.price && Number(parcelle.price) > 0 ? (
                     <>
                       <p className="text-sm mb-1 text-gray-400">Price</p>
-                      <p
-                        className="text-3xl font-bold"
-                        style={{ color: COLORS.primary[400] }}
-                      >
-                        {formatPrice(parcelle.price, parcelle.currency)}
-                      </p>
+
                       {parcelle.pricePerSqM &&
                         Number(parcelle.pricePerSqM) > 0 && (
-                          <p className="text-sm mt-1 text-gray-400">
+                          <p
+                            className="text-3xl font-bold mt-1"
+                            style={{ color: COLORS.primary[400] }}
+                          >
                             {formatPrice(
                               parcelle.pricePerSqM,
                               parcelle.currency,
@@ -1454,7 +1452,7 @@ export default function LandDetailPage() {
                           style={{ color: COLORS.primary[400] }}
                         >
                           {related.price && Number(related.price) > 0
-                            ? formatPriceCompact(related.price)
+                            ? `${formatPriceCompact(related.pricePerSqM)} XAF/m²`
                             : "Prix sur demande"}
                         </p>
                         {related.Sup && (
