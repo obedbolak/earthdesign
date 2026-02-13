@@ -21,28 +21,28 @@ export default function ContactInfo() {
     {
       icon: Phone,
       title: "Phone",
-      details: ["+237 233 42 XX XX", "+237 699 XX XX XX"],
+      details: ["+237 652 14 91 21", "+237 656 76 63 45"],
       action: "Call now",
-      href: "tel:+23723342XXXX",
+      href: "tel:+237652149121",
       color: "from-blue-500 to-cyan-500",
     },
     {
       icon: Mail,
       title: "Email",
       details: [
-        "contact@earthdesignengineeringltd.com",
-        "info@earthdesignengineeringltd.com",
+        "realestate@earthdesignengineeringltd.com",
+        "technical@earthdesignengineeringltd.com",
       ],
       action: "Send email",
-      href: "mailto:contact@earthdesignengineeringltd.com",
+      href: "mailto:realestate@earthdesignengineeringltd.com",
       color: "from-teal-500 to-emerald-500",
     },
     {
       icon: MessageCircle,
       title: "WhatsApp",
-      details: ["+237 699 XX XX XX"],
+      details: ["+237 652 14 91 21"],
       action: "Chat now",
-      href: "https://wa.me/237699XXXXXX",
+      href: "https://wa.me/237652149121",
       color: "from-green-500 to-emerald-500",
     },
   ];
@@ -158,11 +158,11 @@ export default function ContactInfo() {
           For urgent property-related emergencies outside office hours:
         </p>
         <a
-          href="tel:+237699XXXXXX"
+          href="tel:+237652149121"
           className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition-all"
         >
           <Phone className="w-4 h-4" />
-          +237 699 XX XX XX
+          +237 652 14 91 21
         </a>
       </motion.div>
     </div>
