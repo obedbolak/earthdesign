@@ -260,82 +260,65 @@ function formatPriceCompact(
   return numPrice.toLocaleString("fr-CM");
 }
 
-// Get property type icon emoji
-function getPropertyTypeIcon(type: PropertyType): string {
-  const icons: Record<PropertyType, string> = {
-    APARTMENT: "🏢",
-    HOUSE: "🏠",
-    VILLA: "🏡",
-    STUDIO: "🛏️",
-    DUPLEX: "🏘️",
-    TRIPLEX: "🏘️",
-    PENTHOUSE: "✨",
-    CHAMBRE_MODERNE: "🚪",
-    CHAMBRE: "🛏️",
-    OFFICE: "💼",
-    SHOP: "🏪",
-    RESTAURANT: "🍽️",
-    HOTEL: "🏨",
-    WAREHOUSE: "🏭",
-    COMMERCIAL_SPACE: "🏬",
-    INDUSTRIAL: "🏭",
-    FACTORY: "🏭",
-    BUILDING: "🏗️",
-    MIXED_USE: "🏢",
-  };
-  return icons[type] || "🏠";
-}
+// =========================================================
+// PRICE DISPLAY HELPER (Integrated from properties/page)
+// =========================================================
+function getDisplayPrice(listing: Listing): {
+  value: string | number | null | undefined;
+  suffix: string;
+  label: string;
+} {
+  // For LOTISSEMENT and PARCELLE → show pricePerSqM
+  if (
+    listing._entityType === "LOTISSEMENT" ||
+    listing._entityType === "PARCELLE"
+  ) {
+    const entity = listing as any;
+    // Check all possible field names for robustness
+    const pricePerSqM =
+      entity.pricePerSqM ??
+      entity.pricePerSqm ??
+      entity.pricePerMsq ??
+      entity.pricePermsq ??
+      entity.price_per_msq ??
+      entity.price_per_sqm ??
+      null;
 
-// Calculate listing stats
-interface ListingStats {
-  total: number;
-  published: number;
-  featured: number;
-  forSale: number;
-  forRent: number;
-  byCategory: Record<PropertyCategory, number>;
-  byEntityType: Record<EntityType, number>;
-  averagePrice: number;
-}
-
-function calculateListingStats(listings: Listing[]): ListingStats {
-  const published = listings.filter((l) => l.listingStatus === "PUBLISHED");
-
-  const byCategory = {
-    LAND: 0,
-    RESIDENTIAL: 0,
-    COMMERCIAL: 0,
-    INDUSTRIAL: 0,
-    MIXED: 0,
-  } as Record<PropertyCategory, number>;
-
-  published.forEach((l) => {
-    if (l.category && byCategory[l.category] !== undefined) {
-      byCategory[l.category]++;
+    if (pricePerSqM && Number(pricePerSqM) > 0) {
+      return { value: pricePerSqM, suffix: " /m²", label: "Price/m²" };
     }
-  });
+    // Fallback to regular price
+    if (listing.price && Number(listing.price) > 0) {
+      return { value: listing.price, suffix: "", label: "Price" };
+    }
+    return { value: null, suffix: "", label: "Price/m²" };
+  }
 
-  const byEntityType: Record<EntityType, number> = {
-    LOTISSEMENT: listings.filter((l) => l._entityType === "LOTISSEMENT").length,
-    PARCELLE: listings.filter((l) => l._entityType === "PARCELLE").length,
-    BATIMENT: listings.filter((l) => l._entityType === "BATIMENT").length,
-  };
+  // For BATIMENT → Regular price or Rent
+  if (listing.price && Number(listing.price) > 0) {
+    return {
+      value: listing.price,
+      suffix: "",
+      label: listing.listingType === "RENT" ? "Rent" : "Price",
+    };
+  }
 
-  const prices = published
-    .map((l) => parseFloat(String(l.price || 0)))
-    .filter((p) => p > 0);
+  if (
+    listing._entityType === "BATIMENT" &&
+    (listing as Batiment).rentPrice &&
+    Number((listing as Batiment).rentPrice) > 0
+  ) {
+    return {
+      value: (listing as Batiment).rentPrice,
+      suffix: "/mo",
+      label: "Rent",
+    };
+  }
 
   return {
-    total: listings.length,
-    published: published.length,
-    featured: published.filter((l) => l.featured).length,
-    forSale: published.filter((l) => isForSale(l)).length,
-    forRent: published.filter((l) => isForRent(l)).length,
-    byCategory,
-    byEntityType,
-    averagePrice: prices.length
-      ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length)
-      : 0,
+    value: null,
+    suffix: "",
+    label: listing.listingType === "RENT" ? "Rent" : "Price",
   };
 }
 
@@ -1096,6 +1079,8 @@ export default function HomePage() {
               ) : (
                 searchResults.map((listing, idx) => {
                   const EntityIcon = entityTypeIcons[listing._entityType];
+                  const displayPrice = getDisplayPrice(listing);
+
                   return (
                     <motion.div
                       key={`${listing._entityType}-${getListingId(listing)}`}
@@ -1157,27 +1142,22 @@ export default function HomePage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        {listing.price !== null && Number(listing.price) > 0 ? (
+                        {displayPrice.value ? (
                           <p
                             className="font-bold text-lg"
                             style={{ color: COLORS.primary[600] }}
                           >
-                            {formatPrice(listing.price, listing.currency)}
+                            {formatPrice(displayPrice.value, listing.currency)}
+                            {displayPrice.suffix}
                           </p>
-                        ) : listing._entityType === "BATIMENT" &&
-                          (listing as Batiment).rentPrice &&
-                          Number((listing as Batiment).rentPrice) > 0 ? (
+                        ) : (
                           <p
                             className="font-bold text-lg"
                             style={{ color: COLORS.primary[600] }}
                           >
-                            {formatPrice(
-                              (listing as Batiment).rentPrice,
-                              listing.currency,
-                            )}
-                            /mo
+                            Price on Request
                           </p>
-                        ) : null}
+                        )}
                         <p
                           className="text-sm"
                           style={{ color: COLORS.gray[500] }}
@@ -1263,28 +1243,32 @@ export default function HomePage() {
                     </motion.span>
                   </div>
 
-                  {/* TOP RIGHT — Status + Price (max 2 badges, horizontal on mobile) */}
+                  {/* TOP RIGHT — Status + Price */}
                   <div className="absolute top-3 sm:top-5 right-3 sm:right-5 z-10 flex items-center gap-2">
                     <span
                       className="text-white px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-md"
-                      style={{ background: getStatusColor(currentHeroListing) }}
+                      style={{
+                        background: getStatusColor(currentHeroListing),
+                      }}
                     >
                       {getListingStatusLabel(currentHeroListing)}
                     </span>
-                    {currentHeroListing.price !== null &&
-                      Number(currentHeroListing.price) > 0 && (
-                        <span className="text-white px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-md bg-black/50">
-                          {formatPriceCompact(
-                            currentHeroListing.price,
-                            currentHeroListing.currency,
-                          )}
-                          {currentHeroListing.listingType === "RENT" && (
-                            <span className="text-[10px] sm:text-xs font-normal opacity-80">
-                              /mo
-                            </span>
-                          )}
-                        </span>
-                      )}
+                    {/* Price Display Logic */}
+                    {(() => {
+                      const hp = getDisplayPrice(currentHeroListing);
+                      if (hp.value && Number(hp.value) > 0) {
+                        return (
+                          <span className="text-white px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold shadow-lg backdrop-blur-md bg-black/50">
+                            {formatPriceCompact(
+                              hp.value,
+                              currentHeroListing.currency,
+                            )}
+                            {hp.suffix}
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   {/* BOTTOM CONTENT — Clean info block with reserved space for dots */}
@@ -1634,6 +1618,8 @@ export default function HomePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
               {filteredListings.slice(0, 8).map((listing, index) => {
                 const EntityIcon = entityTypeIcons[listing._entityType];
+                const displayPrice = getDisplayPrice(listing);
+
                 return (
                   <motion.div
                     key={`${listing._entityType}-${getListingId(listing)}`}
@@ -1726,60 +1712,27 @@ export default function HomePage() {
                       </p>
 
                       <div className="mb-4">
-                        {listing.price !== null &&
-                          Number(listing.price) > 0 && (
-                            <p
-                              className="text-2xl font-extrabold"
-                              style={{ color: COLORS.primary[400] }}
-                            >
-                              {formatPrice(listing.price, listing.currency)}
-                            </p>
-                          )}
-                        {listing._entityType === "BATIMENT" &&
-                          (listing as Batiment).rentPrice &&
-                          Number((listing as Batiment).rentPrice) > 0 && (
-                            <p
-                              className={
-                                listing.price && Number(listing.price) > 0
-                                  ? "text-sm mt-1 font-bold"
-                                  : "text-2xl font-extrabold"
-                              }
-                              style={{ color: COLORS.primary[400] }}
-                            >
-                              {listing.price && Number(listing.price) > 0
-                                ? "Rent: "
-                                : ""}
-                              {formatPrice(
-                                (listing as Batiment).rentPrice,
-                                listing.currency,
-                              )}
-                              /month
-                            </p>
-                          )}
-                        {(!listing.price || Number(listing.price) === 0) &&
-                          (listing._entityType !== "BATIMENT" ||
-                            !(listing as Batiment).rentPrice ||
-                            Number((listing as Batiment).rentPrice) === 0) && (
-                            <p
-                              className="text-lg font-bold"
-                              style={{ color: COLORS.primary[400] }}
-                            >
-                              Price on Request
-                            </p>
-                          )}
-                        {listing.pricePerSqM &&
-                          Number(listing.pricePerSqM) > 0 && (
-                            <p
-                              className="text-xs mt-1"
-                              style={{ color: COLORS.gray[500] }}
-                            >
-                              {formatPrice(
-                                listing.pricePerSqM,
-                                listing.currency,
-                              )}
-                              /m²
-                            </p>
-                          )}
+                        {displayPrice.value ? (
+                          <p
+                            className={
+                              displayPrice.value
+                                ? "text-2xl font-extrabold"
+                                : "text-lg font-bold"
+                            }
+                            style={{ color: COLORS.primary[400] }}
+                          >
+                            {displayPrice.label === "Rent" ? "Rent: " : ""}
+                            {formatPrice(displayPrice.value, listing.currency)}
+                            {displayPrice.suffix}
+                          </p>
+                        ) : (
+                          <p
+                            className="text-lg font-bold"
+                            style={{ color: COLORS.primary[400] }}
+                          >
+                            Price on Request
+                          </p>
+                        )}
                       </div>
 
                       <div
@@ -2173,7 +2126,6 @@ export default function HomePage() {
                     whileHover={isActive ? { scale: 1.05 } : {}}
                     className="rounded-3xl p-6 border-2 transition-all duration-500"
                     style={{
-                      // KEY FIX: Solid backgrounds instead of transparent
                       background: isActive
                         ? `linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(16, 85, 40, 0.9) 100%)`
                         : `linear-gradient(135deg, rgba(30, 30, 30, 0.95) 0%, rgba(20, 20, 20, 0.98) 100%)`,
@@ -2183,7 +2135,6 @@ export default function HomePage() {
                       boxShadow: isActive
                         ? `0 25px 60px rgba(0, 0, 0, 0.5), 0 0 40px ${COLORS.primary[500]}30, inset 0 1px 0 rgba(255,255,255,0.1)`
                         : "0 4px 20px rgba(0, 0, 0, 0.3)",
-                      // KEY FIX: Hide backface so cards behind don't show through
                       backfaceVisibility: "hidden",
                       WebkitBackfaceVisibility: "hidden",
                     }}
