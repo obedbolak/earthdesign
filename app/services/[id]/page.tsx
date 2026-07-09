@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import useEmblaCarousel from "embla-carousel-react";
+import Autoplay from "embla-carousel-autoplay";
 import {
   MapPin,
   Building2,
@@ -22,6 +24,8 @@ import {
   Star,
   Calendar,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 const COLORS = {
@@ -177,11 +181,11 @@ const servicesData = {
     longDescription:
       "Our land survey services utilize cutting-edge GPS technology and employ certified professional surveyors to deliver accurate, reliable results. From boundary surveys to complex topographic mapping, we ensure legal compliance and provide detailed documentation for all your land-related needs. Trust our 15+ years of experience in the Cameroonian terrain.",
     image:
-      "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&h=800&fit=crop&q=80",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611429/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-09_at_16.32.15_3_zplbre.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&h=600&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800&h=600&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=600&fit=crop&q=80",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611428/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-09_at_16.32.15_ycz9ue.jpg",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611428/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-09_at_16.32.15_2_iwc1im.jpg",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611428/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-09_at_16.32.16_lz7hho.jpg",
     ],
     features: [
       "Boundary Surveys",
@@ -277,11 +281,11 @@ const servicesData = {
     longDescription:
       "From residential homes to commercial buildings, our construction services deliver quality, durability, and aesthetic excellence. Our experienced team manages every phase of construction with meticulous attention to detail, ensuring your project is completed on schedule and within budget. We use only premium materials and employ skilled craftsmen who take pride in their work.",
     image:
-      "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1200&h=800&fit=crop&q=80",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611597/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-07_at_12.08.36_ee6cuu.jpg",
     gallery: [
-      "https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800&h=600&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&h=600&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1590725175376-f0521c9e5ac2?w=800&h=600&fit=crop&q=80",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611592/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-07_at_12.08.40_v7yuxa.jpg",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611592/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-07_at_12.08.51_lzujef.jpg",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611592/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-07_at_12.08.53_wonsl9.jpg",
     ],
     features: [
       "Residential Construction",
@@ -377,6 +381,18 @@ export default function ServiceDetailPage({
   const resolvedParams = use(params);
   const [service, setService] = useState(servicesData["real-estate"]);
   const [activeTab, setActiveTab] = useState("overview");
+  const [emblaRef, embla] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000 })]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const scrollPrev = useCallback(() => embla?.scrollPrev(), [embla]);
+  const scrollNext = useCallback(() => embla?.scrollNext(), [embla]);
+
+  useEffect(() => {
+    if (!embla) return;
+    const onSelect = () => setSelectedIndex(embla.selectedScrollSnap());
+    embla.on("select", onSelect);
+    onSelect();
+    return () => { embla.off("select", onSelect); };
+  }, [embla]);
 
   useEffect(() => {
     const serviceId = resolvedParams?.id || "real-estate";
@@ -425,101 +441,35 @@ export default function ServiceDetailPage({
       {/* Hero Section */}
       <section className="relative z-10 pt-32 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left Content */}
+          {/* Icon + Title (above image on mobile, above grid on desktop) */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-4 mb-8"
+          >
             <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", duration: 0.6 }}
+              className={`inline-flex w-20 h-20 rounded-2xl bg-gradient-to-br ${service.gradient} items-center justify-center flex-shrink-0`}
+              style={{ boxShadow: SHADOWS.glow }}
             >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", duration: 0.6 }}
-                className={`inline-flex w-20 h-20 rounded-2xl bg-gradient-to-br ${service.gradient} items-center justify-center mb-6`}
-                style={{ boxShadow: SHADOWS.glow }}
-              >
-                <ServiceIcon className="w-10 h-10 text-white" />
-              </motion.div>
-
-              <h1 className="text-5xl sm:text-6xl font-extrabold text-white mb-4">
-                {service.title}
-              </h1>
-
-              <p
-                className="text-2xl font-semibold mb-6"
-                style={{ color: COLORS.primary[400] }}
-              >
-                {service.tagline}
-              </p>
-
-              <p
-                className="text-lg leading-relaxed mb-8"
-                style={{ color: COLORS.gray[300] }}
-              >
-                {service.longDescription}
-              </p>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-6 mb-8">
-                {service.stats.map((stat, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className="text-center"
-                  >
-                    <p
-                      className="text-4xl font-bold mb-2"
-                      style={{ color: COLORS.primary[400] }}
-                    >
-                      {stat.value}
-                    </p>
-                    <p className="text-sm" style={{ color: COLORS.gray[400] }}>
-                      {stat.label}
-                    </p>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* CTA Buttons */}
-              <div className="flex flex-wrap gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-8 py-4 rounded-xl font-bold transition flex items-center gap-2"
-                  style={{
-                    background: GRADIENTS.button.primary,
-                    color: COLORS.white,
-                    boxShadow: SHADOWS.lg,
-                  }}
-                >
-                  <Phone className="w-5 h-5" />
-                  Request Quote
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-8 py-4 rounded-xl font-bold border-2 transition flex items-center gap-2"
-                  style={{
-                    borderColor: COLORS.primary[500],
-                    color: COLORS.white,
-                    background: "rgba(255, 255, 255, 0.05)",
-                  }}
-                >
-                  <Calendar className="w-5 h-5" />
-                  Schedule Consultation
-                </motion.button>
-              </div>
+              <ServiceIcon className="w-10 h-10 text-white" />
             </motion.div>
 
-            {/* Right Image */}
+            <h1 className="text-5xl sm:text-6xl font-extrabold text-white">
+              {service.title}
+            </h1>
+          </motion.div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Right Image (first on mobile) */}
             <motion.div
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
-              className="relative"
+              className="lg:order-2 relative"
             >
-              <div className="relative h-[500px] rounded-3xl overflow-hidden shadow-2xl">
+              <div className="relative h-[300px] sm:h-[400px] lg:h-[500px] rounded-3xl overflow-hidden shadow-2xl">
                 <img
                   src={service.image}
                   alt={service.title}
@@ -536,32 +486,123 @@ export default function ServiceDetailPage({
                 </motion.div>
               </div>
             </motion.div>
+
+            {/* Left Content (second on mobile) */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="lg:order-1"
+            >
+              <p
+                className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6"
+                style={{ color: COLORS.primary[400] }}
+              >
+                {service.tagline}
+              </p>
+
+              <p
+                className="text-base sm:text-lg leading-relaxed mb-6 sm:mb-8"
+                style={{ color: COLORS.gray[300] }}
+              >
+                {service.longDescription}
+              </p>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                {service.stats.map((stat, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className="text-center"
+                  >
+                    <p
+                      className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-1 sm:mb-2"
+                      style={{ color: COLORS.primary[400] }}
+                    >
+                      {stat.value}
+                    </p>
+                    <p className="text-xs sm:text-sm" style={{ color: COLORS.gray[400] }}>
+                      {stat.label}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-wrap gap-3 sm:gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition flex items-center gap-2"
+                  style={{
+                    background: GRADIENTS.button.primary,
+                    color: COLORS.white,
+                    boxShadow: SHADOWS.lg,
+                  }}
+                >
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Request Quote
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base border-2 transition flex items-center gap-2"
+                  style={{
+                    borderColor: COLORS.primary[500],
+                    color: COLORS.white,
+                    background: "rgba(255, 255, 255, 0.05)",
+                  }}
+                >
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Schedule Consultation
+                </motion.button>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Gallery */}
+      {/* Gallery Carousel */}
       <section className="relative z-10 py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {service.gallery.map((img, idx) => (
-              <motion.div
-                key={idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                whileHover={{ scale: 1.05 }}
-                className="relative h-64 rounded-2xl overflow-hidden shadow-lg cursor-pointer"
-              >
-                <img
-                  src={img}
-                  alt={`Gallery ${idx + 1}`}
-                  className="w-full h-full object-cover"
+        <div className="max-w-5xl mx-auto">
+          <div className="relative overflow-hidden rounded-2xl" ref={emblaRef}>
+            <div className="flex">
+              {service.gallery.map((img, idx) => (
+                <div key={idx} className="flex-[0_0_100%] min-w-0 relative h-72 sm:h-96">
+                  <img
+                    src={img}
+                    alt={`Gallery ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={scrollPrev}
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/40 transition z-10"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={scrollNext}
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/40 transition z-10"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+              {service.gallery.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => embla?.scrollTo(idx)}
+                  className={`w-2.5 h-2.5 rounded-full transition ${
+                    selectedIndex === idx ? "bg-white" : "bg-white/40"
+                  }`}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-              </motion.div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>

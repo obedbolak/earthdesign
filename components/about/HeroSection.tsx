@@ -11,7 +11,7 @@ export default function HeroSection() {
       <div className="absolute inset-0">
         <img
           src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1920"
-          alt="Modern Building"
+          alt="Modern Architecture"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/80 to-gray-900/60" />

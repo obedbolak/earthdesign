@@ -134,7 +134,7 @@ const services = [
     longDescription:
       "Our land survey services utilize cutting-edge GPS technology and employ certified professional surveyors to deliver accurate, reliable results.",
     image:
-      "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&h=800&fit=crop&q=80",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611429/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-09_at_16.32.15_3_zplbre.jpg",
     features: [
       "Boundary Surveys",
       "Topographic Mapping",
@@ -167,7 +167,7 @@ const services = [
     longDescription:
       "From residential homes to commercial buildings, our construction services deliver quality, durability, and aesthetic excellence.",
     image:
-      "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1200&h=800&fit=crop&q=80",
+      "https://res.cloudinary.com/dulrxtbvl/image/upload/v1783611597/contructtion%20and%20suvery%20imags/WhatsApp_Image_2026-07-07_at_12.08.36_ee6cuu.jpg",
     features: [
       "Residential Construction",
       "Commercial Buildings",

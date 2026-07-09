@@ -4,69 +4,35 @@
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
 import { useRef, useState } from "react";
-import {
-  Users,
-  Linkedin,
-  Twitter,
-  Mail,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Users, Linkedin, Twitter, Mail } from "lucide-react";
 
 const teamMembers = [
   {
-    name: "Dr. Emmanuel Nkodo",
+    name: "Jumcudar Riffo",
     role: "Chief Executive Officer",
-    image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400",
-    bio: "25+ years in real estate development. Former Director of Urban Planning at Ministry of Housing.",
+    color: "from-blue-600 to-indigo-700",
+    bio: "Visionary leader steering Earth Design toward excellence in real estate development.",
     linkedin: "#",
     twitter: "#",
-    email: "emmanuel.nkodo@Earth Design.cm",
+    email: "jumcudar.riffo@earthdesign.cm",
   },
   {
-    name: "Marie-Claire Fouda",
+    name: "Doris Enumdem",
     role: "Chief Operations Officer",
-    image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400",
-    bio: "Expert in project management with 18 years of experience leading major infrastructure projects.",
+    color: "from-emerald-500 to-teal-600",
+    bio: "Operations expert ensuring seamless project delivery and client satisfaction.",
     linkedin: "#",
     twitter: "#",
-    email: "marie.fouda@Earth Design.cm",
+    email: "doris.enumdem@earthdesign.cm",
   },
   {
-    name: "Jean-Baptiste Mbarga",
-    role: "Chief Financial Officer",
-    image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400",
-    bio: "Former banking executive with expertise in real estate financing and investment strategies.",
+    name: "Obed Bolak",
+    role: "IT Engineer",
+    color: "from-purple-500 to-pink-600",
+    bio: "Technology specialist driving digital innovation across the organization.",
     linkedin: "#",
     twitter: "#",
-    email: "jb.mbarga@Earth Design.cm",
-  },
-  {
-    name: "Aminatou Djibril",
-    role: "Director of Development",
-    image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400",
-    bio: "Architect and urban planner specializing in sustainable and affordable housing solutions.",
-    linkedin: "#",
-    twitter: "#",
-    email: "aminatou.djibril@Earth Design.cm",
-  },
-  {
-    name: "Pierre Essomba",
-    role: "Director of Engineering",
-    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
-    bio: "Civil engineer with 20 years of experience in large-scale construction and infrastructure.",
-    linkedin: "#",
-    twitter: "#",
-    email: "pierre.essomba@Earth Design.cm",
-  },
-  {
-    name: "Sophie Atangana",
-    role: "Director of Marketing",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400",
-    bio: "Marketing strategist with deep expertise in real estate branding and customer experience.",
-    linkedin: "#",
-    twitter: "#",
-    email: "sophie.atangana@Earth Design.cm",
+    email: "obed.bolak@earthdesign.cm",
   },
 ];
 
@@ -115,11 +81,11 @@ export default function TeamSection() {
               <div className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500">
                 {/* Image */}
                 <div className="relative h-72 overflow-hidden">
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
+                  <div className={`w-full h-full bg-gradient-to-br ${member.color} flex items-center justify-center`}>
+                    <span className="text-6xl font-bold text-white/90">
+                      {member.name.split(" ").map((n: string) => n[0]).join("")}
+                    </span>
+                  </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/20 to-transparent" />
 
                   {/* Social Links Overlay */}

@@ -49,8 +49,8 @@ export default function StorySection() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-600">
-Over a decade of excellence in urban development and real
-                    estate.
+                  Over a decade of excellence in urban development and real
+                  estate.
                 </p>
               </motion.div>
 
@@ -115,13 +115,13 @@ Over a decade of excellence in urban development and real
               </p>
               <div className="flex items-center gap-3">
                 <img
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100"
+                  src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=80"
                   alt="Founder"
                   className="w-12 h-12 rounded-full object-cover"
                 />
                 <div>
                   <p className="font-semibold text-gray-900">
-                    Jean-Pierre Kamga
+                    Cleytus Jumcoda Rifor
                   </p>
                   <p className="text-sm text-gray-500">
                     Founding Director, 2012
