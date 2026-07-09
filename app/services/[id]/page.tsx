@@ -381,7 +381,9 @@ export default function ServiceDetailPage({
   const resolvedParams = use(params);
   const [service, setService] = useState(servicesData["real-estate"]);
   const [activeTab, setActiveTab] = useState("overview");
-  const [emblaRef, embla] = useEmblaCarousel({ loop: true }, [Autoplay({ delay: 4000 })]);
+  const [emblaRef, embla] = useEmblaCarousel({ loop: true }, [
+    Autoplay({ delay: 4000 }),
+  ]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const scrollPrev = useCallback(() => embla?.scrollPrev(), [embla]);
   const scrollNext = useCallback(() => embla?.scrollNext(), [embla]);
@@ -391,7 +393,9 @@ export default function ServiceDetailPage({
     const onSelect = () => setSelectedIndex(embla.selectedScrollSnap());
     embla.on("select", onSelect);
     onSelect();
-    return () => { embla.off("select", onSelect); };
+    return () => {
+      embla.off("select", onSelect);
+    };
   }, [embla]);
 
   useEffect(() => {
@@ -523,7 +527,10 @@ export default function ServiceDetailPage({
                     >
                       {stat.value}
                     </p>
-                    <p className="text-xs sm:text-sm" style={{ color: COLORS.gray[400] }}>
+                    <p
+                      className="text-xs sm:text-sm"
+                      style={{ color: COLORS.gray[400] }}
+                    >
                       {stat.label}
                     </p>
                   </motion.div>
@@ -570,7 +577,10 @@ export default function ServiceDetailPage({
           <div className="relative overflow-hidden rounded-2xl" ref={emblaRef}>
             <div className="flex">
               {service.gallery.map((img, idx) => (
-                <div key={idx} className="flex-[0_0_100%] min-w-0 relative h-72 sm:h-96">
+                <div
+                  key={idx}
+                  className="flex-[0_0_100%] min-w-0 relative h-96 sm:h-96"
+                >
                   <img
                     src={img}
                     alt={`Gallery ${idx + 1}`}
