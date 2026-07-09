@@ -1,4 +1,4 @@
-// lib/config/excel-import-config.ts
+// lib/config/excel-import-config.ts lateres
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
