@@ -85,7 +85,7 @@ export default function StorySection() {
                   Earth Design
                 </span>{" "}
                 (Mission d'Aménagement et d'Equipement des Terrains Urbains et
-                Ruraux) was established in 1977 with a bold vision: to transform
+                Ruraux) was established in 2012 with a bold vision: to transform
                 Cameroon's urban landscape and provide quality housing for all.
               </p>
 
@@ -101,7 +101,7 @@ export default function StorySection() {
                 Today, Earth Design stands as a symbol of trust and reliability
                 in Cameroon's real estate sector. We have developed over 500
                 projects, created countless communities, and helped more than
-                50,000 families achieve their dream of homeownership.
+                2,000 families achieve their dream of homeownership.
               </p>
             </div>
 

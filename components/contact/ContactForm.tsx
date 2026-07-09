@@ -107,7 +107,7 @@ export default function ContactForm() {
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value, type } = e.target;
     const checked =
@@ -256,7 +256,7 @@ export default function ContactForm() {
                 className={`text-gray-500 w-full pl-12 pr-4 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all ${
                   errors.phone ? "border-red-300" : "border-gray-200"
                 }`}
-                placeholder="+237 6XX XXX XXX"
+                placeholder="+237 652 14 91 21"
               />
             </div>
             {errors.phone && (

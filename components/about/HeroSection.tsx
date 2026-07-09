@@ -76,7 +76,7 @@ export default function HeroSection() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 max-w-4xl mx-auto">
             {[
               { icon: Building2, value: "500+", label: "Projects Completed" },
-              { icon: Users, value: "50,000+", label: "Happy Families" },
+              { icon: Users, value: "2,000+", label: "Happy Families" },
               { icon: Globe, value: "10", label: "Regions Covered" },
               { icon: Award, value: "45+", label: "Years of Excellence" },
             ].map((stat, index) => (

@@ -68,7 +68,7 @@ export default function StatsSection() {
     },
     {
       icon: Users,
-      value: 50000,
+      value: 2000,
       suffix: "+",
       label: "Happy Families",
       description: "Homeowners across Cameroon",
@@ -89,14 +89,14 @@ export default function StatsSection() {
     },
     {
       icon: Home,
-      value: 25000,
+      value: 10,
       suffix: "+",
       label: "Housing Units Built",
       description: "Quality homes delivered",
     },
     {
       icon: Briefcase,
-      value: 1200,
+      value: 15,
       suffix: "+",
       label: "Team Members",
       description: "Dedicated professionals",
@@ -110,9 +110,9 @@ export default function StatsSection() {
     },
     {
       icon: Globe,
-      value: 150,
+      value: 300,
       suffix: "+",
-      label: "Hectares Developed",
+      label: "Hectares Sold",
       description: "Urban transformation",
     },
   ];

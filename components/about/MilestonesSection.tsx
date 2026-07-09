@@ -66,9 +66,9 @@ const milestones = [
   },
   {
     year: "2024",
-    title: "50,000+ Families Served",
+    title: "2,000+ Families Served",
     description:
-      "Reached the milestone of helping over 50,000 families achieve homeownership.",
+      "Reached the milestone of helping over 2,000 families achieve homeownership.",
     icon: Star,
     color: "from-emerald-500 to-teal-500",
   },
@@ -96,7 +96,7 @@ export default function MilestonesSection() {
             Key Milestones in <span className="text-teal-600">Our History</span>
           </h2>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-            From our founding in 1977 to today, every milestone represents our
+            From our founding in 2012 to today, every milestone represents our
             commitment to building a better Cameroon.
           </p>
         </motion.div>

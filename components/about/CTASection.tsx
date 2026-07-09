@@ -87,7 +87,7 @@ export default function CTASection() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-400">Call us at</p>
-                  <p className="font-semibold text-white">+237 233 XX XX XX</p>
+                  <p className="font-semibold text-white">+237 652 14 91 21</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 text-gray-300">

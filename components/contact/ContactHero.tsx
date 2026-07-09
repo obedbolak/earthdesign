@@ -9,7 +9,7 @@ export default function ContactHero() {
     {
       icon: Phone,
       label: "Call Us",
-      value: "+237 233 42 XX XX",
+      value: "+237 652 14 91 21",
       subtext: "Mon-Fri, 8AM-6PM",
       color: "from-blue-500 to-cyan-500",
     },
