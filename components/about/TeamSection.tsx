@@ -8,22 +8,22 @@ import { Users, Linkedin, Twitter, Mail } from "lucide-react";
 
 const teamMembers = [
   {
-    name: "Jumcudar Riffo",
+    name: "Cleytus Jumcoda Rifor",
     role: "Chief Executive Officer",
     color: "from-blue-600 to-indigo-700",
     bio: "Visionary leader steering Earth Design toward excellence in real estate development.",
     linkedin: "#",
     twitter: "#",
-    email: "jumcudar.riffo@earthdesign.cm",
+    email: "jumcoda.rifor@earthdesign.cm",
   },
   {
-    name: "Doris Enumdem",
+    name: "Doris Enongene",
     role: "Chief Operations Officer",
     color: "from-emerald-500 to-teal-600",
     bio: "Operations expert ensuring seamless project delivery and client satisfaction.",
     linkedin: "#",
     twitter: "#",
-    email: "doris.enumdem@earthdesign.cm",
+    email: "doris.enongene@earthdesign.cm",
   },
   {
     name: "Obed Bolak",
@@ -81,9 +81,14 @@ export default function TeamSection() {
               <div className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500">
                 {/* Image */}
                 <div className="relative h-72 overflow-hidden">
-                  <div className={`w-full h-full bg-gradient-to-br ${member.color} flex items-center justify-center`}>
+                  <div
+                    className={`w-full h-full bg-gradient-to-br ${member.color} flex items-center justify-center`}
+                  >
                     <span className="text-6xl font-bold text-white/90">
-                      {member.name.split(" ").map((n: string) => n[0]).join("")}
+                      {member.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                     </span>
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/20 to-transparent" />
