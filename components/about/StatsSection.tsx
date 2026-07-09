@@ -82,10 +82,10 @@ export default function StatsSection() {
     },
     {
       icon: Award,
-      value: 45,
+      value: 14,
       suffix: "+",
       label: "Years of Excellence",
-      description: "Since 1977",
+      description: "Since 2012",
     },
     {
       icon: Home,

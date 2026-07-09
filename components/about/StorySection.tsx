@@ -45,12 +45,12 @@ export default function StorySection() {
                   </div>
                   <div>
                     <p className="font-bold text-gray-900">Founded</p>
-                    <p className="text-teal-600 font-semibold">1977</p>
+                    <p className="text-teal-600 font-semibold">2012</p>
                   </div>
                 </div>
                 <p className="text-sm text-gray-600">
-                  Over four decades of excellence in urban development and real
-                  estate.
+Over a decade of excellence in urban development and real
+                    estate.
                 </p>
               </motion.div>
 
@@ -124,7 +124,7 @@ export default function StorySection() {
                     Jean-Pierre Kamga
                   </p>
                   <p className="text-sm text-gray-500">
-                    Founding Director, 1977
+                    Founding Director, 2012
                   </p>
                 </div>
               </div>

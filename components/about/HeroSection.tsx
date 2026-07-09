@@ -53,7 +53,7 @@ export default function HeroSection() {
             className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-teal-300 text-sm font-medium mb-6"
           >
             <Building2 className="w-4 h-4" />
-            <span>Established Since 1977</span>
+            <span>Established Since 2012</span>
           </motion.div>
 
           {/* Main Title */}
@@ -78,7 +78,7 @@ export default function HeroSection() {
               { icon: Building2, value: "500+", label: "Projects Completed" },
               { icon: Users, value: "2,000+", label: "Happy Families" },
               { icon: Globe, value: "10", label: "Regions Covered" },
-              { icon: Award, value: "45+", label: "Years of Excellence" },
+              { icon: Award, value: "14+", label: "Years of Excellence" },
             ].map((stat, index) => (
               <motion.div
                 key={index}

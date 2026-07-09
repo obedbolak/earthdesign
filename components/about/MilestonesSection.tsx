@@ -17,7 +17,7 @@ import {
 
 const milestones = [
   {
-    year: "1977",
+    year: "2012",
     title: "Foundation",
     description:
       "Earth Design was established by the Cameroonian government to address urban development challenges.",
@@ -25,15 +25,15 @@ const milestones = [
     color: "from-blue-500 to-indigo-500",
   },
   {
-    year: "1985",
+    year: "2014",
     title: "First Major Project",
     description:
-      "Completed our first large-scale housing development in Douala with 500 units.",
+      "Completed our first housing development in Douala.",
     icon: Building2,
     color: "from-teal-500 to-emerald-500",
   },
   {
-    year: "1995",
+    year: "2016",
     title: "Nationwide Expansion",
     description:
       "Extended operations to all 10 regions of Cameroon, establishing regional offices.",
@@ -41,15 +41,7 @@ const milestones = [
     color: "from-purple-500 to-pink-500",
   },
   {
-    year: "2005",
-    title: "10,000 Homes Milestone",
-    description:
-      "Celebrated delivering 10,000 housing units to Cameroonian families.",
-    icon: Users,
-    color: "from-orange-500 to-red-500",
-  },
-  {
-    year: "2015",
+    year: "2018",
     title: "Excellence Award",
     description:
       "Received the African Real Estate Development Excellence Award for sustainable practices.",
@@ -57,7 +49,7 @@ const milestones = [
     color: "from-amber-500 to-yellow-500",
   },
   {
-    year: "2020",
+    year: "2021",
     title: "Digital Transformation",
     description:
       "Launched digital platforms for property search, virtual tours, and online transactions.",
