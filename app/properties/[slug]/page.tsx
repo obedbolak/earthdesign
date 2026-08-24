@@ -730,6 +730,27 @@ export default function PropertyDetailPage() {
                           </p>
                         )}
                     </>
+                  ) : property.nightlyPrice &&
+                    Number(property.nightlyPrice) > 0 ? (
+                    <>
+                      <p className="text-sm mb-1 text-gray-400">Nightly Rate</p>
+                      <p
+                        className="text-3xl font-bold"
+                        style={{ color: COLORS.primary[400] }}
+                      >
+                        {formatPrice(property.nightlyPrice, property.currency)}
+                      </p>
+                      <p className="text-sm mt-1 text-gray-400">/night</p>
+                      {property.weeklyPrice &&
+                        Number(property.weeklyPrice) > 0 && (
+                          <p className="text-sm mt-1 text-gray-400">
+                            Weekly: {formatPrice(
+                              property.weeklyPrice,
+                              property.currency,
+                            )}
+                          </p>
+                        )}
+                    </>
                   ) : isForRent(property) &&
                     property.rentPrice &&
                     Number(property.rentPrice) > 0 ? (
@@ -743,7 +764,7 @@ export default function PropertyDetailPage() {
                       </p>
                       <p className="text-sm mt-1 text-gray-400">/month</p>
                     </>
-                  ) : (
+                  ) : property.priceOnRequest ? (
                     <>
                       <p className="text-sm mb-1 text-gray-400">Price</p>
                       <p
@@ -753,7 +774,7 @@ export default function PropertyDetailPage() {
                         Prix sur demande
                       </p>
                     </>
-                  )}
+                  ) : null}
 
                   {property.listingType === "BOTH" &&
                     property.price &&
@@ -1623,7 +1644,9 @@ export default function PropertyDetailPage() {
                                 related.rentPrice &&
                                 Number(related.rentPrice) > 0
                               ? `${formatPriceCompact(related.rentPrice)}/mo`
-                              : "Prix sur demande"}
+                              : related.priceOnRequest
+                                ? "Prix sur demande"
+                                : ""}
                         </p>
                         <div className="flex items-center gap-2 text-sm text-gray-400">
                           {related.bedrooms && related.bedrooms > 0 && (

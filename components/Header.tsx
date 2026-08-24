@@ -639,7 +639,9 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
               >
                 {listing.price && Number(listing.price) > 0
                   ? formatPriceCompact(listing.price, listing.currency)
-                  : "N/A"}
+                  : listing.priceOnRequest
+                    ? "Price on Request"
+                    : ""}
               </p>
               {surface && (
                 <p className="text-xs" style={{ color: COLORS.primary[400] }}>
@@ -728,7 +730,9 @@ export default function Header({ stats, onSearchClick }: HeaderProps) {
                 >
                   {listing.price && Number(listing.price) > 0
                     ? formatPriceCompact(listing.price, listing.currency)
-                    : "Price on Request"}
+                    : listing.priceOnRequest
+                      ? "Price on Request"
+                      : ""}
                 </p>
                 {surface && (
                   <p

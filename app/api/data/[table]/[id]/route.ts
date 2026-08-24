@@ -438,6 +438,15 @@ export async function PATCH(
       }
     }
 
+    // Prisma exposes this foreign key through the relation in checked updates.
+    if (tableLower === "batiment" && "Id_Parcel" in cleanData) {
+      const parcelId = cleanData.Id_Parcel;
+      delete cleanData.Id_Parcel;
+      cleanData.parcelle = parcelId == null
+        ? { disconnect: true }
+        : { connect: { Id_Parcel: Number(parcelId) } };
+    }
+
     // Update record
     const updated = await model.update({
       where: { [primaryKey]: coerceId(id, tableLower) },

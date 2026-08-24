@@ -216,6 +216,18 @@ function getDisplayPrice(listing: Listing): {
     };
   }
 
+  if (
+    listing._entityType === "BATIMENT" &&
+    (listing as Batiment).nightlyPrice &&
+    Number((listing as Batiment).nightlyPrice) > 0
+  ) {
+    return {
+      value: (listing as Batiment).nightlyPrice,
+      suffix: "/night",
+      label: "Nightly rate",
+    };
+  }
+
   return {
     value: null,
     suffix: "",
@@ -1024,7 +1036,7 @@ export default function AllPropertiesPage() {
       );
     }
 
-    return (
+    return listing.priceOnRequest ? (
       <p
         className={
           size === "lg"
@@ -1035,7 +1047,7 @@ export default function AllPropertiesPage() {
       >
         Prix sur demande
       </p>
-    );
+    ) : null;
   };
 
   // Render grid card

@@ -314,6 +314,18 @@ function getDisplayPrice(listing: Listing): {
     };
   }
 
+  if (
+    listing._entityType === "BATIMENT" &&
+    (listing as Batiment).nightlyPrice &&
+    Number((listing as Batiment).nightlyPrice) > 0
+  ) {
+    return {
+      value: (listing as Batiment).nightlyPrice,
+      suffix: "/night",
+      label: "Nightly rate",
+    };
+  }
+
   return {
     value: null,
     suffix: "",
@@ -1077,14 +1089,14 @@ export default function HomePage() {
                             {formatPrice(displayPrice.value, listing.currency)}
                             {displayPrice.suffix}
                           </p>
-                        ) : (
+                        ) : listing.priceOnRequest ? (
                           <p
                             className="font-bold text-lg"
                             style={{ color: COLORS.primary[600] }}
                           >
                             Price on Request
                           </p>
-                        )}
+                          ) : null}
                         <p
                           className="text-sm"
                           style={{ color: COLORS.gray[500] }}
@@ -1633,14 +1645,14 @@ export default function HomePage() {
                             {formatPrice(displayPrice.value, listing.currency)}
                             {displayPrice.suffix}
                           </p>
-                        ) : (
+                        ) : listing.priceOnRequest ? (
                           <p
                             className="text-lg font-bold"
                             style={{ color: COLORS.primary[400] }}
                           >
                             Price on Request
                           </p>
-                        )}
+                        ) : null}
                       </div>
 
                       <div

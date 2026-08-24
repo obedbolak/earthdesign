@@ -261,7 +261,10 @@ model Lotissement {
   listingStatus    ListingStatus    @default(DRAFT)
   price            Decimal?         @db.Decimal(15, 2)
   pricePerSqM      Decimal?         @db.Decimal(15, 2)
+  priceOnRequest   Boolean          @default(false)
   currency         String           @default("XAF")
+  latitude         Float?
+  longitude        Float?
   featured         Boolean          @default(false)
   viewCount        Int              @default(0)
   favoriteCount    Int              @default(0)
@@ -339,7 +342,10 @@ model Parcelle {
   listingStatus    ListingStatus    @default(DRAFT)
   price            Decimal?         @db.Decimal(15, 2)
   pricePerSqM      Decimal?         @db.Decimal(15, 2)
+  priceOnRequest   Boolean          @default(false)
   currency         String           @default("XAF")
+  latitude         Float?
+  longitude        Float?
   featured         Boolean          @default(false)
   viewCount        Int              @default(0)
   favoriteCount    Int              @default(0)
@@ -414,8 +420,14 @@ model Batiment {
   listingStatus    ListingStatus    @default(DRAFT)
   price            Decimal?         @db.Decimal(15, 2)
   rentPrice        Decimal?         @db.Decimal(15, 2)
+  nightlyPrice     Decimal?         @db.Decimal(15, 2)
+  weeklyPrice      Decimal?         @db.Decimal(15, 2)
+  maxGuests        Int?
   pricePerSqM      Decimal?         @db.Decimal(15, 2)
+  priceOnRequest   Boolean          @default(false)
   currency         String           @default("XAF")
+  latitude         Float?
+  longitude        Float?
   featured         Boolean          @default(false)
   viewCount        Int              @default(0)
   favoriteCount    Int              @default(0)

@@ -869,7 +869,7 @@ export default function EstateDetailPage() {
                         </p>
                       )}
                     </>
-                  ) : (
+                  ) : lotissement.priceOnRequest ? (
                     <>
                       <p className="text-sm mb-1 text-gray-400">Price</p>
                       <p
@@ -879,7 +879,7 @@ export default function EstateDetailPage() {
                         Prix sur demande
                       </p>
                     </>
-                  )}
+                  ) : null}
                 </div>
 
                 {lotissement.Surface && (
@@ -1784,7 +1784,9 @@ export default function EstateDetailPage() {
                             ? `${formatPriceCompact(related.pricePerSqM)} XAF/m²`
                             : related.price && Number(related.price) > 0
                               ? formatPriceCompact(related.price)
-                              : "Prix sur demande"}
+                              : related.priceOnRequest
+                                ? "Prix sur demande"
+                                : ""}
                         </p>
                         <div className="flex items-center gap-3 text-sm text-gray-400">
                           {related.Surface && (

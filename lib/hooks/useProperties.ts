@@ -90,7 +90,10 @@ export interface BaseListing {
   listingStatus: ListingStatus;
   price: string | number | null;
   pricePerSqM: string | number | null;
+  priceOnRequest: boolean;
   currency: string;
+  latitude: number | null;
+  longitude: number | null;
   featured: boolean;
   viewCount: number;
   favoriteCount: number;
@@ -171,6 +174,9 @@ export interface Batiment extends BaseListing {
   WKT_Geometry: string | null;
   propertyType: PropertyType | null;
   rentPrice: string | number | null;
+  nightlyPrice: string | number | null;
+  weeklyPrice: string | number | null;
+  maxGuests: number | null;
   totalFloors: number | null;
   totalUnits: number | null;
   hasElevator: boolean | null;
@@ -772,6 +778,25 @@ export function getLocationString(
   if ("Lieu_dit" in listing && listing.Lieu_dit) return listing.Lieu_dit;
 
   return "Location not specified";
+}
+
+export function getListingCoordinates(
+  listing: BaseListing,
+): { latitude: number; longitude: number } | null {
+  if (
+    typeof listing.latitude !== "number" ||
+    typeof listing.longitude !== "number" ||
+    !Number.isFinite(listing.latitude) ||
+    !Number.isFinite(listing.longitude) ||
+    listing.latitude < -90 ||
+    listing.latitude > 90 ||
+    listing.longitude < -180 ||
+    listing.longitude > 180
+  ) {
+    return null;
+  }
+
+  return { latitude: listing.latitude, longitude: listing.longitude };
 }
 
 export function isForSale(listing: BaseListing): boolean {
