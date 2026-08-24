@@ -442,10 +442,9 @@ export async function PATCH(
     if (tableLower === "batiment" && "Id_Parcel" in cleanData) {
       const parcelId = cleanData.Id_Parcel;
       delete cleanData.Id_Parcel;
-      cleanData.parcelle =
-        parcelId == null
-          ? { disconnect: true }
-          : { connect: { Id_Parcel: Number(parcelId) } };
+      cleanData.parcelle = parcelId == null
+        ? { disconnect: true }
+        : { connect: { Id_Parcel: Number(parcelId) } };
     }
 
     // Update record
