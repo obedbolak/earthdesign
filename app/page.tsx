@@ -32,7 +32,6 @@ import {
   Building2,
   TreePine,
   Car,
-  Zap,
   Star,
   Layers,
   Map,
@@ -836,78 +835,6 @@ export default function HomePage() {
     return null;
   };
 
-  // Render listing badges
-  const renderListingBadges = (listing: Listing) => {
-    if (listing._entityType === "BATIMENT") {
-      const batiment = listing as Batiment;
-      return (
-        <>
-          {batiment.hasParking && (
-            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-              <Car className="w-3 h-3" />
-              {batiment.parkingSpaces
-                ? `${batiment.parkingSpaces} Parking`
-                : "Parking"}
-            </span>
-          )}
-          {batiment.hasGenerator && (
-            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-              <Zap className="w-3 h-3" /> Generator
-            </span>
-          )}
-          {batiment.hasElevator && (
-            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-              <Building2 className="w-3 h-3" /> Elevator
-            </span>
-          )}
-          {batiment.totalUnits && batiment.totalUnits > 0 && (
-            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-              <Building2 className="w-3 h-3" /> {batiment.totalUnits} Units
-            </span>
-          )}
-        </>
-      );
-    } else if (listing._entityType === "LOTISSEMENT") {
-      const lotissement = listing as Lotissement;
-      return (
-        <>
-          {lotissement.hasElectricity && (
-            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-              <Power className="w-3 h-3" /> Electricity
-            </span>
-          )}
-          {lotissement.hasWater && (
-            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-              <Droplets className="w-3 h-3" /> Water
-            </span>
-          )}
-          {lotissement.hasRoadAccess && (
-            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-              <Route className="w-3 h-3" /> Road Access
-            </span>
-          )}
-        </>
-      );
-    } else if (listing._entityType === "PARCELLE") {
-      const parcelle = listing as Parcelle;
-      return (
-        <>
-          {parcelle.approvedForBuilding && (
-            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-              <Building2 className="w-3 h-3" /> Build Approved
-            </span>
-          )}
-          {parcelle.Cloture && (
-            <span className="bg-black/50 backdrop-blur text-white px-2 py-1 rounded-lg text-xs flex items-center gap-1">
-              Fenced
-            </span>
-          )}
-        </>
-      );
-    }
-    return null;
-  };
-
   // Get dynamic hero title based on listing type
   const getHeroTitle = (listing: Listing | undefined): string => {
     if (!listing) return "Dream Property";
@@ -1647,7 +1574,6 @@ export default function HomePage() {
                           target.src = getPlaceholderImage(listing);
                         }}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                       <div className="absolute top-4 left-4 flex gap-2">
                         <FavoriteButton
                           entityType={listing._entityType}
@@ -1663,24 +1589,6 @@ export default function HomePage() {
                           size="md"
                           title={listing.title || ""}
                         />
-                      </div>
-                      <div className="absolute top-4 right-4 flex flex-col gap-2">
-                        <span
-                          className="text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg"
-                          style={{ background: getStatusColor(listing) }}
-                        >
-                          {getListingStatusLabel(listing)}
-                        </span>
-                        <span
-                          className="text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg flex items-center gap-1 justify-center"
-                          style={{ background: "rgba(0,0,0,0.5)" }}
-                        >
-                          <EntityIcon className="w-3 h-3" />
-                          {getEntityTypeLabel(listing._entityType, "en")}
-                        </span>
-                      </div>
-                      <div className="absolute bottom-4 left-4 flex flex-wrap gap-2 max-w-[calc(100%-2rem)]">
-                        {renderListingBadges(listing)}
                       </div>
                     </div>
 
