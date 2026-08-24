@@ -1096,7 +1096,7 @@ export default function HomePage() {
                           >
                             Price on Request
                           </p>
-                          ) : null}
+                        ) : null}
                         <p
                           className="text-sm"
                           style={{ color: COLORS.gray[500] }}

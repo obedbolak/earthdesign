@@ -744,7 +744,8 @@ export default function PropertyDetailPage() {
                       {property.weeklyPrice &&
                         Number(property.weeklyPrice) > 0 && (
                           <p className="text-sm mt-1 text-gray-400">
-                            Weekly: {formatPrice(
+                            Weekly:{" "}
+                            {formatPrice(
                               property.weeklyPrice,
                               property.currency,
                             )}
