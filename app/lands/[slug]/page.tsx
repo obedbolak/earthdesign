@@ -849,7 +849,7 @@ export default function LandDetailPage() {
                           </p>
                         )}
                     </>
-                  ) : parcelle.priceOnRequest ? (
+                  ) : (
                     <>
                       <p className="text-sm mb-1 text-gray-400">Price</p>
                       <p
@@ -859,7 +859,7 @@ export default function LandDetailPage() {
                         Prix sur demande
                       </p>
                     </>
-                  ) : null}
+                  )}
                 </div>
 
                 {parcelle.Sup && (
@@ -1453,9 +1453,7 @@ export default function LandDetailPage() {
                         >
                           {related.price && Number(related.price) > 0
                             ? `${formatPriceCompact(related.pricePerSqM)} XAF/m²`
-                            : related.priceOnRequest
-                              ? "Prix sur demande"
-                              : ""}
+                            : "Prix sur demande"}
                         </p>
                         {related.Sup && (
                           <span className="text-sm text-gray-400">
