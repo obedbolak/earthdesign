@@ -438,6 +438,16 @@ export async function PATCH(
       }
     }
 
+    // Prisma updates relations through their relation field, not the foreign key scalar.
+    if (tableLower === "batiment" && Object.hasOwn(cleanData, "Id_Parcel")) {
+      const parcelId = cleanData.Id_Parcel;
+      delete cleanData.Id_Parcel;
+      cleanData.parcelle =
+        parcelId === null
+          ? { disconnect: true }
+          : { connect: { Id_Parcel: Number(parcelId) } };
+    }
+
     // Update record
     const updated = await model.update({
       where: { [primaryKey]: coerceId(id, tableLower) },

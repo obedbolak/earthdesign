@@ -73,6 +73,7 @@ import {
   getListingTypeLabel,
   isForSale,
   isForRent,
+  getPrimaryRentalRate,
 } from "@/lib/hooks/useProperties";
 import Footer from "@/components/Footer";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
@@ -204,16 +205,15 @@ function getDisplayPrice(listing: Listing): {
     };
   }
 
-  if (
-    listing._entityType === "BATIMENT" &&
-    (listing as Batiment).rentPrice &&
-    Number((listing as Batiment).rentPrice) > 0
-  ) {
-    return {
-      value: (listing as Batiment).rentPrice,
-      suffix: "/mo",
-      label: "Rent",
-    };
+  if (listing._entityType === "BATIMENT") {
+    const rentalRate = getPrimaryRentalRate(listing as Batiment);
+    if (rentalRate) {
+      return {
+        value: rentalRate.value,
+        suffix: rentalRate.suffix,
+        label: rentalRate.label,
+      };
+    }
   }
 
   return {

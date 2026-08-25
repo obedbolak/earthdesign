@@ -36,6 +36,7 @@ enum PropertyType {
   // Residential
   APARTMENT
   HOUSE
+  GUEST_HOUSE
   VILLA
   STUDIO
   DUPLEX
@@ -84,6 +85,12 @@ enum EntityType {
   LOTISSEMENT
   PARCELLE
   BATIMENT
+}
+
+enum LocationSource {
+  MANUAL_PIN
+  GEOMETRY_CENTROID
+  GEOCODED
 }
 
 // ============================================
@@ -250,6 +257,9 @@ model Lotissement {
   Ccp            String?
   Id_Arrond      Int?
   WKT_Geometry   String?         @db.Text
+  mapLatitude    Float?
+  mapLongitude   Float?
+  locationSource LocationSource?
   
   // LISTING FIELDS
   slug             String?          @unique
@@ -296,6 +306,7 @@ model Lotissement {
   @@index([listingType])
   @@index([price])
   @@index([featured])
+  @@index([mapLatitude, mapLongitude])
   @@index([createdById])
   @@index([createdAt])
 }
@@ -328,6 +339,9 @@ model Parcelle {
   Cloture      Boolean?
   Id_Lotis     Int?
   WKT_Geometry String?      @db.Text
+  mapLatitude  Float?
+  mapLongitude Float?
+  locationSource LocationSource?
   
   // LISTING FIELDS
   slug             String?          @unique
@@ -376,6 +390,7 @@ model Parcelle {
   @@index([listingType])
   @@index([price])
   @@index([featured])
+  @@index([mapLatitude, mapLongitude])
   @@index([category])
   @@index([createdById])
   @@index([createdAt])
@@ -400,6 +415,9 @@ model Batiment {
   Mat_Bati     String?
   Id_Parcel    Int?
   WKT_Geometry String?   @db.Text
+  mapLatitude  Float?
+  mapLongitude Float?
+  locationSource LocationSource?
   
   // PROPERTY TYPE
   propertyType PropertyType?
@@ -413,7 +431,10 @@ model Batiment {
   listingType      ListingType?
   listingStatus    ListingStatus    @default(DRAFT)
   price            Decimal?         @db.Decimal(15, 2)
+  // Legacy monthly rental rate. Keep it for existing long-term rental listings.
   rentPrice        Decimal?         @db.Decimal(15, 2)
+  dailyRentPrice   Decimal?         @db.Decimal(15, 2)
+  weeklyRentPrice  Decimal?         @db.Decimal(15, 2)
   pricePerSqM      Decimal?         @db.Decimal(15, 2)
   currency         String           @default("XAF")
   featured         Boolean          @default(false)
@@ -472,7 +493,10 @@ model Batiment {
   @@index([listingType])
   @@index([price])
   @@index([rentPrice])
+  @@index([dailyRentPrice])
+  @@index([weeklyRentPrice])
   @@index([featured])
+  @@index([mapLatitude, mapLongitude])
   @@index([bedrooms])
   @@index([category])
   @@index([createdById])

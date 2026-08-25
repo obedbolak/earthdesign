@@ -538,6 +538,8 @@ function buildOrderBy(table: string, params: URLSearchParams): any[] {
       "updatedAt",
       "price",
       "rentPrice",
+      "dailyRentPrice",
+      "weeklyRentPrice",
       "surfaceArea",
       "bedrooms",
       "viewCount",

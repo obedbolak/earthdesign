@@ -50,6 +50,7 @@ import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import Footer from "@/components/Footer";
 import FavoriteButton from "@/components/FavoriteButton";
 import ShareButton from "@/components/ShareButton";
+import PropertyLocationMap from "@/components/PropertyLocationMap";
 
 // =========================================================
 // LOCAL UTILITIES
@@ -1338,30 +1339,10 @@ export default function EstateDetailPage() {
                 />{" "}
                 Location
               </h2>
-              <div
-                className="aspect-video rounded-2xl flex items-center justify-center border"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  borderColor: "rgba(255,255,255,0.1)",
-                }}
-              >
-                <div className="text-center">
-                  <MapPin
-                    className="w-16 h-16 mx-auto mb-3"
-                    style={{ color: COLORS.primary[500] }}
-                  />
-                  <p className="text-white font-semibold text-lg">
-                    Interactive Map
-                  </p>
-                  <p className="mt-1 text-gray-400">Coming soon</p>
-                  <p
-                    className="text-sm mt-2"
-                    style={{ color: COLORS.primary[400] }}
-                  >
-                    {getLocationString(lotissement)}
-                  </p>
-                </div>
-              </div>
+              <PropertyLocationMap
+                title={lotissement.title || lotissement.Nom_cons || "this estate"}
+                location={lotissement}
+              />
             </motion.div>
           </div>
 

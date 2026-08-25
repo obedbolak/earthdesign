@@ -9,6 +9,7 @@ import { z } from "zod";
 export const PROPERTY_TYPES = [
   "APARTMENT",
   "HOUSE",
+  "GUEST_HOUSE",
   "VILLA",
   "STUDIO",
   "DUPLEX",
@@ -552,6 +553,8 @@ export const BatimentSchema = z.object({
   listingStatus: z.enum(LISTING_STATUS).default("DRAFT"),
   price: DecimalSchema,
   rentPrice: DecimalSchema,
+  dailyRentPrice: DecimalSchema,
+  weeklyRentPrice: DecimalSchema,
   bedrooms: z.number().int().nullable(),
   bathrooms: z.number().int().nullable(),
   surfaceArea: z.number().nullable(),
@@ -1085,7 +1088,7 @@ export const excelImportConfig: SheetConfig[] = [
   {
     sheetName: "Batiment",
     model: "batiment",
-    columnCount: 47, // INCREASED from 45
+    columnCount: 49,
     uniqueKey: "Id_Bat",
     primaryKey: "Id_Bat",
     dependencies: ["parcelle"],
@@ -1137,6 +1140,8 @@ export const excelImportConfig: SheetConfig[] = [
       toBool, // 44: hasBalcony (NEW)
       toBool, // 45: hasTerrace (NEW)
       toStr, // 46: amenities (NEW)
+      toDecimal, // 47: dailyRentPrice
+      toDecimal, // 48: weeklyRentPrice
       // toStr, // 47: createdById
     ],
     transform: (row, ctx) => {
@@ -1191,6 +1196,8 @@ export const excelImportConfig: SheetConfig[] = [
         listingStatus,
         price: defDecimal(row[20]),
         rentPrice: defDecimal(row[21]),
+        dailyRentPrice: defDecimal(row[47]),
+        weeklyRentPrice: defDecimal(row[48]),
         pricePerSqM: defDecimal(row[22]),
         currency: defStr(row[23], "XAF"),
         featured: defBool(row[24], false),
@@ -1604,6 +1611,11 @@ export function getCompositeKey(
 export const PROPERTY_TYPE_CONFIG = {
   APARTMENT: { label: "Appartement", icon: "🏢", category: "RESIDENTIAL" },
   HOUSE: { label: "Maison", icon: "🏠", category: "RESIDENTIAL" },
+  GUEST_HOUSE: {
+    label: "Maison d'hôtes",
+    icon: "🏡",
+    category: "RESIDENTIAL",
+  },
   VILLA: { label: "Villa", icon: "🏡", category: "RESIDENTIAL" },
   STUDIO: { label: "Studio", icon: "🛏️", category: "RESIDENTIAL" },
   DUPLEX: { label: "Duplex", icon: "🏘️", category: "RESIDENTIAL" },

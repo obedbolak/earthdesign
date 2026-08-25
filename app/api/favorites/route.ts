@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
             slug: true,
             price: true,
             rentPrice: true,
+            dailyRentPrice: true,
+            weeklyRentPrice: true,
             propertyType: true,
             bedrooms: true,
             bathrooms: true,

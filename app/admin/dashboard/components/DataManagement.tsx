@@ -155,6 +155,9 @@ const tableConfigs: Record<string, TableConfig> = {
       "Ccp",
       "Id_Arrond",
       "WKT_Geometry",
+      "mapLatitude",
+      "mapLongitude",
+      "locationSource",
       "slug",
       "title",
       "shortDescription",
@@ -212,6 +215,9 @@ const tableConfigs: Record<string, TableConfig> = {
       "Cloture",
       "Id_Lotis",
       "WKT_Geometry",
+      "mapLatitude",
+      "mapLongitude",
+      "locationSource",
       "slug",
       "title",
       "shortDescription",
@@ -258,6 +264,9 @@ const tableConfigs: Record<string, TableConfig> = {
       "Mat_Bati",
       "Id_Parcel",
       "WKT_Geometry",
+      "mapLatitude",
+      "mapLongitude",
+      "locationSource",
       "propertyType",
       "slug",
       "title",
@@ -268,6 +277,8 @@ const tableConfigs: Record<string, TableConfig> = {
       "listingStatus",
       "price",
       "rentPrice",
+      "dailyRentPrice",
+      "weeklyRentPrice",
       "pricePerSqM",
       "currency",
       "featured",
@@ -529,6 +540,8 @@ const numericFields = new Set([
   "price",
   "pricePerSqM",
   "rentPrice",
+  "dailyRentPrice",
+  "weeklyRentPrice",
   "bedrooms",
   "bathrooms",
   "kitchens",
@@ -544,6 +557,8 @@ const numericFields = new Set([
   "shareCount",
   "totalParcels",
   "availableParcels",
+  "mapLatitude",
+  "mapLongitude",
   "Id_Arrond",
   "Id_Dept",
   "Id_Reg",
@@ -583,6 +598,7 @@ const enumFields: Record<string, string[]> = {
   propertyType: [
     "APARTMENT",
     "HOUSE",
+    "GUEST_HOUSE",
     "VILLA",
     "STUDIO",
     "DUPLEX",
@@ -607,6 +623,7 @@ const enumFields: Record<string, string[]> = {
   entityType: ["LOTISSEMENT", "PARCELLE", "BATIMENT", "INFRASTRUCTURE"],
   type: ["image", "video"],
   role: ["USER", "AGENT", "ADMIN"],
+  locationSource: ["MANUAL_PIN", "GEOMETRY_CENTROID", "GEOCODED"],
 };
 
 const dateFields = new Set([
@@ -1509,7 +1526,12 @@ export default function DataManagement() {
 
     // Number
     if (fieldType === "number" && typeof value === "number") {
-      if (field === "price" || field === "rentPrice") {
+      if (
+        field === "price" ||
+        field === "rentPrice" ||
+        field === "dailyRentPrice" ||
+        field === "weeklyRentPrice"
+      ) {
         if (value >= 1000000) {
           return (
             <span className="text-gray-800 text-sm font-semibold">

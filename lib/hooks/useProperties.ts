@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 export const PropertyTypes = [
   "APARTMENT",
   "HOUSE",
+  "GUEST_HOUSE",
   "VILLA",
   "STUDIO",
   "DUPLEX",
@@ -53,6 +54,7 @@ export const ListingStatuses = [
 export type ListingStatus = (typeof ListingStatuses)[number];
 
 export type EntityType = "LOTISSEMENT" | "PARCELLE" | "BATIMENT";
+export type LocationSource = "MANUAL_PIN" | "GEOMETRY_CENTROID" | "GEOCODED";
 
 /* =========================================================
  * INTERFACES
@@ -97,6 +99,9 @@ export interface BaseListing {
   shareCount: number;
   createdById: string | null;
   createdBy?: Creator | null;
+  mapLatitude: number | null;
+  mapLongitude: number | null;
+  locationSource: LocationSource | null;
   media?: MediaItem[];
   createdAt: string;
   updatedAt: string;
@@ -171,6 +176,8 @@ export interface Batiment extends BaseListing {
   WKT_Geometry: string | null;
   propertyType: PropertyType | null;
   rentPrice: string | number | null;
+  dailyRentPrice: string | number | null;
+  weeklyRentPrice: string | number | null;
   totalFloors: number | null;
   totalUnits: number | null;
   hasElevator: boolean | null;
@@ -194,6 +201,38 @@ export interface Batiment extends BaseListing {
   hasTerrace: boolean | null;
   amenities: string | null;
   parcelle?: Parcelle | null;
+}
+
+export type RentalRate = {
+  value: string | number;
+  label: "Daily rate" | "Weekly rate" | "Monthly rent";
+  suffix: "/day" | "/week" | "/month";
+};
+
+function hasRentalValue(value: string | number | null | undefined): value is string | number {
+  return value != null && value !== "" && Number(value) > 0;
+}
+
+export function getRentalRates(property: Pick<Batiment, "dailyRentPrice" | "weeklyRentPrice" | "rentPrice">): RentalRate[] {
+  const rates: RentalRate[] = [];
+
+  if (hasRentalValue(property.dailyRentPrice)) {
+    rates.push({ value: property.dailyRentPrice, label: "Daily rate", suffix: "/day" });
+  }
+  if (hasRentalValue(property.weeklyRentPrice)) {
+    rates.push({ value: property.weeklyRentPrice, label: "Weekly rate", suffix: "/week" });
+  }
+  if (hasRentalValue(property.rentPrice)) {
+    rates.push({ value: property.rentPrice, label: "Monthly rent", suffix: "/month" });
+  }
+
+  return rates;
+}
+
+export function getPrimaryRentalRate(
+  property: Pick<Batiment, "dailyRentPrice" | "weeklyRentPrice" | "rentPrice">,
+): RentalRate | null {
+  return getRentalRates(property)[0] ?? null;
 }
 
 export type Listing =
@@ -676,6 +715,7 @@ export function getPropertyTypeLabel(
   const labels: Record<PropertyType, { en: string; fr: string }> = {
     APARTMENT: { en: "Apartment", fr: "Appartement" },
     HOUSE: { en: "House", fr: "Maison" },
+    GUEST_HOUSE: { en: "Guest House", fr: "Maison d'hôtes" },
     VILLA: { en: "Villa", fr: "Villa" },
     STUDIO: { en: "Studio", fr: "Studio" },
     DUPLEX: { en: "Duplex", fr: "Duplex" },

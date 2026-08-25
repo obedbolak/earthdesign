@@ -50,6 +50,8 @@ import {
   formatArea,
   getPropertyTypeLabel,
   getCategoryLabel,
+  getPrimaryRentalRate,
+  getRentalRates,
   isForSale,
   isForRent,
 } from "@/lib/hooks/useProperties";
@@ -57,6 +59,9 @@ import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import Footer from "@/components/Footer";
 import FavoriteButton from "@/components/FavoriteButton";
 import ShareButton from "@/components/ShareButton";
+import PropertyLocationMap, {
+  getMapLocation,
+} from "@/components/PropertyLocationMap";
 
 // =========================================================
 // LOCAL UTILITIES
@@ -314,6 +319,8 @@ export default function PropertyDetailPage() {
   }
 
   const amenitiesList = getAmenitiesList();
+  const rentalRates = getRentalRates(property);
+  const primaryRentalRate = rentalRates[0] ?? null;
 
   return (
     <div
@@ -730,18 +737,20 @@ export default function PropertyDetailPage() {
                           </p>
                         )}
                     </>
-                  ) : isForRent(property) &&
-                    property.rentPrice &&
-                    Number(property.rentPrice) > 0 ? (
+                  ) : isForRent(property) && primaryRentalRate ? (
                     <>
-                      <p className="text-sm mb-1 text-gray-400">Monthly Rent</p>
+                      <p className="text-sm mb-1 text-gray-400">
+                        {primaryRentalRate.label}
+                      </p>
                       <p
                         className="text-3xl font-bold"
                         style={{ color: COLORS.primary[400] }}
                       >
-                        {formatPrice(property.rentPrice, property.currency)}
+                        {formatPrice(primaryRentalRate.value, property.currency)}
                       </p>
-                      <p className="text-sm mt-1 text-gray-400">/month</p>
+                      <p className="text-sm mt-1 text-gray-400">
+                        {primaryRentalRate.suffix}
+                      </p>
                     </>
                   ) : (
                     <>
@@ -758,8 +767,7 @@ export default function PropertyDetailPage() {
                   {property.listingType === "BOTH" &&
                     property.price &&
                     Number(property.price) > 0 &&
-                    property.rentPrice &&
-                    Number(property.rentPrice) > 0 && (
+                    rentalRates.length > 0 && (
                       <div
                         className="mt-4 pt-4 border-t"
                         style={{
@@ -769,13 +777,17 @@ export default function PropertyDetailPage() {
                         <p className="text-sm mb-1 text-gray-400">
                           Also Available for Rent
                         </p>
-                        <p
-                          className="text-xl font-bold"
-                          style={{ color: COLORS.primary[400] }}
-                        >
-                          {formatPrice(property.rentPrice, property.currency)}{" "}
-                          /month
-                        </p>
+                        <div className="space-y-1">
+                          {rentalRates.map((rate) => (
+                            <p
+                              key={rate.suffix}
+                              className="text-xl font-bold"
+                              style={{ color: COLORS.primary[400] }}
+                            >
+                              {formatPrice(rate.value, property.currency)} {rate.suffix}
+                            </p>
+                          ))}
+                        </div>
                       </div>
                     )}
                 </div>
@@ -1185,35 +1197,14 @@ export default function PropertyDetailPage() {
                 />{" "}
                 Location
               </h2>
-              <div
-                className="aspect-video rounded-2xl flex items-center justify-center border"
-                style={{
-                  background: "rgba(255,255,255,0.05)",
-                  borderColor: "rgba(255,255,255,0.1)",
-                }}
-              >
-                <div className="text-center">
-                  <MapPin
-                    className="w-16 h-16 mx-auto mb-3"
-                    style={{ color: COLORS.primary[500] }}
-                  />
-                  <p className="text-white font-semibold text-lg">
-                    Interactive Map
-                  </p>
-                  <p className="mt-1 text-gray-400">Coming soon</p>
-                  <p
-                    className="text-sm mt-2"
-                    style={{ color: COLORS.primary[400] }}
-                  >
-                    {getLocationString(property)}
-                  </p>
-                  {property.address && (
-                    <p className="text-sm mt-1 text-gray-400">
-                      {property.address}
-                    </p>
-                  )}
-                </div>
-              </div>
+              <PropertyLocationMap
+                title={property.title || property.Nom || "this property"}
+                location={getMapLocation(
+                  property,
+                  property.parcelle,
+                  property.parcelle?.lotissement,
+                )}
+              />
             </motion.div>
           </div>
 
@@ -1619,10 +1610,8 @@ export default function PropertyDetailPage() {
                           related.price &&
                           Number(related.price) > 0
                             ? formatPriceCompact(related.price)
-                            : isForRent(related) &&
-                                related.rentPrice &&
-                                Number(related.rentPrice) > 0
-                              ? `${formatPriceCompact(related.rentPrice)}/mo`
+                            : isForRent(related) && getPrimaryRentalRate(related)
+                              ? `${formatPriceCompact(getPrimaryRentalRate(related)!.value)}${getPrimaryRentalRate(related)!.suffix}`
                               : "Prix sur demande"}
                         </p>
                         <div className="flex items-center gap-2 text-sm text-gray-400">
