@@ -39,7 +39,7 @@ export async function GET() {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "EarthDesign";
   workbook.created = new Date();
-  workbook.properties.title = "EarthDesign data backup";
+  workbook.title = "EarthDesign data backup";
 
   const client = prisma as unknown as Record<PrismaModelName, PrismaDelegate>;
 

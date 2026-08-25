@@ -45,6 +45,7 @@ import {
 import {
   useAdminTableData,
   useTableCounts,
+  createRecord,
   updateRecord,
   deleteRecord,
 } from "@/lib/hooks/useProperties";
@@ -1198,6 +1199,8 @@ export default function DataManagement() {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Record<string, any>>({});
+  const [createForm, setCreateForm] = useState<Record<string, any>>({});
+  const [isCreating, setIsCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
@@ -1226,6 +1229,8 @@ export default function DataManagement() {
     setExpandedRow(null);
     setEditingRowIndex(null);
     setEditForm({});
+    setCreateForm({});
+    setIsCreating(false);
     setSearchQuery("");
   }, [selectedTable]);
 
@@ -1354,6 +1359,71 @@ export default function DataManagement() {
     setEditingRowIndex(null);
     setEditForm({});
     setExpandedRow(null);
+  };
+
+  const handleStartCreate = () => {
+    if (!selectedTable) return;
+
+    const defaults: Record<string, unknown> = {
+      currency: "XAF",
+      listingStatus: "DRAFT",
+    };
+
+    if (selectedTable === "Lotissement" || selectedTable === "Parcelle") {
+      defaults.category = "LAND";
+    }
+    if (selectedTable === "Batiment") {
+      defaults.category = "RESIDENTIAL";
+    }
+
+    setCreateForm(defaults);
+    setIsCreating(true);
+    setExpandedRow(null);
+    setEditingRowIndex(null);
+  };
+
+  const handleCancelCreate = () => {
+    setCreateForm({});
+    setIsCreating(false);
+  };
+
+  const handleCreate = async () => {
+    if (!selectedTable) return;
+
+    const config = tableConfigs[selectedTable];
+    const processedForm: Record<string, unknown> = {};
+
+    for (const field of config.fields) {
+      if (readOnlyFields.has(field) || field === config.primaryKey) continue;
+
+      const value = createForm[field];
+      if (value === "" || value == null) continue;
+
+      if (numericFields.has(field)) {
+        const number = Number(value);
+        if (!Number.isNaN(number)) processedForm[field] = number;
+      } else if (booleanFields.has(field)) {
+        processedForm[field] = value === true || value === "true" || value === "1";
+      } else if (dateFields.has(field)) {
+        const date = new Date(String(value));
+        if (!Number.isNaN(date.getTime())) processedForm[field] = date.toISOString();
+      } else {
+        processedForm[field] = value;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      await createRecord(selectedTable, processedForm);
+      await refetch();
+      handleCancelCreate();
+    } catch (error) {
+      alert(
+        `Could not create record: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (index: number) => {
@@ -1793,6 +1863,16 @@ export default function DataManagement() {
               </div>
 
               <div className="flex gap-2">
+                {config.isListing && (
+                  <button
+                    onClick={handleStartCreate}
+                    disabled={isCreating || loading}
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors disabled:opacity-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add new</span>
+                  </button>
+                )}
                 <button
                   onClick={() => refetch()}
                   disabled={loading || isValidating}
@@ -1813,6 +1893,131 @@ export default function DataManagement() {
 
       {/* Content Area */}
       <div className="flex-1 overflow-auto p-4 sm:p-6">
+        {isCreating && config.isListing && (
+          <section className="mb-6 overflow-hidden rounded-xl border-2 border-teal-200 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-3 text-white sm:px-5">
+              <div>
+                <h2 className="font-semibold">Add new {config.label.slice(0, -1)}</h2>
+                <p className="mt-0.5 text-xs text-white/80">
+                  Fill only the fields you have. Your account will be recorded as the creator.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelCreate}
+                  disabled={isSaving}
+                  className="rounded-lg bg-white/15 px-3 py-1.5 text-sm font-medium hover:bg-white/25 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-teal-700 shadow-sm hover:bg-teal-50 disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Create record
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:p-5">
+              {config.fields
+                .filter(
+                  (field) =>
+                    !readOnlyFields.has(field) && field !== config.primaryKey,
+                )
+                .map((field) => {
+                  const fieldType = getFieldType(field);
+                  const isGeometry = field === "WKT_Geometry";
+                  const isLongText = fieldType === "text" || isGeometry;
+                  const label = field.replace(/_/g, " ");
+
+                  return (
+                    <label
+                      key={field}
+                      className={isLongText ? "sm:col-span-2 lg:col-span-3 xl:col-span-4" : ""}
+                    >
+                      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {label}
+                      </span>
+                      {booleanFields.has(field) ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCreateForm((current) => ({
+                              ...current,
+                              [field]: !current[field],
+                            }))
+                          }
+                          className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            createForm[field]
+                              ? "bg-green-100 text-green-700 ring-2 ring-green-200"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {createForm[field] ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                          {createForm[field] ? "Yes" : "No"}
+                        </button>
+                      ) : enumFields[field] ? (
+                        <select
+                          value={createForm[field] ?? ""}
+                          onChange={(event) =>
+                            setCreateForm((current) => ({
+                              ...current,
+                              [field]: event.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          <option value="">Select...</option>
+                          {enumFields[field].map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      ) : isLongText ? (
+                        <textarea
+                          rows={isGeometry ? 4 : 3}
+                          value={createForm[field] ?? ""}
+                          onChange={(event) =>
+                            setCreateForm((current) => ({
+                              ...current,
+                              [field]: event.target.value,
+                            }))
+                          }
+                          className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      ) : (
+                        <input
+                          type={
+                            dateFields.has(field)
+                              ? "date"
+                              : numericFields.has(field)
+                                ? "number"
+                                : "text"
+                          }
+                          step={numericFields.has(field) ? "any" : undefined}
+                          value={createForm[field] ?? ""}
+                          onChange={(event) =>
+                            setCreateForm((current) => ({
+                              ...current,
+                              [field]: event.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                      )}
+                    </label>
+                  );
+                })}
+            </div>
+          </section>
+        )}
+
         {loading ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-12 text-center">
             <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
