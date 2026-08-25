@@ -22,6 +22,7 @@ import {
   Layers,
   Clock,
   HardDrive,
+  Download,
 } from "lucide-react";
 
 type TabKey = "overview" | "data" | "upload" | "images" | "video" | "clear";
@@ -60,6 +61,42 @@ export default function UploadExcel({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
+
+  const handleDownloadBackup = async () => {
+    setDownloadingBackup(true);
+    setMessage(null);
+    setErrors(null);
+
+    try {
+      const response = await fetch("/api/backup-excel");
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || "Could not download the backup");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download =
+        response.headers
+          .get("content-disposition")
+          ?.match(/filename="?([^\";]+)"?/)?.[1] || "earthdesign-backup.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setMessage("Backup downloaded. You can upload this workbook to restore the data.");
+      setIsSuccess(true);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not download the backup");
+      setIsSuccess(false);
+    } finally {
+      setDownloadingBackup(false);
+    }
+  };
+
   const handleFile = async (file?: File) => {
     setMessage(null);
     setErrors(null);
@@ -248,10 +285,26 @@ export default function UploadExcel({
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2"></div>
-        <p className="text-gray-500 ml-14">
-          Import properties data from Excel spreadsheets with ease
-        </p>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-gray-500">
+              Import properties data from Excel spreadsheets with ease
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleDownloadBackup}
+            disabled={downloadingBackup || loading}
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {downloadingBackup ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Download full backup
+          </button>
+        </div>
       </div>
 
       {/* Main Card */}

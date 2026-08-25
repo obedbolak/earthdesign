@@ -872,7 +872,7 @@ export const excelImportConfig: SheetConfig[] = [
   {
     sheetName: "Lotissement",
     model: "lotissement",
-    columnCount: 31,
+    columnCount: 34,
     uniqueKey: "Id_Lotis",
     primaryKey: "Id_Lotis",
     dependencies: ["arrondissement"],
@@ -908,6 +908,9 @@ export const excelImportConfig: SheetConfig[] = [
       toBool, // 28: hasRoadAccess
       toBool, // 29: hasElectricity
       toBool, // 30: hasWater
+      toNum, // 31: mapLatitude
+      toNum, // 32: mapLongitude
+      toStr, // 33: locationSource
       // toStr, // 31: createdById
     ],
     transform: (row, ctx) => {
@@ -966,6 +969,9 @@ export const excelImportConfig: SheetConfig[] = [
         hasRoadAccess: defBool(row[28], false),
         hasElectricity: defBool(row[29], false),
         hasWater: defBool(row[30], false),
+        mapLatitude: defNum(row[31]),
+        mapLongitude: defNum(row[32]),
+        locationSource: defStr(row[33]),
         createdById: ctx?.userId || null,
       };
     },
@@ -978,7 +984,7 @@ export const excelImportConfig: SheetConfig[] = [
   {
     sheetName: "Parcelle",
     model: "parcelle",
-    columnCount: 33,
+    columnCount: 36,
     uniqueKey: "Id_Parcel",
     primaryKey: "Id_Parcel",
     dependencies: ["lotissement"],
@@ -1016,6 +1022,9 @@ export const excelImportConfig: SheetConfig[] = [
       toStr, // 30: currency
       toBool, // 31: featured
       toBool, // 32: isForDevelopment
+      toNum, // 33: mapLatitude
+      toNum, // 34: mapLongitude
+      toStr, // 35: locationSource
       // toStr, // 33: createdById
     ],
     transform: (row, ctx) => {
@@ -1076,6 +1085,9 @@ export const excelImportConfig: SheetConfig[] = [
         currency: defStr(row[30], "XAF"),
         featured: defBool(row[31], false),
         isForDevelopment: defBool(row[32], false),
+        mapLatitude: defNum(row[33]),
+        mapLongitude: defNum(row[34]),
+        locationSource: defStr(row[35]),
         createdById: ctx?.userId || null,
       };
     },
@@ -1088,7 +1100,7 @@ export const excelImportConfig: SheetConfig[] = [
   {
     sheetName: "Batiment",
     model: "batiment",
-    columnCount: 49,
+    columnCount: 52,
     uniqueKey: "Id_Bat",
     primaryKey: "Id_Bat",
     dependencies: ["parcelle"],
@@ -1142,6 +1154,9 @@ export const excelImportConfig: SheetConfig[] = [
       toStr, // 46: amenities (NEW)
       toDecimal, // 47: dailyRentPrice
       toDecimal, // 48: weeklyRentPrice
+      toNum, // 49: mapLatitude
+      toNum, // 50: mapLongitude
+      toStr, // 51: locationSource
       // toStr, // 47: createdById
     ],
     transform: (row, ctx) => {
@@ -1198,6 +1213,9 @@ export const excelImportConfig: SheetConfig[] = [
         rentPrice: defDecimal(row[21]),
         dailyRentPrice: defDecimal(row[47]),
         weeklyRentPrice: defDecimal(row[48]),
+        mapLatitude: defNum(row[49]),
+        mapLongitude: defNum(row[50]),
+        locationSource: defStr(row[51]),
         pricePerSqM: defDecimal(row[22]),
         currency: defStr(row[23], "XAF"),
         featured: defBool(row[24], false),
