@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { canManageEntityMedia, getRequestUser } from "@/lib/mobile-auth";
 
 // GET all media (with optional filters)
 export async function GET(request: NextRequest) {
@@ -48,6 +49,11 @@ export async function GET(request: NextRequest) {
 // POST new media
 export async function POST(request: NextRequest) {
   try {
+    const user = await getRequestUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const body = await request.json();
     const {
       entityType,
@@ -87,9 +93,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedEntityType = entityType.toUpperCase();
+    const parsedEntityId = Number(entityId);
+    if (!Number.isInteger(parsedEntityId) || parsedEntityId < 1) {
+      return NextResponse.json({ error: "entityId must be a valid ID" }, { status: 400 });
+    }
+
+    if (!(await canManageEntityMedia(user, normalizedEntityType, parsedEntityId))) {
+      return NextResponse.json(
+        { error: "You can only add media to your own listings" },
+        { status: 403 },
+      );
+    }
+
     // Build where clause for finding the last media
     const whereClause: any = {};
-    const parsedEntityId = parseInt(entityId);
 
     switch (entityType.toUpperCase()) {
       case "LOTISSEMENT":
@@ -117,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     // Build the data object for creation
     const createData: any = {
-      entityType: entityType.toUpperCase(),
+      entityType: normalizedEntityType,
       url,
       type,
       order: nextOrder,

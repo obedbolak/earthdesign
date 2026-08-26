@@ -1,8 +1,7 @@
 // app/api/data/[table]/[id]/route.ts
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+import { getRequestUser } from "@/lib/mobile-auth";
 
 /* =========================================================
  * 1. Model and Primary Key Maps
@@ -241,41 +240,14 @@ function coerceId(idStr: string, table: string): string | number {
 }
 
 async function checkAuth(
+  request: Request,
   table: string,
   action: "read" | "update" | "delete",
   recordCreatorId?: string | null,
 ) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    return { authorized: false, error: "Authentication required", status: 401 };
-  }
-
-  // 🔧 FIX: Try to get user by ID first, then fallback to email
-  let user = null;
-
-  // Try by ID if available
-  if (session.user.id) {
-    user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true },
-    });
-  }
-
-  // Fallback: Try by email (more reliable with some OAuth providers)
-  if (!user && session.user.email) {
-    user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true, role: true },
-    });
-  }
-
+  const user = await getRequestUser(request);
   if (!user) {
-    console.error("[Auth] User not found:", {
-      sessionId: session.user.id,
-      sessionEmail: session.user.email,
-    });
-    return { authorized: false, error: "User account not found", status: 401 };
+    return { authorized: false, error: "Authentication required", status: 401 };
   }
 
   // Admin-only tables
@@ -409,7 +381,7 @@ export async function PATCH(
       PROTECTED_TABLES.includes(tableLower) ||
       ADMIN_ONLY_TABLES.includes(tableLower)
     ) {
-      const auth = await checkAuth(tableLower, "update", existing.createdById);
+      const auth = await checkAuth(request, tableLower, "update", existing.createdById);
       if (!auth.authorized) {
         return NextResponse.json(
           { error: auth.error },
@@ -524,7 +496,7 @@ export async function DELETE(
       PROTECTED_TABLES.includes(tableLower) ||
       ADMIN_ONLY_TABLES.includes(tableLower)
     ) {
-      const auth = await checkAuth(tableLower, "delete", existing.createdById);
+      const auth = await checkAuth(request, tableLower, "delete", existing.createdById);
       if (!auth.authorized) {
         return NextResponse.json(
           { error: auth.error },

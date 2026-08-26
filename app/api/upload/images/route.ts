@@ -1,6 +1,7 @@
 // app/api/upload/images/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { canCreateListings, getRequestUser } from "@/lib/mobile-auth";
 
 // Configure Cloudinary with API credentials (server-side only)
 cloudinary.config({
@@ -21,8 +22,16 @@ interface CloudinaryResource {
 }
 
 // GET - List all images from your folder
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const user = await getRequestUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
     // This requires API Key + Secret
     const result = await cloudinary.api.resources({
       type: "upload",
@@ -59,6 +68,17 @@ export async function GET() {
 // POST - Upload images (uses unsigned preset - no API key needed for upload itself)
 export async function POST(request: NextRequest) {
   try {
+    const user = await getRequestUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!canCreateListings(user.role)) {
+      return NextResponse.json(
+        { error: "Only agents and admins can upload listing images" },
+        { status: 403 },
+      );
+    }
+
     const formData = await request.formData();
     const files = formData.getAll("files") as File[];
 
@@ -149,6 +169,14 @@ export async function POST(request: NextRequest) {
 // DELETE - Delete image by public ID
 export async function DELETE(request: NextRequest) {
   try {
+    const user = await getRequestUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const publicId = searchParams.get("publicId");
 

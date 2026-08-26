@@ -1,9 +1,8 @@
 // app/api/data/[table]/route.ts
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { authOptions } from "@/lib/auth";
+import { canCreateListings, getRequestUser } from "@/lib/mobile-auth";
 
 /* =========================================================
  * 1. Whitelist of allowed tables
@@ -30,7 +29,6 @@ const modelMap: Record<string, keyof typeof prisma> = {
   borne: "borne",
 
   // Media & Interactions
-  media: "media",
   favorite: "favorite",
   share: "share",
   view: "view",
@@ -585,23 +583,14 @@ function generateSlug(title: string): string {
 }
 
 async function checkAuth(
+  request: Request,
   table: string,
   action: "create" | "update" | "delete",
   recordCreatorId?: string | null,
 ) {
-  const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    return { authorized: false, error: "Authentication required", status: 401 };
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { id: true, role: true },
-  });
-
+  const user = await getRequestUser(request);
   if (!user) {
-    return { authorized: false, error: "User not found", status: 401 };
+    return { authorized: false, error: "Authentication required", status: 401 };
   }
 
   // Admin-only tables
@@ -612,7 +601,7 @@ async function checkAuth(
   // Protected tables (listings)
   if (PROTECTED_TABLES.includes(table)) {
     // Create: Agent or Admin only
-    if (action === "create" && !["AGENT", "ADMIN"].includes(user.role)) {
+    if (action === "create" && !canCreateListings(user.role)) {
       return {
         authorized: false,
         error: "Only agents and admins can create listings",
@@ -794,7 +783,7 @@ export async function POST(
       PROTECTED_TABLES.includes(tableLower) ||
       ADMIN_ONLY_TABLES.includes(tableLower)
     ) {
-      const auth = await checkAuth(tableLower, "create");
+      const auth = await checkAuth(request, tableLower, "create");
       if (!auth.authorized) {
         return NextResponse.json(
           { error: auth.error },
@@ -913,7 +902,7 @@ export async function PATCH(
       PROTECTED_TABLES.includes(tableLower) ||
       ADMIN_ONLY_TABLES.includes(tableLower)
     ) {
-      const auth = await checkAuth(tableLower, "update", existing.createdById);
+      const auth = await checkAuth(request, tableLower, "update", existing.createdById);
       if (!auth.authorized) {
         return NextResponse.json(
           { error: auth.error },
@@ -1008,7 +997,7 @@ export async function DELETE(
       PROTECTED_TABLES.includes(tableLower) ||
       ADMIN_ONLY_TABLES.includes(tableLower)
     ) {
-      const auth = await checkAuth(tableLower, "delete", existing.createdById);
+      const auth = await checkAuth(request, tableLower, "delete", existing.createdById);
       if (!auth.authorized) {
         return NextResponse.json(
           { error: auth.error },

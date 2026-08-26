@@ -2,6 +2,23 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { canManageEntityMedia, getRequestUser } from "@/lib/mobile-auth";
+
+async function canManageMedia(request: NextRequest, id: number) {
+  const user = await getRequestUser(request);
+  if (!user) return { allowed: false, status: 401, error: "Authentication required" };
+
+  const media = await prisma.media.findUnique({ where: { id } });
+  if (!media) return { allowed: false, status: 404, error: "Media not found" };
+
+  const entityId =
+    media.lotissementId ?? media.parcelleId ?? media.batimentId ?? media.infrastructureId;
+  if (!entityId || !(await canManageEntityMedia(user, media.entityType, entityId))) {
+    return { allowed: false, status: 403, error: "You can only modify media on your own listings" };
+  }
+
+  return { allowed: true, media };
+}
 
 // GET single media
 export async function GET(
@@ -47,6 +64,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
     }
 
+    const authorization = await canManageMedia(request, id);
+    if (!authorization.allowed) {
+      return NextResponse.json({ error: authorization.error }, { status: authorization.status });
+    }
+
     await prisma.media.delete({
       where: { id },
     });
@@ -72,6 +94,11 @@ export async function PATCH(
 
     if (isNaN(id)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    }
+
+    const authorization = await canManageMedia(request, id);
+    if (!authorization.allowed) {
+      return NextResponse.json({ error: authorization.error }, { status: authorization.status });
     }
 
     const body = await request.json();

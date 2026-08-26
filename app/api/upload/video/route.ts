@@ -1,5 +1,6 @@
 // app/api/upload/video/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { canCreateListings, getRequestUser } from "@/lib/mobile-auth";
 
 interface CloudinaryVideoUploadResponse {
   secure_url: string;
@@ -25,6 +26,17 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getRequestUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!canCreateListings(user.role)) {
+      return NextResponse.json(
+        { error: "Only agents and admins can upload listing videos" },
+        { status: 403 },
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 

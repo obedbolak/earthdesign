@@ -109,12 +109,12 @@ export async function POST(request: Request) {
     console.log(`📥 Import started by user: ${currentUserId} (${userEmail})`);
 
     // Check role permissions
-    if (session.user.role !== "ADMIN" && session.user.role !== "AGENT") {
+    if (session.user.role !== "ADMIN") {
       return NextResponse.json(
         {
           success: false,
           error: "Forbidden",
-          message: "Only admins and agents can import data",
+          message: "Only administrators can import data",
         },
         { status: 403 },
       );

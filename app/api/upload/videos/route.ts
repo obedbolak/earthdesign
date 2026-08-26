@@ -1,6 +1,7 @@
 // app/api/upload/videos/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { getRequestUser } from "@/lib/mobile-auth";
 
 // Configure Cloudinary with API credentials (server-side only)
 cloudinary.config({
@@ -22,8 +23,16 @@ interface CloudinaryResource {
 }
 
 // GET - List all videos from your folder
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const user = await getRequestUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
     const result = await cloudinary.api.resources({
       type: "upload",
       prefix: "earthdesign",
@@ -60,6 +69,14 @@ export async function GET() {
 // DELETE - Delete video by public ID
 export async function DELETE(request: NextRequest) {
   try {
+    const user = await getRequestUser(request);
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const publicId = searchParams.get("publicId");
 
