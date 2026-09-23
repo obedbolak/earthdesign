@@ -1,6 +1,6 @@
 // app/agent/dashboard/page.tsx
 import { requireUser } from "@/lib/auth-helpers";
-import prisma from "@/lib/prisma";
+import { serverApiJson } from "@/lib/api-server";
 import {
   Building2,
   Users,
@@ -24,92 +24,70 @@ import {
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-// Get agent-specific statistics
-async function getAgentStats(userId: string) {
+type AgentDashboardData = {
+  stats: {
+    totalListings: number;
+    activeListings: number;
+    pendingListings: number;
+    soldListings: number;
+    totalViews: number;
+    totalFavorites: number;
+  };
+  topListings: any[];
+  recentViews: any[];
+};
+
+// Real listing data comes from GET /api/dashboard/agent.
+async function getAgentDashboard(): Promise<AgentDashboardData | null> {
   try {
-    const [
-      totalListings,
-      activeListings,
-      pendingListings,
-      soldListings,
-      totalViews,
-      totalFavorites,
-    ] = await Promise.all([
-      // Total listings created by this agent
-      prisma.batiment.count({
-        where: { createdById: userId },
-      }),
-
-      // Active/Published listings
-      prisma.batiment.count({
-        where: {
-          createdById: userId,
-          listingStatus: "PUBLISHED",
-        },
-      }),
-
-      // Pending/Draft listings
-      prisma.batiment.count({
-        where: {
-          createdById: userId,
-          listingStatus: "DRAFT",
-        },
-      }),
-
-      // Sold listings
-      prisma.batiment.count({
-        where: {
-          createdById: userId,
-          listingStatus: "SOLD",
-        },
-      }),
-
-      // Total views across all agent listings
-      prisma.batiment.aggregate({
-        where: { createdById: userId },
-        _sum: { viewCount: true },
-      }),
-
-      // Total favorites
-      prisma.batiment.aggregate({
-        where: { createdById: userId },
-        _sum: { favoriteCount: true },
-      }),
-    ]);
-
-    // Mock data for features not yet in schema (replace with actual queries when available)
-    const totalLeads = 23;
-    const newLeads = 7;
-    const appointments = 8;
-    const thisMonthEarnings = 850000;
-    const totalEarnings = 3750000;
-
-    // Calculate trends (mock - replace with actual month-over-month comparison)
-    const trends = {
-      listings: { value: 12, positive: true },
-      leads: { value: 8, positive: true },
-      views: { value: 15, positive: true },
-      revenue: { value: 5, positive: false },
-    };
-
-    return {
-      totalListings,
-      activeListings,
-      pendingListings,
-      soldListings,
-      totalLeads,
-      newLeads,
-      appointments,
-      thisMonthViews: totalViews._sum.viewCount || 0,
-      totalFavorites: totalFavorites._sum.favoriteCount || 0,
-      thisMonthEarnings,
-      totalEarnings,
-      trends,
-    };
+    return await serverApiJson<AgentDashboardData>("/dashboard/agent");
   } catch (error) {
-    console.error("Error fetching agent stats:", error);
+    console.error("Error fetching agent dashboard:", error);
     return null;
   }
+}
+
+// Get agent-specific statistics
+function getAgentStats(data: AgentDashboardData | null) {
+  if (!data) return null;
+  const {
+    totalListings,
+    activeListings,
+    pendingListings,
+    soldListings,
+    totalViews,
+    totalFavorites,
+  } = data.stats;
+
+  // Mock data for features not yet in schema (replace with actual queries when available)
+  const totalLeads = 23;
+  const newLeads = 7;
+  const appointments = 8;
+  const thisMonthEarnings = 850000;
+  const totalEarnings = 3750000;
+
+  // Calculate trends (mock - replace with actual month-over-month comparison)
+  const trends = {
+    listings: { value: 12, positive: true },
+    leads: { value: 8, positive: true },
+    views: { value: 15, positive: true },
+    revenue: { value: 5, positive: false },
+  };
+
+  return {
+    totalListings,
+    activeListings,
+    pendingListings,
+    soldListings,
+    totalLeads,
+    newLeads,
+    appointments,
+    thisMonthViews: totalViews,
+    totalFavorites,
+    thisMonthEarnings,
+    totalEarnings,
+    trends,
+  };
 }
 
 // Get recent leads (mock data - replace with actual lead system)
@@ -185,103 +163,57 @@ async function getUpcomingAppointments() {
 }
 
 // Get top performing listings
-async function getTopListings(userId: string) {
-  try {
-    const properties = await prisma.batiment.findMany({
-      where: { createdById: userId },
-      take: 3,
-      orderBy: { viewCount: "desc" },
-      include: {
-        parcelle: {
-          include: {
-            lotissement: {
-              include: {
-                arrondissement: true,
-              },
-            },
-          },
-        },
-        media: {
-          where: { isPrimary: true },
-          take: 1,
-        },
-      },
-    });
+function getTopListings(data: AgentDashboardData | null) {
+  const properties = data?.topListings ?? [];
 
-    // Add mock performance data
-    return properties.map((property, index) => ({
-      ...property,
-      inquiries: [23, 18, 12][index] || 5,
-      trend: property.viewCount > 100 ? "up" : "down",
-    }));
-  } catch (error) {
-    console.error("Error fetching top listings:", error);
-    return [];
-  }
+  // Add mock performance data
+  return properties.map((property: any, index: number) => ({
+    ...property,
+    inquiries: [23, 18, 12][index] || 5,
+    trend: property.viewCount > 100 ? "up" : "down",
+  }));
 }
 
 // Get recent activity
-async function getRecentActivity(userId: string) {
-  try {
-    // Get recent views on agent's listings
-    const recentViews = await prisma.view.findMany({
-      where: {
-        batiment: {
-          createdById: userId,
-        },
-      },
-      take: 4,
-      orderBy: { createdAt: "desc" },
-      include: {
-        batiment: {
-          select: {
-            title: true,
-            propertyType: true,
-          },
-        },
-      },
-    });
+function getRecentActivity(data: AgentDashboardData | null) {
+  const recentViews = data?.recentViews ?? [];
 
-    // Transform to activity format with mock data mixed in
-    const activities = [
-      {
-        id: 1,
-        type: "new_lead",
-        title: "New inquiry for Villa in Bastos",
-        description: "Jean Mbarga requested property details",
-        time: "2 hours ago",
-        icon: Users,
-        color: "blue",
-      },
-      {
-        id: 2,
-        type: "appointment",
-        title: "Appointment confirmed",
-        description: "Viewing scheduled with Sophie Kamdem",
-        time: "4 hours ago",
-        icon: Calendar,
-        color: "green",
-      },
-      ...recentViews.slice(0, 2).map((view, index) => ({
-        id: index + 3,
-        type: "view",
-        title: `Property view - ${view.batiment?.title || "Property"}`,
-        description: `Someone viewed your listing`,
-        time: formatTimeAgo(view.createdAt),
-        icon: Eye,
-        color: "purple",
-      })),
-    ];
+  // Transform to activity format with mock data mixed in
+  const activities = [
+    {
+      id: 1,
+      type: "new_lead",
+      title: "New inquiry for Villa in Bastos",
+      description: "Jean Mbarga requested property details",
+      time: "2 hours ago",
+      icon: Users,
+      color: "blue",
+    },
+    {
+      id: 2,
+      type: "appointment",
+      title: "Appointment confirmed",
+      description: "Viewing scheduled with Sophie Kamdem",
+      time: "4 hours ago",
+      icon: Calendar,
+      color: "green",
+    },
+    ...recentViews.slice(0, 2).map((view: any, index: number) => ({
+      id: index + 3,
+      type: "view",
+      title: `Property view - ${view.batiment?.title || "Property"}`,
+      description: `Someone viewed your listing`,
+      time: formatTimeAgo(view.createdAt),
+      icon: Eye,
+      color: "purple",
+    })),
+  ];
 
-    return activities;
-  } catch (error) {
-    console.error("Error fetching recent activity:", error);
-    return [];
-  }
+  return activities;
 }
 
 // Helper function to format time
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(date: Date | string): string {
   const seconds = Math.floor(
     (new Date().getTime() - new Date(date).getTime()) / 1000,
   );
@@ -312,15 +244,14 @@ export default async function AgentDashboardPage() {
     redirect("/dashboard");
   }
 
-  const [stats, leads, appointments, topListings, activity] = await Promise.all(
-    [
-      getAgentStats(user?.id || ""),
-      getRecentLeads(),
-      getUpcomingAppointments(),
-      getTopListings(user?.id || ""),
-      getRecentActivity(user?.id || ""),
-    ],
-  );
+  const [data, leads, appointments] = await Promise.all([
+    getAgentDashboard(),
+    getRecentLeads(),
+    getUpcomingAppointments(),
+  ]);
+  const stats = getAgentStats(data);
+  const topListings = getTopListings(data);
+  const activity = getRecentActivity(data);
 
   // Handle case when stats fail to load
   if (!stats) {

@@ -1,6 +1,7 @@
 // components/ShareButton.tsx
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Share2, X, Copy, Check, Mail, Link2, Sparkles } from "lucide-react";
@@ -668,7 +669,7 @@ export default function ShareButton({
   const trackShare = useCallback(
     async (platform: SharePlatform) => {
       try {
-        const response = await fetch("/api/share", {
+        const response = await apiFetch("/api/share", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

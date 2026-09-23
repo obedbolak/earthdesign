@@ -1,5 +1,6 @@
 // app/admin/dashboard/upload/images/page.tsx
 "use client";
+import { apiFetch } from "@/lib/api";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   Upload,
@@ -190,7 +191,7 @@ export default function ImagesUploadPage() {
     if (!silent) setLoading(true);
 
     try {
-      const response = await fetch("/api/upload/images");
+      const response = await apiFetch("/api/upload/images");
       const data = await response.json();
 
       if (response.ok) {
@@ -298,7 +299,7 @@ export default function ImagesUploadPage() {
     });
 
     try {
-      const response = await fetch("/api/upload/images", {
+      const response = await apiFetch("/api/upload/images", {
         method: "POST",
         body: formData,
       });
@@ -341,7 +342,7 @@ export default function ImagesUploadPage() {
     setError("");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/upload/images?publicId=${encodeURIComponent(publicId)}`,
         {
           method: "DELETE",

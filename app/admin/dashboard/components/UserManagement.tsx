@@ -1,6 +1,7 @@
 // app/admin/dashboard/components/UserManagement.tsx
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useState, useEffect } from "react";
 import {
   Users,
@@ -88,7 +89,7 @@ export default function UserManagement() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/users");
+      const res = await apiFetch("/api/users");
       if (!res.ok) throw new Error("Failed to load users");
       const json = await res.json();
       setUsers(json.users || []);
@@ -111,7 +112,7 @@ export default function UserManagement() {
     if (!editingUserId) return;
 
     try {
-      const res = await fetch(`/api/users/${editingUserId}`, {
+      const res = await apiFetch(`/api/users/${editingUserId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -155,7 +156,7 @@ export default function UserManagement() {
       return;
 
     try {
-      const res = await fetch(`/api/users/${userId}`, {
+      const res = await apiFetch(`/api/users/${userId}`, {
         method: "DELETE",
       });
 

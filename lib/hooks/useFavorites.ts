@@ -1,4 +1,5 @@
 // lib/hooks/useFavorites.ts
+import { apiFetch } from "@/lib/api";
 import useSWR from "swr";
 import { useSession } from "next-auth/react";
 import { useState, useCallback, useMemo } from "react";
@@ -33,7 +34,7 @@ export interface FavoriteMap {
  * ========================================================= */
 
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.error || "Failed to fetch");
@@ -145,7 +146,7 @@ export function useFavoriteToggle() {
       try {
         if (currentlyFavorite) {
           // Remove favorite
-          const res = await fetch(
+          const res = await apiFetch(
             `/api/favorites?entityType=${entityType}&entityId=${entityId}`,
             { method: "DELETE" },
           );
@@ -161,7 +162,7 @@ export function useFavoriteToggle() {
           return { success: true, isFavorite: false };
         } else {
           // Add favorite
-          const res = await fetch("/api/favorites", {
+          const res = await apiFetch("/api/favorites", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ entityType, entityId }),

@@ -1,5 +1,6 @@
 // app/admin/dashboard/upload/page.tsx (or wherever your excel upload is)
 "use client";
+import { apiFetch } from "@/lib/api";
 import React, { useRef, useState, Dispatch, SetStateAction } from "react";
 import {
   Upload,
@@ -69,7 +70,7 @@ export default function UploadExcel({
     setErrors(null);
 
     try {
-      const response = await fetch("/api/backup-excel");
+      const response = await apiFetch("/api/excel/backup");
       if (!response.ok) {
         const body = await response.json().catch(() => null);
         throw new Error(body?.error || "Could not download the backup");
@@ -131,7 +132,7 @@ export default function UploadExcel({
 
     try {
       setLoading(true);
-      const res = await fetch("/api/upload-excel", {
+      const res = await apiFetch("/api/excel/upload", {
         method: "POST",
         body: form,
       });

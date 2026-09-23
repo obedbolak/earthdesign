@@ -1,6 +1,7 @@
 // components/AdminProfileImageUpload.tsx
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useState, useRef } from "react";
 import { Camera, Loader2, Trash2, X, Upload } from "lucide-react";
 import Image from "next/image";
@@ -63,8 +64,10 @@ export default function AdminProfileImageUpload({
         "type",
         imageType === "agencyLogo" ? "agencyLogo" : "profile",
       );
+      // Change the photo of the user being edited, not the admin's own.
+      formData.append("userId", userId);
 
-      const uploadResponse = await fetch("/api/upload/profile", {
+      const uploadResponse = await apiFetch("/api/upload/profile", {
         method: "POST",
         body: formData,
       });
@@ -76,7 +79,7 @@ export default function AdminProfileImageUpload({
       }
 
       // Then update the user record
-      const updateResponse = await fetch(`/api/users/${userId}`, {
+      const updateResponse = await apiFetch(`/api/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -111,8 +114,8 @@ export default function AdminProfileImageUpload({
 
     try {
       // Delete from Cloudinary
-      const deleteResponse = await fetch(
-        `/api/upload/profile?type=${imageType === "agencyLogo" ? "agencyLogo" : "profile"}`,
+      const deleteResponse = await apiFetch(
+        `/api/upload/profile?type=${imageType === "agencyLogo" ? "agencyLogo" : "profile"}&userId=${encodeURIComponent(userId)}`,
         {
           method: "DELETE",
         },
@@ -124,7 +127,7 @@ export default function AdminProfileImageUpload({
       }
 
       // Update user record
-      const updateResponse = await fetch(`/api/users/${userId}`, {
+      const updateResponse = await apiFetch(`/api/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

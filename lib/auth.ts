@@ -1,11 +1,8 @@
 // lib/auth.ts
 import { NextAuthOptions, getServerSession } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import prisma from "@/lib/prisma";
-import bcrypt from "bcryptjs";
-import type { Adapter } from "next-auth/adapters";
-import { UserRole } from "@prisma/client";
+import type { UserRole } from "@/lib/user-role";
+import { apiUrl } from "@/lib/api-url";
 
 // Extend the built-in session types
 declare module "next-auth" {
@@ -24,6 +21,8 @@ declare module "next-auth" {
       isVerified: boolean;
       emailVerified: Date | null;
     };
+    /** Bearer token for the EarthDesign API. */
+    accessToken?: string;
   }
 
   interface User {
@@ -34,6 +33,7 @@ declare module "next-auth" {
     bio: string | null;
     whatsapp: string | null;
     isVerified: boolean;
+    accessToken?: string;
   }
 }
 
@@ -51,11 +51,32 @@ declare module "next-auth/jwt" {
     whatsapp: string | null;
     isVerified: boolean;
     emailVerified: Date | null;
+    accessToken?: string;
   }
 }
 
+type ApiLoginResponse = {
+  token?: string;
+  accessToken?: string;
+  user?: {
+    id: string;
+    email: string;
+    name: string | null;
+    image: string | null;
+    role: UserRole;
+    phone: string | null;
+    agencyName: string | null;
+    agencyLogo: string | null;
+    bio: string | null;
+    whatsapp: string | null;
+    isVerified: boolean;
+    emailVerified: string | null;
+  };
+  error?: string;
+  message?: string;
+};
+
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma) as Adapter,
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -63,54 +84,45 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
+      // Sign-in is checked by the EarthDesign API. The API token is kept in the
+      // session so the browser can call the API on the user's behalf.
       async authorize(credentials) {
-        console.log("🔐 Authorize attempt for:", credentials?.email);
-
         if (!credentials?.email || !credentials?.password) {
-          console.log("❌ Missing credentials");
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            password: true,
-            emailVerified: true,
-            image: true,
-            role: true,
-            phone: true,
-            agencyName: true,
-            agencyLogo: true,
-            bio: true,
-            whatsapp: true,
-            isVerified: true,
-          },
-        });
-
-        if (!user?.password) {
-          console.log("❌ User not found or no password");
-          return null;
+        let response: Response;
+        try {
+          response = await fetch(apiUrl("/auth/login"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
+            cache: "no-store",
+          });
+        } catch (error) {
+          console.error("❌ Could not reach the API for sign-in:", error);
+          throw new Error("Sign-in is unavailable right now. Please try again.");
         }
 
-        if (!user.emailVerified) {
-          console.log("❌ Email not verified");
-          throw new Error("Please verify your email before signing in");
+        const data = (await response
+          .json()
+          .catch(() => ({}))) as ApiLoginResponse;
+
+        // Wrong email or password → NextAuth's standard "CredentialsSignin".
+        if (response.status === 401) return null;
+        // Unverified email and other refusals: show the API's message.
+        if (!response.ok) {
+          throw new Error(data.error || data.message || "Sign-in failed");
         }
 
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.password,
-        );
-
-        if (!isValid) {
-          console.log("❌ Invalid password");
-          return null;
+        const accessToken = data.accessToken || data.token;
+        const user = data.user;
+        if (!accessToken || !user?.id) {
+          throw new Error("Sign-in failed: incomplete response from the API");
         }
-
-        console.log("✅ User authorized:", user.id);
 
         return {
           id: user.id,
@@ -124,7 +136,8 @@ export const authOptions: NextAuthOptions = {
           bio: user.bio,
           whatsapp: user.whatsapp,
           isVerified: user.isVerified,
-          emailVerified: user.emailVerified,
+          emailVerified: user.emailVerified ? new Date(user.emailVerified) : null,
+          accessToken,
         };
       },
     }),
@@ -156,27 +169,31 @@ export const authOptions: NextAuthOptions = {
         token.emailVerified = user.emailVerified ?? null;
       }
 
-      // 🔧 FIX: Ensure id is always set (handles old sessions)
+      if (user?.accessToken) {
+        token.accessToken = user.accessToken;
+      }
+
+      // Handles sessions created before `id` was stored on the token.
       if (!token.id && token.sub) {
         token.id = token.sub;
       }
 
-      // 🔧 FIX: If somehow we have email but no id, try to fetch from DB
-      if (!token.id && token.email) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: token.email as string },
-          select: { id: true, role: true },
-        });
-        if (dbUser) {
-          token.id = dbUser.id;
-          token.sub = dbUser.id;
-          token.role = dbUser.role;
-        }
-      }
-
-      // Handle session updates
+      // useSession().update({...}) — e.g. after a profile photo change.
       if (trigger === "update" && session) {
-        // ... your existing update code ...
+        const editable = [
+          "name",
+          "image",
+          "phone",
+          "agencyName",
+          "agencyLogo",
+          "bio",
+          "whatsapp",
+        ] as const;
+        for (const field of editable) {
+          if (field in session) {
+            (token as Record<string, unknown>)[field] = session[field] ?? null;
+          }
+        }
       }
 
       return token;
@@ -198,6 +215,7 @@ export const authOptions: NextAuthOptions = {
         session.user.isVerified = token.isVerified ?? false;
         session.user.emailVerified = token.emailVerified ?? null;
       }
+      session.accessToken = token.accessToken;
       return session;
     },
   },

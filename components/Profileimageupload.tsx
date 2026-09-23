@@ -1,6 +1,7 @@
 // components/ProfileImageUpload.tsx
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { Camera, Loader2, Trash2, X, Upload } from "lucide-react";
@@ -52,7 +53,7 @@ export default function ProfileImageUpload({
       formData.append("file", file);
       formData.append("type", imageType);
 
-      const response = await fetch("/api/upload/profile", {
+      const response = await apiFetch("/api/upload/profile", {
         method: "POST",
         body: formData,
       });
@@ -91,7 +92,7 @@ export default function ProfileImageUpload({
     setError(null);
 
     try {
-      const response = await fetch(`/api/upload/profile?type=${imageType}`, {
+      const response = await apiFetch(`/api/upload/profile?type=${imageType}`, {
         method: "DELETE",
       });
 

@@ -1,6 +1,6 @@
 // app/dashboard/page.tsx
 import { requireUser } from "@/lib/auth-helpers";
-import prisma from "@/lib/prisma";
+import { serverApiJson } from "@/lib/api-server";
 import {
   Heart,
   Clock,
@@ -17,221 +17,80 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-// Get user stats
-async function getUserStats(userId: string) {
+type ActivityItem = {
+  id: string;
+  type: string;
+  title: string;
+  time: string;
+  sortTime: number;
+  icon: typeof Eye;
+  link: string;
+};
+
+// Everything the dashboard shows comes from GET /api/dashboard/user.
+async function getDashboardData() {
   try {
-    const [favorites, recentViews, savedSearches] = await Promise.all([
-      // User's favorites count
-      prisma.favorite.count({
-        where: { userId },
-      }),
-
-      // Recent views count (last 30 days)
-      prisma.view.count({
-        where: {
-          userId,
-          createdAt: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-          },
-        },
-      }),
-
-      // Mock: Saved searches (replace when you implement this feature)
-      Promise.resolve(5),
-    ]);
-
-    // Mock notifications count
-    const notifications = 3;
-
-    return {
-      favorites,
-      recentViews,
-      notifications,
-      savedSearches,
-    };
+    return await serverApiJson<{
+      stats: { favorites: number; recentViews: number };
+      recentViews: any[];
+      recentFavorites: any[];
+      favoriteProperties: any[];
+      recommended: any[];
+    }>("/dashboard/user");
   } catch (error) {
-    console.error("Error fetching user stats:", error);
+    console.error("Error fetching dashboard data:", error);
     return null;
   }
 }
 
-// Get recent activity
-async function getRecentActivity(userId: string) {
-  try {
-    // Get user's recent views
-    const views = await prisma.view.findMany({
-      where: { userId },
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: {
-        batiment: {
-          select: {
-            Id_Bat: true,
-            title: true,
-            propertyType: true,
-            slug: true,
-          },
-        },
-      },
+function buildRecentActivity(
+  views: any[],
+  favorites: any[],
+): ActivityItem[] {
+  const linkFor = (batiment: any) =>
+    `/property/${batiment?.slug || `batiment-${batiment?.Id_Bat}`}`;
+
+  const activities: ActivityItem[] = [
+    ...views.map((view) => ({
+      id: `view-${view.id}`,
+      type: "view",
+      title: `Viewed ${view.batiment?.title || view.batiment?.propertyType || "Property"}`,
+      time: formatTimeAgo(view.createdAt),
+      sortTime: new Date(view.createdAt).getTime(),
+      icon: Eye,
+      link: linkFor(view.batiment),
+    })),
+    ...favorites.map((fav) => ({
+      id: `favorite-${fav.id}`,
+      type: "favorite",
+      title: `Saved ${fav.batiment?.title || fav.batiment?.propertyType || "Property"}`,
+      time: formatTimeAgo(fav.createdAt),
+      sortTime: new Date(fav.createdAt).getTime(),
+      icon: Heart,
+      link: linkFor(fav.batiment),
+    })),
+  ]
+    .sort((a, b) => b.sortTime - a.sortTime)
+    .slice(0, 5);
+
+  // Add mock notification if no real activity
+  if (activities.length === 0) {
+    activities.push({
+      id: "notification-1",
+      type: "notification",
+      title: "Welcome to Property Portal",
+      time: "Today",
+      sortTime: Date.now(),
+      icon: Bell,
+      link: "/properties",
     });
-
-    // Get user's recent favorites
-    const favorites = await prisma.favorite.findMany({
-      where: { userId },
-      take: 5,
-      orderBy: { createdAt: "desc" },
-      include: {
-        batiment: {
-          select: {
-            Id_Bat: true,
-            title: true,
-            propertyType: true,
-            slug: true,
-          },
-        },
-      },
-    });
-
-    // Combine and format activities
-    const activities = [
-      ...views.map((view) => ({
-        id: `view-${view.id}`,
-        type: "view",
-        title: `Viewed ${view.batiment?.title || view.batiment?.propertyType || "Property"}`,
-        time: formatTimeAgo(view.createdAt),
-        icon: Eye,
-        link: `/property/${view.batiment?.slug || `batiment-${view.batiment?.Id_Bat}`}`,
-      })),
-      ...favorites.map((fav) => ({
-        id: `favorite-${fav.id}`,
-        type: "favorite",
-        title: `Saved ${fav.batiment?.title || fav.batiment?.propertyType || "Property"}`,
-        time: formatTimeAgo(fav.createdAt),
-        icon: Heart,
-        link: `/property/${fav.batiment?.slug || `batiment-${fav.batiment?.Id_Bat}`}`,
-      })),
-    ]
-      .sort((a, b) => {
-        // Sort by most recent
-        return new Date(b.time).getTime() - new Date(a.time).getTime();
-      })
-      .slice(0, 5);
-
-    // Add mock notification if no real activity
-    if (activities.length === 0) {
-      activities.push({
-        id: "notification-1",
-        type: "notification",
-        title: "Welcome to Property Portal",
-        time: "Today",
-        icon: Bell,
-        link: "/properties",
-      });
-    }
-
-    return activities;
-  } catch (error) {
-    console.error("Error fetching recent activity:", error);
-    return [];
   }
-}
 
-// Get user's favorite properties
-async function getFavoriteProperties(userId: string) {
-  try {
-    const favorites = await prisma.favorite.findMany({
-      where: {
-        userId,
-        entityType: "BATIMENT",
-      },
-      take: 4,
-      orderBy: { createdAt: "desc" },
-      include: {
-        batiment: {
-          include: {
-            parcelle: {
-              include: {
-                lotissement: {
-                  include: {
-                    arrondissement: true,
-                  },
-                },
-              },
-            },
-            media: {
-              where: { isPrimary: true },
-              take: 1,
-            },
-          },
-        },
-      },
-    });
-
-    return favorites.map((fav) => fav.batiment).filter(Boolean);
-  } catch (error) {
-    console.error("Error fetching favorite properties:", error);
-    return [];
-  }
-}
-
-// Get recommended properties
-async function getRecommendedProperties(userId: string) {
-  try {
-    // Get user's view history to understand preferences
-    const viewHistory = await prisma.view.findMany({
-      where: { userId },
-      take: 10,
-      orderBy: { createdAt: "desc" },
-      select: {
-        batiment: {
-          select: {
-            propertyType: true,
-            category: true,
-          },
-        },
-      },
-    });
-
-    // Extract preferred property types
-    const viewedTypes = viewHistory
-      .map((v) => v.batiment?.propertyType)
-      .filter(Boolean);
-    const preferredType = viewedTypes[0]; // Most recent type
-
-    // Fetch recommended properties
-    const properties = await prisma.batiment.findMany({
-      where: {
-        listingStatus: "PUBLISHED",
-        ...(preferredType && { propertyType: preferredType }),
-      },
-      take: 4,
-      orderBy: [{ featured: "desc" }, { viewCount: "desc" }],
-      include: {
-        parcelle: {
-          include: {
-            lotissement: {
-              include: {
-                arrondissement: true,
-              },
-            },
-          },
-        },
-        media: {
-          where: { isPrimary: true },
-          take: 1,
-        },
-      },
-    });
-
-    return properties;
-  } catch (error) {
-    console.error("Error fetching recommended properties:", error);
-    return [];
-  }
+  return activities;
 }
 
 // Helper function to format time
-function formatTimeAgo(date: Date): string {
+function formatTimeAgo(date: Date | string): string {
   const seconds = Math.floor(
     (new Date().getTime() - new Date(date).getTime()) / 1000,
   );
@@ -257,12 +116,21 @@ export default async function DashboardPage() {
   const session = await requireUser();
   const user = session.user;
 
-  const [stats, activity, favorites, recommended] = await Promise.all([
-    getUserStats(user?.id || ""),
-    getRecentActivity(user?.id || ""),
-    getFavoriteProperties(user?.id || ""),
-    getRecommendedProperties(user?.id || ""),
-  ]);
+  const data = await getDashboardData();
+  const stats = data
+    ? {
+        favorites: data.stats.favorites,
+        recentViews: data.stats.recentViews,
+        // Placeholders until notifications and saved searches exist.
+        notifications: 3,
+        savedSearches: 5,
+      }
+    : null;
+  const activity = data
+    ? buildRecentActivity(data.recentViews, data.recentFavorites)
+    : [];
+  const favorites = data?.favoriteProperties ?? [];
+  const recommended = data?.recommended ?? [];
 
   // Handle case when stats fail to load
   if (!stats) {

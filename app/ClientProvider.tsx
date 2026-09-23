@@ -1,6 +1,7 @@
 // app/ClientProvider.tsx
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { ThemeProvider } from "@/lib/context/ThemeContext";
 import { COLORS, GRADIENTS } from "@/lib/constants/colors";
 import DialogflowChatbot from "@/components/DialogflowChatbot";
@@ -48,7 +49,7 @@ export default function ClientProvider({
         <div className="relative z-10">
           <SWRConfig
             value={{
-              fetcher: (url: string) => fetch(url).then((res) => res.json()),
+              fetcher: (url: string) => apiFetch(url).then((res) => res.json()),
               revalidateOnFocus: true,
               revalidateOnReconnect: true,
               errorRetryCount: 3,

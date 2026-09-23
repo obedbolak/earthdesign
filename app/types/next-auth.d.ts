@@ -1,5 +1,5 @@
 // types/next-auth.d.ts
-import { UserRole } from "@prisma/client";
+import type { UserRole } from "@/lib/user-role";
 import { DefaultSession, DefaultUser } from "next-auth";
 import { DefaultJWT } from "next-auth/jwt";
 
@@ -22,6 +22,8 @@ declare module "next-auth" {
       isVerified: boolean;
       emailVerified: Date | null;
     } & DefaultSession["user"];
+    /** Bearer token for the EarthDesign API. */
+    accessToken?: string;
   }
 
   interface User extends DefaultUser {
@@ -33,6 +35,7 @@ declare module "next-auth" {
     whatsapp: string | null;
     isVerified: boolean;
     emailVerified: Date | null;
+    accessToken?: string;
   }
 }
 
@@ -50,5 +53,6 @@ declare module "next-auth/jwt" {
     whatsapp: string | null;
     isVerified: boolean;
     emailVerified: Date | null;
+    accessToken?: string;
   }
 }

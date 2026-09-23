@@ -1,4 +1,5 @@
 // lib/hooks/useEntityMedia.ts
+import { apiFetch } from "@/lib/api";
 import { useState, useCallback, useMemo } from "react";
 import useSWR from "swr";
 
@@ -60,7 +61,7 @@ const MEDIA_API_PATH = "/api/data/Media";
  * ========================================================= */
 
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || `Failed to fetch: ${res.status}`);
@@ -168,7 +169,7 @@ export function useEntityMedia({
           [foreignKey]: entityId,
         };
 
-        const res = await fetch(MEDIA_API_PATH, {
+        const res = await apiFetch(MEDIA_API_PATH, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
@@ -219,7 +220,7 @@ export function useEntityMedia({
       setOperationError(null);
 
       try {
-        const res = await fetch(`${MEDIA_API_PATH}/${mediaId}`, {
+        const res = await apiFetch(`${MEDIA_API_PATH}/${mediaId}`, {
           method: "DELETE",
         });
 
@@ -263,7 +264,7 @@ export function useEntityMedia({
           (m) => m.isPrimary && m.id !== mediaId,
         );
         if (currentPrimary) {
-          await fetch(`${MEDIA_API_PATH}/${currentPrimary.id}`, {
+          await apiFetch(`${MEDIA_API_PATH}/${currentPrimary.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ isPrimary: false }),
@@ -271,7 +272,7 @@ export function useEntityMedia({
         }
 
         // Set new primary
-        const res = await fetch(`${MEDIA_API_PATH}/${mediaId}`, {
+        const res = await apiFetch(`${MEDIA_API_PATH}/${mediaId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isPrimary: true }),
@@ -318,7 +319,7 @@ export function useEntityMedia({
       setOperationError(null);
 
       try {
-        const res = await fetch(`${MEDIA_API_PATH}/${mediaId}`, {
+        const res = await apiFetch(`${MEDIA_API_PATH}/${mediaId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updates),

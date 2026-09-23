@@ -1,6 +1,7 @@
 // app/admin/dashboard/components/Overview.tsx
 "use client";
 
+import { apiFetch } from "@/lib/api";
 import { useState, useEffect, Dispatch, SetStateAction } from "react";
 import {
   Database,
@@ -43,7 +44,7 @@ export default function Overview({
 
   const fetchStats = async () => {
     try {
-      const res = await fetch("/api/stats");
+      const res = await apiFetch("/api/stats");
       if (res.ok) {
         const data = await res.json();
         setStats(data);
@@ -67,8 +68,8 @@ export default function Overview({
     if (!secondConfirm) return;
 
     try {
-      const res = await fetch("/api/clear-data", {
-        method: "POST",
+      const res = await apiFetch("/api/excel/clear", {
+        method: "DELETE",
       });
       const result = await res.json();
       if (res.ok && result.success) {

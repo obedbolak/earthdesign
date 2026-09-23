@@ -1,5 +1,6 @@
 // app/admin/dashboard/upload/video/page.tsx
 "use client";
+import { apiFetch } from "@/lib/api";
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   Upload,
@@ -188,7 +189,7 @@ export default function VideoUploadPage() {
   const fetchVideos = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/upload/videos");
+      const response = await apiFetch("/api/upload/videos");
       const data = await response.json();
 
       if (response.ok) {
@@ -356,7 +357,7 @@ export default function VideoUploadPage() {
 
     try {
       setDeleting(publicId);
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/upload/videos?publicId=${encodeURIComponent(publicId)}`,
         { method: "DELETE" },
       );

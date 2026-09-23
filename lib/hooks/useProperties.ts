@@ -1,4 +1,5 @@
 // lib/hooks/useProperties.ts
+import { apiFetch } from "@/lib/api";
 import useSWR, { SWRConfiguration } from "swr";
 import useSWRImmutable from "swr/immutable";
 import { useState, useEffect } from "react";
@@ -266,7 +267,7 @@ export interface ListingFilters {
 
 // Global fetcher function
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
+  const res = await apiFetch(url);
   if (!res.ok) {
     const error = new Error("Failed to fetch data");
     throw error;
@@ -609,16 +610,16 @@ export function useAllListings(filters?: ListingFilters) {
 
 export async function prefetchBatiments(filters?: ListingFilters) {
   const queryString = buildQueryString(filters);
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL || ""}/api/data/batiment${queryString}`,
+  const res = await apiFetch(
+    `/api/data/batiment${queryString}`,
   );
   if (!res.ok) throw new Error("Failed to prefetch");
   return res.json();
 }
 
 export async function prefetchBatiment(id: string | number) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL || ""}/api/data/batiment/${id}`,
+  const res = await apiFetch(
+    `/api/data/batiment/${id}`,
   );
   if (!res.ok) throw new Error("Failed to prefetch");
   return res.json();
@@ -874,7 +875,7 @@ export function useTableCounts(tables: string[]) {
       const results = await Promise.all(
         tables.map(async (table) => {
           try {
-            const res = await fetch(`/api/data/${table.toLowerCase()}?limit=1`);
+            const res = await apiFetch(`/api/data/${table.toLowerCase()}?limit=1`);
             if (res.ok) {
               const json = await res.json();
               return { table, count: json.total || json.count || 0 };
@@ -936,7 +937,7 @@ export function useTableCountsSWR(tables: string[]) {
 
 // Mutation helpers for CRUD operations
 export async function createRecord(table: string, data: any) {
-  const res = await fetch(`/api/data/${table.toLowerCase()}`, {
+  const res = await apiFetch(`/api/data/${table.toLowerCase()}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -955,7 +956,7 @@ export async function updateRecord(
   id: string | number,
   data: any,
 ) {
-  const res = await fetch(`/api/data/${table.toLowerCase()}/${id}`, {
+  const res = await apiFetch(`/api/data/${table.toLowerCase()}/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -970,7 +971,7 @@ export async function updateRecord(
 }
 
 export async function deleteRecord(table: string, id: string | number) {
-  const res = await fetch(`/api/data/${table.toLowerCase()}/${id}`, {
+  const res = await apiFetch(`/api/data/${table.toLowerCase()}/${id}`, {
     method: "DELETE",
   });
 
