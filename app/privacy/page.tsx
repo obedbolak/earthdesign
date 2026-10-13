@@ -1,11 +1,12 @@
-// app/privacy-policy/page.tsx
+// app/privacy/page.tsx
 import { Metadata } from "next";
 import PrivacyPolicyContent from "@/components/legal/PrivacyPolicyContent";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Earth Design",
+  title: "Privacy Policy | Earth Design & EDE Connect",
   description:
-    "Learn how Earth Design collects, uses, and protects your personal information. Our commitment to your privacy and data security.",
+    "How Earth Design Engineering Ltd collects, uses and protects your information on earthdesignengineeringltd.com and in the EDE Connect app, and how to delete your account.",
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPolicyPage() {
