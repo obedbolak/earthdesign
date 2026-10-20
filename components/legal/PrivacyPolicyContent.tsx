@@ -33,7 +33,7 @@ import {
  * Google Play and the App Store compare this page with the app.
  */
 
-const LAST_UPDATED = { en: "13 October 2026", fr: "13 octobre 2026" };
+const LAST_UPDATED = { en: "20 October 2026", fr: "20 octobre 2026" };
 const CONTACT_EMAIL = "realestate@earthdesignengineeringltd.com";
 const CONTACT_PHONE = "+237 652 14 91 21";
 
@@ -78,7 +78,10 @@ const COPY: Record<Lang, Copy> = {
         title: "Who we are",
         blocks: [
           {
-            p: "Earth Design Engineering Ltd (\"Earth Design\", \"we\", \"us\") is a real estate, land survey and construction company based at Carrefour T.K.C, Yaoundé, Cameroon. We run the website earthdesignengineeringltd.com and the EDE Connect mobile app for Android and iPhone, where you can browse land, plots and buildings, save listings, and — if you are one of our agents — publish listings.",
+            p: "Earth Design Engineering SARL (Earth Design Engineering Ltd, \"Earth Design\", \"we\", \"us\"), registered in Yaoundé under no. RC/YAE/2023/B/2365, is a real estate, land survey and construction company based at Carrefour T.K.C, Yaoundé, Cameroon. We run the website earthdesignengineeringltd.com and the EDE Connect mobile app for Android and iPhone, where you can browse land, plots and buildings, save listings, and — if you are one of our agents — publish listings.",
+          },
+          {
+            p: "The EDE Connect app is developed for us by unicomteam, which publishes it on Google Play on our behalf under our written authorization. Earth Design remains responsible for your personal information as described in this policy.",
           },
           {
             p: "This policy explains what information we collect, why, who helps us process it, how long we keep it, and the choices you have. It applies to both the website and the app.",
@@ -305,7 +308,8 @@ const COPY: Record<Lang, Copy> = {
         blocks: [
           {
             list: [
-              "Earth Design Engineering Ltd",
+              "Earth Design Engineering SARL (Earth Design Engineering Ltd)",
+              "RC/YAE/2023/B/2365",
               "Carrefour T.K.C, Yaoundé, Cameroon",
               `Email: ${CONTACT_EMAIL}`,
               `Phone and WhatsApp: ${CONTACT_PHONE}`,
@@ -333,7 +337,10 @@ const COPY: Record<Lang, Copy> = {
         title: "Qui sommes-nous",
         blocks: [
           {
-            p: "Earth Design Engineering Ltd (« Earth Design », « nous ») est une entreprise d'immobilier, de topographie et de construction située au Carrefour T.K.C, Yaoundé, Cameroun. Nous exploitons le site earthdesignengineeringltd.com et l'application mobile EDE Connect pour Android et iPhone, où vous pouvez consulter des terrains, parcelles et bâtiments, enregistrer des annonces et — si vous êtes l'un de nos agents — publier des annonces.",
+            p: "Earth Design Engineering SARL (Earth Design Engineering Ltd, « Earth Design », « nous »), immatriculée à Yaoundé sous le n° RC/YAE/2023/B/2365, est une entreprise d'immobilier, de topographie et de construction située au Carrefour T.K.C, Yaoundé, Cameroun. Nous exploitons le site earthdesignengineeringltd.com et l'application mobile EDE Connect pour Android et iPhone, où vous pouvez consulter des terrains, parcelles et bâtiments, enregistrer des annonces et — si vous êtes l'un de nos agents — publier des annonces.",
+          },
+          {
+            p: "L'application EDE Connect est développée pour nous par unicomteam, qui la publie sur Google Play en notre nom, avec notre autorisation écrite. Earth Design reste responsable de vos informations personnelles comme décrit dans cette politique.",
           },
           {
             p: "Cette politique explique quelles informations nous collectons, pourquoi, qui nous aide à les traiter, combien de temps nous les conservons et quels choix vous avez. Elle s'applique au site web comme à l'application.",
@@ -560,7 +567,8 @@ const COPY: Record<Lang, Copy> = {
         blocks: [
           {
             list: [
-              "Earth Design Engineering Ltd",
+              "Earth Design Engineering SARL (Earth Design Engineering Ltd)",
+              "RCCM n° RC/YAE/2023/B/2365",
               "Carrefour T.K.C, Yaoundé, Cameroun",
               `E-mail : ${CONTACT_EMAIL}`,
               `Téléphone et WhatsApp : ${CONTACT_PHONE}`,
