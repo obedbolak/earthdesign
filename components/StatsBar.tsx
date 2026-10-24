@@ -124,10 +124,10 @@ export default function StatsBar({
             <div className="flex items-center gap-1 sm:gap-1.5">
               <Building2
                 className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
-                style={{ color: "#22c55e" }}
+                style={{ color: COLORS.primary[400] }}
               />
               <span>
-                <strong style={{ color: "#22c55e" }}>
+                <strong style={{ color: COLORS.primary[400] }}>
                   {stats.byEntityType?.BATIMENT || 0}
                 </strong>{" "}
                 <span className="hidden lg:inline">Properties</span>
@@ -136,10 +136,10 @@ export default function StatsBar({
             <div className="flex items-center gap-1 sm:gap-1.5">
               <Map
                 className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
-                style={{ color: "#3b82f6" }}
+                style={{ color: COLORS.emerald[300] }}
               />
               <span>
-                <strong style={{ color: "#3b82f6" }}>
+                <strong style={{ color: COLORS.emerald[300] }}>
                   {stats.byEntityType?.PARCELLE || 0}
                 </strong>{" "}
                 <span className="hidden lg:inline">Lands</span>
@@ -148,10 +148,10 @@ export default function StatsBar({
             <div className="hidden md:flex items-center gap-1 sm:gap-1.5">
               <Layers
                 className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
-                style={{ color: "#a855f7" }}
+                style={{ color: COLORS.primary[300] }}
               />
               <span>
-                <strong style={{ color: "#a855f7" }}>
+                <strong style={{ color: COLORS.primary[300] }}>
                   {stats.byEntityType?.LOTISSEMENT || 0}
                 </strong>{" "}
                 <span className="hidden lg:inline">Estates</span>
@@ -204,13 +204,13 @@ export default function StatsBar({
               Listings
             </span>
             <span>
-              <strong style={{ color: "#22c55e" }}>
+              <strong style={{ color: COLORS.primary[400] }}>
                 {stats.byEntityType?.BATIMENT || 0}
               </strong>{" "}
               Props
             </span>
             <span>
-              <strong style={{ color: "#3b82f6" }}>
+              <strong style={{ color: COLORS.emerald[300] }}>
                 {stats.byEntityType?.PARCELLE || 0}
               </strong>{" "}
               Lands

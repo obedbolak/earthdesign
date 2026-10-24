@@ -1,37 +1,37 @@
 // lib/constants/colors.ts
 
 export const COLORS = {
-  // Primary greens (unchanged)
+  // Forest-green brand palette
   primary: {
-    50: '#f0fdf4',
-    100: '#dcfce7',
-    200: '#bbf7d0',
-    300: '#86efac',
-    400: '#4ade80',
-    500: '#22c55e',
-    600: '#16a34a',
-    700: '#15803d',
-    800: '#166534',
-    900: '#14532d',
-    950: '#052e16',
+    50: '#f0f8f4',
+    100: '#d9eee2',
+    200: '#b5ddc8',
+    300: '#83c4a4',
+    400: '#4ba77c',
+    500: '#16804f',
+    600: '#0e7044',
+    700: '#0b5b39',
+    800: '#0a482f',
+    900: '#083b28',
+    950: '#05271b',
   },
 
-  // Emerald (unchanged)
+  // Emerald
   emerald: {
-    300: '#6ee7b7',
-    400: '#34d399',
-    500: '#10b981',
-    600: '#059669',
-    800: '#065f46',
-    900: '#064e3b',
-    950: '#022c22',
+    300: '#7ad3aa',
+    400: '#42b982',
+    500: '#169766',
+    600: '#0e7b53',
+    800: '#0b5a41',
+    900: '#084b37',
+    950: '#052e23',
   },
 
-  // Teal (unchanged)
+  // Teal
   teal: {
-    500: '#14b8a6',
-    800: '#115e59',
-    950: '#042f2e',
+    500: '#198d78',
+    800: '#145d50',
+    950: '#0a332c',
   },
 
   // Neutrals (unchanged)
@@ -61,26 +61,26 @@ export const COLORS = {
 export const GRADIENTS = {
   // Background gradients
   background: {
-    primary: 'linear-gradient(135deg, #14532d 0%, #064e3b 50%, #042f2e 100%)',
-    hero: 'linear-gradient(135deg, #14532d 0%, #115e59 50%, #052e16 100%)',
-    card: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%)',
+    primary: 'linear-gradient(135deg, #0b5b39 0%, #084b37 50%, #0a332c 100%)',
+    hero: 'linear-gradient(135deg, #0b5b39 0%, #145d50 50%, #083b28 100%)',
+    card: 'linear-gradient(135deg, rgba(22, 128, 79, 0.12) 0%, rgba(22, 151, 102, 0.06) 100%)',
   },
   // Button gradients
   button: {
-    primary: 'linear-gradient(135deg, #16a34a 0%, #059669 100%)',
-    secondary: 'linear-gradient(135deg, #22c55e 0%, #10b981 100%)',
-    hover: 'linear-gradient(135deg, #15803d 0%, #047857 100%)',
+    primary: 'linear-gradient(135deg, #16804f 0%, #0e7044 100%)',
+    secondary: 'linear-gradient(135deg, #239665 0%, #169766 100%)',
+    hover: 'linear-gradient(135deg, #0e7044 0%, #0b5b39 100%)',
   },
   // Badge gradients
   badge: {
-    primary: 'linear-gradient(135deg, #22c55e 0%, #10b981 100%)',
-    feature: 'linear-gradient(135deg, #22c55e 0%, #14b8a6 100%)',
-    status: 'linear-gradient(135deg, #16a34a 0%, #059669 100%)',
+    primary: 'linear-gradient(135deg, #239665 0%, #169766 100%)',
+    feature: 'linear-gradient(135deg, #239665 0%, #198d78 100%)',
+    status: 'linear-gradient(135deg, #16804f 0%, #0e7b53 100%)',
   },
   // Text gradients
   text: {
-    primary: 'linear-gradient(135deg, #4ade80 0%, #34d399 50%, #4ade80 100%)',
-    glow: 'linear-gradient(135deg, #86efac 0%, #4ade80 100%)',
+    primary: 'linear-gradient(135deg, #83c4a4 0%, #7ad3aa 50%, #83c4a4 100%)',
+    glow: 'linear-gradient(135deg, #b5ddc8 0%, #83c4a4 100%)',
   },
   // Overlay gradients
   overlay: {
@@ -90,8 +90,8 @@ export const GRADIENTS = {
   },
   // Special effects
   glow: {
-    primary: 'radial-gradient(circle, rgba(34, 197, 94, 0.15) 0%, transparent 70%)',
-    strong: 'radial-gradient(circle, rgba(34, 197, 94, 0.3) 0%, transparent 70%)',
+    primary: 'radial-gradient(circle, rgba(22, 128, 79, 0.15) 0%, transparent 70%)',
+    strong: 'radial-gradient(circle, rgba(22, 128, 79, 0.3) 0%, transparent 70%)',
   },
 } as const;
 
@@ -101,6 +101,6 @@ export const SHADOWS = {
   lg: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
   xl: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
   '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)',
-  glow: '0 0 60px rgba(34, 197, 94, 0.5)',
-  glowStrong: '0 0 80px rgba(34, 197, 94, 0.8)',
+  glow: '0 0 60px rgba(22, 128, 79, 0.3)',
+  glowStrong: '0 0 80px rgba(22, 128, 79, 0.55)',
 } as const;
