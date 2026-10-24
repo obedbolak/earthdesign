@@ -95,7 +95,7 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="admin-dashboard min-h-screen bg-gray-50">
       {/* Mobile Menu Button - Fixed top-left */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
