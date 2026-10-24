@@ -22,7 +22,7 @@ const milestones = [
     description:
       "Earth Design was established by the Cameroonian government to address urban development challenges.",
     icon: Flag,
-    color: "from-blue-500 to-indigo-500",
+    color: "from-green-600 to-emerald-600",
   },
   {
     year: "2014",
@@ -38,7 +38,7 @@ const milestones = [
     description:
       "Extended operations to all 10 regions of Cameroon, establishing regional offices.",
     icon: Globe,
-    color: "from-purple-500 to-pink-500",
+    color: "from-emerald-600 to-green-700",
   },
   {
     year: "2018",
@@ -46,7 +46,7 @@ const milestones = [
     description:
       "Received the African Real Estate Development Excellence Award for sustainable practices.",
     icon: Award,
-    color: "from-amber-500 to-yellow-500",
+    color: "from-green-500 to-emerald-500",
   },
   {
     year: "2021",
@@ -54,7 +54,7 @@ const milestones = [
     description:
       "Launched digital platforms for property search, virtual tours, and online transactions.",
     icon: Rocket,
-    color: "from-cyan-500 to-blue-500",
+    color: "from-green-600 to-green-500",
   },
   {
     year: "2024",
@@ -96,7 +96,7 @@ export default function MilestonesSection() {
         {/* Timeline */}
         <div className="relative">
           {/* Center Line */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-teal-500 via-emerald-500 to-cyan-500 rounded-full hidden lg:block" />
+          <div className="absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-green-600 via-emerald-500 to-green-400 rounded-full hidden lg:block" />
 
           {/* Milestones */}
           <div className="space-y-12 lg:space-y-0">

@@ -10,7 +10,7 @@ const teamMembers = [
   {
     name: "Cleytus Jumcoda Rifor",
     role: "Chief Executive Officer",
-    color: "from-blue-600 to-indigo-700",
+    color: "from-green-700 to-emerald-800",
     bio: "Visionary leader steering Earth Design toward excellence in real estate development.",
     linkedin: "#",
     twitter: "#",
@@ -19,7 +19,7 @@ const teamMembers = [
   {
     name: "Doris Enongene",
     role: "Chief Operations Officer",
-    color: "from-emerald-500 to-teal-600",
+    color: "from-green-500 to-emerald-600",
     bio: "Operations expert ensuring seamless project delivery and client satisfaction.",
     linkedin: "#",
     twitter: "#",
@@ -28,7 +28,7 @@ const teamMembers = [
   {
     name: "Obed Bolak",
     role: "IT Engineer",
-    color: "from-purple-500 to-pink-600",
+    color: "from-emerald-600 to-green-700",
     bio: "Technology specialist driving digital innovation across the organization.",
     linkedin: "#",
     twitter: "#",
@@ -91,7 +91,7 @@ export default function TeamSection() {
                         .join("")}
                     </span>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-gray-900/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-green-950/80 via-green-950/20 to-transparent" />
 
                   {/* Social Links Overlay */}
                   <motion.div

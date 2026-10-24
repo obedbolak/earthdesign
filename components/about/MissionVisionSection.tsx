@@ -16,32 +16,32 @@ export default function MissionVisionSection() {
       title: "Our Mission",
       description:
         "To provide accessible, quality housing solutions and develop sustainable urban infrastructure that enhances the quality of life for all Cameroonians, while fostering economic growth and community development.",
-      color: "from-teal-500 to-emerald-500",
-      bgColor: "from-teal-50 to-emerald-50",
+      color: "from-green-600 to-emerald-600",
+      bgColor: "from-green-50 to-emerald-50",
     },
     {
       icon: Eye,
       title: "Our Vision",
       description:
         "To be Africa's leading real estate development organization, recognized for innovation, sustainability, and our unwavering commitment to transforming lives through exceptional property development and urban planning.",
-      color: "from-blue-500 to-cyan-500",
-      bgColor: "from-blue-50 to-cyan-50",
+      color: "from-green-500 to-emerald-500",
+      bgColor: "from-green-50 to-green-100",
     },
     {
       icon: Compass,
       title: "Our Purpose",
       description:
         "To bridge the housing gap in Cameroon by creating diverse, inclusive communities where families can thrive, businesses can prosper, and generations can build lasting legacies.",
-      color: "from-purple-500 to-pink-500",
-      bgColor: "from-purple-50 to-pink-50",
+      color: "from-emerald-600 to-green-700",
+      bgColor: "from-emerald-50 to-green-50",
     },
     {
       icon: Heart,
       title: "Our Promise",
       description:
         "To uphold the highest standards of integrity, transparency, and excellence in every project we undertake, ensuring that every client's trust in us is rewarded with exceptional value and service.",
-      color: "from-orange-500 to-red-500",
-      bgColor: "from-orange-50 to-red-50",
+      color: "from-green-700 to-emerald-600",
+      bgColor: "from-green-50 to-emerald-50",
     },
   ];
 

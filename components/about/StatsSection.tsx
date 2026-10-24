@@ -125,7 +125,7 @@ export default function StatsSection() {
       {/* Background Pattern */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-5" />
-        <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-teal-500/10 rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-green-500/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-1/2 h-1/2 bg-emerald-500/10 rounded-full blur-3xl" />
       </div>
 
@@ -137,13 +137,13 @@ export default function StatsSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-teal-300 text-sm font-medium mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-green-200 text-sm font-medium mb-6">
             <TrendingUp className="w-4 h-4" />
             <span>Our Impact</span>
           </div>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
             Numbers That Speak{" "}
-            <span className="text-teal-400">For Themselves</span>
+            <span className="text-green-300">For Themselves</span>
           </h2>
           <p className="text-lg text-gray-400 max-w-3xl mx-auto">
             Our track record reflects our commitment to excellence and the trust
@@ -163,7 +163,7 @@ export default function StatsSection() {
             >
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300 h-full">
                 {/* Icon */}
-                <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                   <stat.icon className="w-6 h-6 text-white" />
                 </div>
 
@@ -173,7 +173,7 @@ export default function StatsSection() {
                 </p>
 
                 {/* Label */}
-                <p className="text-teal-400 font-semibold mb-1">{stat.label}</p>
+                <p className="text-green-300 font-semibold mb-1">{stat.label}</p>
 
                 {/* Description */}
                 <p className="text-sm text-gray-500">{stat.description}</p>

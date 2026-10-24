@@ -85,7 +85,7 @@ export default function PartnersSection() {
               title: "Government Partners",
               description:
                 "Working closely with ministries and local authorities",
-              color: "from-blue-500 to-indigo-500",
+              color: "from-green-600 to-emerald-600",
             },
             {
               icon: Building,
@@ -97,7 +97,7 @@ export default function PartnersSection() {
               icon: Globe2,
               title: "International Bodies",
               description: "Collaborating with global development agencies",
-              color: "from-purple-500 to-pink-500",
+              color: "from-emerald-600 to-green-700",
             },
           ].map((category, index) => (
             <motion.div

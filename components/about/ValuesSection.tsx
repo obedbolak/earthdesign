@@ -25,56 +25,56 @@ export default function ValuesSection() {
       title: "Integrity",
       description:
         "We conduct all our business with the highest ethical standards, ensuring transparency and honesty in every transaction.",
-      color: "bg-blue-500",
+      color: "bg-green-600",
     },
     {
       icon: Gem,
       title: "Excellence",
       description:
         "We strive for excellence in everything we do, from construction quality to customer service and community development.",
-      color: "bg-purple-500",
+      color: "bg-emerald-600",
     },
     {
       icon: Lightbulb,
       title: "Innovation",
       description:
         "We embrace new technologies and creative solutions to deliver modern, efficient, and sustainable developments.",
-      color: "bg-amber-500",
+      color: "bg-green-500",
     },
     {
       icon: Users,
       title: "Community",
       description:
         "We build more than properties – we create thriving communities where people connect, grow, and prosper together.",
-      color: "bg-teal-500",
+      color: "bg-green-700",
     },
     {
       icon: Leaf,
       title: "Sustainability",
       description:
         "We are committed to environmentally responsible development that preserves resources for future generations.",
-      color: "bg-green-500",
+      color: "bg-emerald-500",
     },
     {
       icon: Handshake,
       title: "Trust",
       description:
         "We build lasting relationships based on mutual respect, reliability, and our unwavering commitment to our promises.",
-      color: "bg-indigo-500",
+      color: "bg-emerald-700",
     },
     {
       icon: Heart,
       title: "Compassion",
       description:
         "We care deeply about the well-being of our clients, employees, and the communities we serve across Cameroon.",
-      color: "bg-rose-500",
+      color: "bg-green-600",
     },
     {
       icon: Zap,
       title: "Efficiency",
       description:
         "We deliver projects on time and within budget, maximizing value while minimizing waste and environmental impact.",
-      color: "bg-orange-500",
+      color: "bg-emerald-500",
     },
   ];
 

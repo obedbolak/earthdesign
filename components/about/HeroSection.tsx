@@ -14,8 +14,8 @@ export default function HeroSection() {
           alt="Modern Architecture"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-gray-900/95 via-gray-900/80 to-gray-900/60" />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-green-950/95 via-green-950/80 to-green-950/60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-green-950 via-transparent to-transparent" />
       </div>
 
       {/* Animated Background Elements */}
@@ -26,7 +26,7 @@ export default function HeroSection() {
             opacity: [0.1, 0.2, 0.1],
           }}
           transition={{ duration: 8, repeat: Infinity }}
-          className="absolute -top-1/4 -right-1/4 w-1/2 h-1/2 bg-teal-500 rounded-full blur-3xl"
+          className="absolute -top-1/4 -right-1/4 w-1/2 h-1/2 bg-green-500 rounded-full blur-3xl"
         />
         <motion.div
           animate={{
@@ -50,7 +50,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-teal-300 text-sm font-medium mb-6"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-green-200 text-sm font-medium mb-6"
           >
             <Building2 className="w-4 h-4" />
             <span>Established Since 2012</span>
@@ -60,7 +60,7 @@ export default function HeroSection() {
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white mb-6">
             Building Dreams,
             <br />
-            <span className="bg-gradient-to-r from-teal-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-green-300 via-emerald-300 to-green-200 bg-clip-text text-transparent">
               Creating Futures
             </span>
           </h1>
@@ -87,7 +87,7 @@ export default function HeroSection() {
                 transition={{ delay: 0.4 + index * 0.1 }}
                 className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4 md:p-6"
               >
-                <stat.icon className="w-6 h-6 text-teal-400 mx-auto mb-2" />
+                <stat.icon className="w-6 h-6 text-green-300 mx-auto mb-2" />
                 <p className="text-2xl md:text-3xl font-bold text-white">
                   {stat.value}
                 </p>

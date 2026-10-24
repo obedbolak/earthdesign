@@ -56,7 +56,7 @@ export default function StorySection() {
 
               {/* Decorative Elements */}
               <div className="absolute -top-4 -left-4 w-24 h-24 bg-gradient-to-br from-teal-100 to-emerald-100 rounded-2xl -z-10" />
-              <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full -z-10" />
+              <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full -z-10" />
             </div>
           </motion.div>
 
