@@ -82,8 +82,8 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-950 to-black p-4">
-      <div className="w-full max-w-md space-y-8 backdrop-blur-xl bg-black/40 border border-white/10 rounded-2xl p-8 shadow-2xl">
+    <div className="bg-brand-hero min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8 backdrop-blur-xl bg-green-950/80 border border-white/10 rounded-2xl p-8 shadow-2xl">
         <div className="text-center">
           <h1 className="text-4xl font-extrabold text-white tracking-tight">
             Earth<span className="text-green-500">Design</span>
@@ -112,7 +112,7 @@ export default function ForgotPasswordPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-black/40 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-green-950/80 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="you@example.com"
               />
             </div>
@@ -140,7 +140,7 @@ export default function ForgotPasswordPage() {
                 required
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
-                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-black/40 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 text-center text-2xl tracking-widest"
+                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-green-950/80 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 text-center text-2xl tracking-widest"
                 placeholder="000000"
                 maxLength={6}
               />
@@ -155,7 +155,7 @@ export default function ForgotPasswordPage() {
                 required
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-black/40 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-green-950/80 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="••••••••"
               />
             </div>
@@ -169,7 +169,7 @@ export default function ForgotPasswordPage() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-black/40 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-green-950/80 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 placeholder="••••••••"
               />
             </div>

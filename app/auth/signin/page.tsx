@@ -60,7 +60,7 @@ export default function LoginPage() {
   // Show loading state while checking authentication
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-950 to-black">
+      <div className="bg-brand-hero min-h-screen flex items-center justify-center">
         <div className="text-center">
           <svg
             className="animate-spin h-12 w-12 text-green-500 mx-auto"
@@ -328,8 +328,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-950 to-black p-4">
-      <div className="w-full max-w-md space-y-8 backdrop-blur-xl bg-black/40 border border-white/10 rounded-2xl p-8 shadow-2xl">
+    <div className="bg-brand-hero min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8 backdrop-blur-xl bg-green-950/80 border border-white/10 rounded-2xl p-8 shadow-2xl">
         {/* Header */}
         <div className="text-center">
           <h1 className="text-4xl font-extrabold text-white tracking-tight">
@@ -376,7 +376,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-white/20 rounded-lg bg-black/40 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                  className="w-full px-4 py-3 border border-white/20 rounded-lg bg-green-950/80 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
                   placeholder="you@example.com"
                 />
               </div>
@@ -396,7 +396,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-white/20 rounded-lg bg-black/40 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                  className="w-full px-4 py-3 border border-white/20 rounded-lg bg-green-950/80 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
                   placeholder="••••••••"
                 />
               </div>
@@ -484,7 +484,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-black/40 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                className="w-full px-4 py-3 border border-white/20 rounded-lg bg-green-950/80 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
                 placeholder="you@example.com"
               />
             </div>
@@ -561,7 +561,7 @@ export default function LoginPage() {
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
                   onPaste={handleOtpPaste}
                   disabled={loading}
-                  className="w-11 h-14 sm:w-12 sm:h-16 text-center text-2xl font-bold border-2 border-white/20 rounded-lg bg-black/40 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition disabled:opacity-50"
+                  className="w-11 h-14 sm:w-12 sm:h-16 text-center text-2xl font-bold border-2 border-white/20 rounded-lg bg-green-950/80 text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition disabled:opacity-50"
                 />
               ))}
             </div>
@@ -635,7 +635,7 @@ export default function LoginPage() {
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-white/20 rounded-lg bg-black/40 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                  className="w-full px-4 py-3 border border-white/20 rounded-lg bg-green-950/80 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
                   placeholder="••••••••"
                 />
                 <p className="mt-1 text-xs text-gray-500">
@@ -652,7 +652,7 @@ export default function LoginPage() {
                   required
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-white/20 rounded-lg bg-black/40 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
+                  className="w-full px-4 py-3 border border-white/20 rounded-lg bg-green-950/80 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 transition"
                   placeholder="••••••••"
                 />
               </div>

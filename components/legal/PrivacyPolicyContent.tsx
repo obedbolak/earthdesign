@@ -678,7 +678,7 @@ export default function PrivacyPolicyContent() {
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Hero */}
-      <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 pt-10 pb-16 md:pt-14 md:pb-20 overflow-hidden print:bg-none print:py-6">
+      <section className="bg-brand-hero relative pt-10 pb-16 md:pt-14 md:pb-20 overflow-hidden print:bg-none print:py-6">
         <div className="absolute inset-0 overflow-hidden print:hidden">
           <div className="absolute -top-1/4 -right-1/4 w-1/2 h-1/2 bg-teal-500/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-1/4 -left-1/4 w-1/2 h-1/2 bg-emerald-500/10 rounded-full blur-3xl" />

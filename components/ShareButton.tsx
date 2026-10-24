@@ -532,7 +532,9 @@ function SharePopup({
                     onClick={onCopyLink}
                     className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
                     style={{
-                      background: copied ? "#22c55e" : GRADIENTS.button.primary,
+                      background: copied
+                        ? COLORS.primary[500]
+                        : GRADIENTS.button.primary,
                       color: "white",
                       boxShadow: copied
                         ? "0 4px 14px rgba(34, 197, 94, 0.4)"

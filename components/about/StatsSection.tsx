@@ -120,7 +120,7 @@ export default function StatsSection() {
   return (
     <section
       ref={ref}
-      className="py-20 lg:py-32 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden"
+      className="bg-brand-hero py-20 lg:py-32 relative overflow-hidden"
     >
       {/* Background Pattern */}
       <div className="absolute inset-0">

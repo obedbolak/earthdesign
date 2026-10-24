@@ -29,65 +29,7 @@ import {
   Eye,
   ArrowUpRight,
 } from "lucide-react";
-
-const COLORS = {
-  primary: {
-    50: "#f0fdf4",
-    100: "#dcfce7",
-    200: "#bbf7d0",
-    300: "#86efac",
-    400: "#4ade80",
-    500: "#22c55e",
-    600: "#16a34a",
-    700: "#15803d",
-    800: "#166534",
-    900: "#14532d",
-    950: "#052e16",
-  },
-  emerald: {
-    500: "#10b981",
-    600: "#059669",
-    700: "#047857",
-    800: "#065f46",
-    900: "#064e3b",
-  },
-  teal: {
-    500: "#14b8a6",
-    800: "#115e59",
-  },
-  gray: {
-    200: "#e5e7eb",
-    300: "#d1d5db",
-    400: "#9ca3af",
-    500: "#6b7280",
-    600: "#4b5563",
-    700: "#374151",
-    800: "#1f2937",
-    900: "#111827",
-  },
-  white: "#ffffff",
-  yellow: {
-    400: "#facc15",
-  },
-};
-
-const GRADIENTS = {
-  background: {
-    hero: `linear-gradient(135deg, ${COLORS.primary[950]} 0%, ${COLORS.emerald[900]} 50%, ${COLORS.teal[800]} 100%)`,
-    card: `linear-gradient(135deg, ${COLORS.primary[900]}99 0%, ${COLORS.emerald[900]}99 100%)`,
-  },
-  button: {
-    primary: `linear-gradient(135deg, ${COLORS.primary[600]} 0%, ${COLORS.emerald[600]} 100%)`,
-  },
-  text: {
-    primary: `linear-gradient(135deg, ${COLORS.primary[400]} 0%, ${COLORS.emerald[500]} 100%)`,
-  },
-};
-
-const SHADOWS = {
-  glow: `0 0 60px ${COLORS.primary[500]}80`,
-  lg: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-};
+import { COLORS, GRADIENTS, SHADOWS } from "@/lib/constants/colors";
 
 // Services data - This matches the data in [id]/page.tsx
 const services = [
@@ -154,8 +96,8 @@ const services = [
       { label: "Hectares Mapped", value: "10,000+" },
       { label: "Accuracy Rate", value: "99.9%" },
     ],
-    gradient: "from-blue-500 to-cyan-500",
-    color: "#3b82f6",
+    gradient: "from-green-500 to-emerald-500",
+    color: COLORS.primary[500],
   },
   {
     id: "construction",
@@ -187,8 +129,8 @@ const services = [
       { label: "Sq. Meters Built", value: "50,000+" },
       { label: "Client Satisfaction", value: "98%" },
     ],
-    gradient: "from-orange-500 to-red-500",
-    color: "#f97316",
+    gradient: "from-green-600 to-emerald-600",
+    color: COLORS.primary[600],
   },
 ];
 

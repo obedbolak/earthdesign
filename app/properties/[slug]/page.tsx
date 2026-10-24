@@ -125,16 +125,8 @@ const getPlaceholderImage = (type?: string | null): string => {
   return PLACEHOLDER_IMAGES.default;
 };
 
-const getTypeColor = (type?: string | null): string => {
-  const colors: Record<string, string> = {
-    VILLA: "#10b981",
-    APARTMENT: "#6366f1",
-    HOUSE: "#3b82f6",
-    OFFICE: "#8b5cf6",
-    BUILDING: "#14b8a6",
-    STUDIO: "#06b6d4",
-  };
-  return type ? colors[type] || "#10b981" : "#10b981";
+const getTypeColor = (): string => {
+  return COLORS.primary[500];
 };
 
 const getListingStatusLabel = (property: Batiment): string => {
@@ -461,7 +453,7 @@ export default function PropertyDetailPage() {
           <div className="flex items-center gap-2 flex-1 min-w-0 mx-4">
             <Building2
               className="w-5 h-5 flex-shrink-0"
-              style={{ color: getTypeColor(property.propertyType) }}
+              style={{ color: getTypeColor() }}
             />
             <h1 className="text-white font-bold text-sm sm:text-base truncate">
               {property.title || "Property Details"}
@@ -684,7 +676,7 @@ export default function PropertyDetailPage() {
                   <span
                     className="px-3 py-1 rounded-full text-sm font-medium text-white"
                     style={{
-                      background: getTypeColor(property.propertyType),
+                      background: getTypeColor(),
                     }}
                   >
                     {getPropertyTypeLabel(property.propertyType, "en")}
@@ -1580,7 +1572,7 @@ export default function PropertyDetailPage() {
                           <span
                             className="px-2 py-1 rounded-full text-xs font-bold text-white"
                             style={{
-                              background: getTypeColor(related.propertyType),
+                              background: getTypeColor(),
                             }}
                           >
                             {getPropertyTypeLabel(related.propertyType, "en")}

@@ -182,8 +182,8 @@ const getSearchStatusLabel = (listing: Listing): string => {
 
 const getStatusColor = (listing: Listing): string => {
   if (listing.listingType === "BOTH") return COLORS.primary[500];
-  if (listing.listingType === "SALE") return "#22c55e";
-  if (listing.listingType === "RENT") return "#3b82f6";
+  if (listing.listingType === "SALE") return COLORS.primary[500];
+  if (listing.listingType === "RENT") return COLORS.emerald[400];
   return COLORS.gray[500];
 };
 

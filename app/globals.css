@@ -8,6 +8,39 @@
  */
 @theme {
   --container-7xl: 110rem; /* 1760px */
+
+  --color-green-50: #f0f8f4;
+  --color-green-100: #d9eee2;
+  --color-green-200: #b5ddc8;
+  --color-green-300: #83c4a4;
+  --color-green-400: #4ba77c;
+  --color-green-500: #16804f;
+  --color-green-600: #0e7044;
+  --color-green-700: #0b5b39;
+  --color-green-800: #0a482f;
+  --color-green-900: #083b28;
+  --color-green-950: #05271b;
+
+  --color-emerald-300: #7ad3aa;
+  --color-emerald-400: #42b982;
+  --color-emerald-500: #169766;
+  --color-emerald-600: #0e7b53;
+  --color-emerald-700: #0b6a4c;
+  --color-emerald-800: #0b5a41;
+  --color-emerald-900: #084b37;
+  --color-emerald-950: #052e23;
+
+  --color-teal-50: #f0f8f4;
+  --color-teal-100: #d9eee2;
+  --color-teal-200: #b5ddc8;
+  --color-teal-300: #83c4a4;
+  --color-teal-400: #4ba77c;
+  --color-teal-500: #16804f;
+  --color-teal-600: #0e7044;
+  --color-teal-700: #0b5b39;
+  --color-teal-800: #0a482f;
+  --color-teal-900: #083b28;
+  --color-teal-950: #05271b;
 }
 
 :root {
@@ -27,4 +60,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.bg-brand-hero {
+  background-image: linear-gradient(135deg, #0b5b39 0%, #145d50 50%, #083b28 100%);
 }

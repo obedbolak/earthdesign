@@ -30,8 +30,8 @@ export default function AuthErrorPage() {
     : errorMessages.default;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-black via-gray-950 to-black p-4">
-      <div className="w-full max-w-lg backdrop-blur-xl bg-black/40 border border-white/10 rounded-2xl p-10 shadow-2xl text-center">
+    <div className="bg-brand-hero min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-lg backdrop-blur-xl bg-green-950/80 border border-white/10 rounded-2xl p-10 shadow-2xl text-center">
         {/* Error Icon */}
         <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-full bg-red-500/20">
           <AlertCircle className="h-10 w-10 text-red-400" />

@@ -27,47 +27,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
-const COLORS = {
-  primary: {
-    400: "#4ade80",
-    500: "#22c55e",
-    600: "#16a34a",
-    900: "#14532d",
-    950: "#052e16",
-  },
-  emerald: {
-    600: "#059669",
-    900: "#064e3b",
-  },
-  teal: {
-    800: "#115e59",
-  },
-  gray: {
-    200: "#e5e7eb",
-    300: "#d1d5db",
-    400: "#9ca3af",
-    600: "#4b5563",
-  },
-  white: "#ffffff",
-};
-
-const GRADIENTS = {
-  background: {
-    hero: `linear-gradient(135deg, ${COLORS.primary[950]} 0%, ${COLORS.emerald[900]} 50%, ${COLORS.teal[800]} 100%)`,
-  },
-  button: {
-    primary: `linear-gradient(135deg, ${COLORS.primary[600]} 0%, ${COLORS.emerald[600]} 100%)`,
-  },
-  text: {
-    primary: `linear-gradient(135deg, ${COLORS.primary[400]} 0%, #10b981 100%)`,
-  },
-};
-
-const SHADOWS = {
-  glow: `0 0 60px ${COLORS.primary[500]}80`,
-  lg: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
-};
+import { COLORS, GRADIENTS, SHADOWS } from "@/lib/constants/colors";
 
 // Services data
 const servicesData = {
